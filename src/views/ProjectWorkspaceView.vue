@@ -1,25 +1,53 @@
 <template>
   <section class="view-stack">
-    <header class="project-hero">
-      <div>
-        <p class="eyebrow">项目工作现场 · {{ template.name }} · {{ project.owner }}</p>
-        <h1>{{ project.name }}</h1>
+    <header class="project-hero compact-hero">
+      <div class="project-heading">
+        <p class="eyebrow">项目负责人 · {{ project.owner }}</p>
+        <div class="project-title-row">
+          <h1>{{ project.name }}</h1>
+          <span class="template-chip">{{ template.badge }}</span>
+        </div>
         <p>{{ project.description }}</p>
+        <div class="status-chip-group" aria-label="项目当前状态">
+          <button
+            v-for="status in projectStatuses"
+            :key="status"
+            type="button"
+            :class="{ active: project.status === status }"
+            @click="$emit('update-project', project.id, { status })"
+          >
+            {{ status }}
+          </button>
+        </div>
       </div>
-      <div class="project-hero-side">
-        <span class="pill" :class="template.accent">{{ template.badge }}</span>
-        <strong>{{ summary.health }}</strong>
-        <small>项目健康度</small>
+
+      <div class="project-signal-panel">
+        <div class="project-signal-primary">
+          <article>
+            <span>项目健康度</span>
+            <strong>{{ summary.health }}</strong>
+          </article>
+          <article>
+            <span>项目进度</span>
+            <strong>{{ summary.progress }}%</strong>
+            <div class="progress-line"><i :style="{ width: `${summary.progress}%` }"></i></div>
+          </article>
+        </div>
+        <div class="project-signal-secondary">
+          <article><span>待办事项</span><strong>{{ summary.openCount }}</strong></article>
+          <article><span>投入工时</span><strong>{{ summary.actualHours }}h</strong></article>
+          <article><span>里程碑</span><strong>{{ summary.milestoneSummary.progress }}%</strong></article>
+          <article><span>测试</span><strong>{{ project.testDate }}</strong></article>
+          <article><span>验收</span><strong>{{ project.acceptanceDate }}</strong></article>
+          <article><span>上线</span><strong>{{ project.releaseDate }}</strong></article>
+        </div>
+      </div>
+
+      <div class="project-hero-actions">
+        <button class="btn ghost small" type="button" @click="$emit('edit-project', project.id)">编辑项目</button>
+        <button class="btn danger small" type="button" @click="$emit('delete-project', project.id)">删除项目</button>
       </div>
     </header>
-
-    <section class="project-date-strip">
-      <article><span>测试时间</span><strong>{{ project.testDate }}</strong></article>
-      <article><span>验收时间</span><strong>{{ project.acceptanceDate }}</strong></article>
-      <article><span>上线时间</span><strong>{{ project.releaseDate }}</strong></article>
-    </section>
-
-    <ProjectSummaryCards :summary="summary" />
 
     <div class="project-toolbar">
       <div class="project-tabs">
@@ -43,10 +71,26 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h2>当前重点</h2>
-            <p>{{ summary.nextStep }}</p>
+            <h2>风险雷达</h2>
+            <p>优先暴露逾期、P0、风险和 3 天内到期事项。</p>
           </div>
         </div>
+        <div v-if="projectAlerts.length" class="insight-list">
+          <button
+            v-for="alert in projectAlerts"
+            :key="alert.issueId"
+            class="insight-item"
+            type="button"
+            @click="$emit('open-issue', alert.issueId)"
+          >
+            <span class="insight-tone" :class="alert.tone">{{ alert.label }}</span>
+            <strong>{{ alert.title }}</strong>
+            <small>{{ alert.owner }} · 截止 {{ alert.dueDate || "未设置" }} · {{ alert.next }}</small>
+          </button>
+        </div>
+        <p v-else class="quiet-text">暂无逾期、P0、风险或临近到期事项。</p>
+
+        <h3 class="panel-divider-title">当前重点事项</h3>
         <IssueTable
           v-if="filteredIssues.length"
           :issues="filteredIssues.slice(0, 6)"
@@ -64,8 +108,34 @@
       </div>
 
       <div class="panel">
-        <h2>{{ template.id === 'agile' ? '迭代里程碑' : '交付阶段' }}</h2>
-        <WaterfallPhaseView :milestones="template.milestones" :issues="issues" />
+        <div class="panel-head">
+          <div>
+            <h2>最近动态</h2>
+            <p>聚合本项目事项的创建、评论、编辑和状态流转。</p>
+          </div>
+        </div>
+        <div v-if="recentActivities.length" class="project-activity-stream">
+          <button
+            v-for="activity in recentActivities"
+            :key="activity.id"
+            class="project-activity-item"
+            type="button"
+            @click="$emit('open-issue', activity.issueId)"
+          >
+            <span>{{ activity.issueCode }}</span>
+            <strong>{{ activity.issueTitle }}</strong>
+            <small>{{ activity.actor }} · {{ activity.text }} · {{ formatActivityTime(activity.at) }}</small>
+          </button>
+        </div>
+        <p v-else class="quiet-text">暂无项目动态。</p>
+
+        <h3 class="panel-divider-title">{{ template.id === 'agile' ? '迭代里程碑' : '交付阶段' }}</h3>
+        <WaterfallPhaseView
+          :milestones="project.milestones"
+          :issues="issues"
+          editable
+          @status="updateMilestoneStatus"
+        />
       </div>
     </section>
 
@@ -80,7 +150,12 @@
     </section>
 
     <section v-else-if="activeView === '里程碑'" class="panel">
-      <WaterfallPhaseView :milestones="template.milestones" :issues="issues" />
+      <WaterfallPhaseView
+        :milestones="project.milestones"
+        :issues="issues"
+        editable
+        @status="updateMilestoneStatus"
+      />
     </section>
 
     <section v-else-if="activeView === '甘特图'" class="panel">
@@ -115,7 +190,8 @@
 <script setup>
 import { computed, reactive } from "vue";
 import { filterIssues } from "../domain/issue.js";
-import ProjectSummaryCards from "../components/project/ProjectSummaryCards.vue";
+import { getProjectActivities, getProjectAlerts } from "../domain/projectInsight.js";
+import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 import AgileBoard from "../components/project/AgileBoard.vue";
 import WaterfallPhaseView from "../components/project/WaterfallPhaseView.vue";
 import GanttChart from "../components/project/GanttChart.vue";
@@ -134,7 +210,8 @@ const props = defineProps({
 
 const activeView = defineModel("activeView", { type: String, required: true });
 
-defineEmits(["create-issue", "open-issue", "status", "advance"]);
+const emit = defineEmits(["create-issue", "open-issue", "status", "advance", "update-project", "edit-project", "delete-project"]);
+const projectStatuses = PROJECT_STATUS_OPTIONS;
 
 let filters = reactive({
   keyword: "",
@@ -146,6 +223,8 @@ let filters = reactive({
 
 const filteredIssues = computed(() => filterIssues(props.issues, filters));
 const filteredVisibleIssues = computed(() => filterIssues(props.visibleIssues, filters));
+const projectAlerts = computed(() => getProjectAlerts(filteredIssues.value));
+const recentActivities = computed(() => getProjectActivities(props.issues));
 
 function resetFilters() {
   filters.keyword = "";
@@ -153,5 +232,22 @@ function resetFilters() {
   filters.dateTo = "";
   filters.owner = "";
   filters.creator = "";
+}
+
+function updateMilestoneStatus(index, status) {
+  const milestones = props.project.milestones.map((milestone, milestoneIndex) => (
+    milestoneIndex === index ? { ...milestone, status } : milestone
+  ));
+  emit("update-project", props.project.id, { milestones });
+}
+
+function formatActivityTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 </script>

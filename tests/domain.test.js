@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { PROJECT_TEMPLATES, getTemplateById } from "../src/domain/template.js";
 import { filterIssues } from "../src/domain/issue.js";
 import { getNextStatus, ISSUE_STATUSES } from "../src/domain/workflow.js";
+import { getProjectActivities, getProjectAlerts } from "../src/domain/projectInsight.js";
+import { createProjectMilestones, summarizeMilestones } from "../src/domain/milestone.js";
 import { projectService } from "../src/services/projectService.js";
 import { issueService } from "../src/services/issueService.js";
 import { timeEntryService } from "../src/services/timeEntryService.js";
 import { calculateMonthlyTarget, getMissingSubmitDates } from "../src/services/timesheetPolicyService.js";
+import { TRASH_RETENTION_DAYS, createTrashItem, isTrashRestorable } from "../src/domain/trash.js";
 import { createStorageAdapter } from "../src/storage/storageAdapter.js";
 
 const agile = getTemplateById("agile");
@@ -20,7 +23,16 @@ const project = projectService.createProject({
   name: "测试项目",
   owner: "林夏",
   templateId: "agile",
+  status: "开发阶段",
 });
+assert.equal(project.status, "开发阶段");
+assert.equal(project.milestones.length, agile.milestones.length);
+assert.equal(summarizeMilestones(project.milestones).totalCount, agile.milestones.length);
+assert.equal(createProjectMilestones(waterfall, "2026-05-01")[0].dueDate, "2026-05-08");
+assert.equal(projectService.updateProject(project, { status: "测试阶段" }).status, "测试阶段");
+assert.equal(projectService.updateProject(project, {
+  milestones: project.milestones.map((milestone, index) => index === 0 ? { ...milestone, status: "已完成" } : milestone),
+}).milestones[0].status, "已完成");
 const issue = issueService.createIssue({
   title: "测试事项",
   type: "需求",
@@ -51,11 +63,24 @@ assert.equal(summary.actualHours, 0);
 assert.equal(summary.estimatedHours, 8);
 assert.equal(summary.remainingHours, 8);
 assert.equal(summary.nextIssues.length, 1);
+assert.equal(summary.milestoneSummary.totalCount, agile.milestones.length);
 assert.ok(summary.health > 0);
 
 const commented = issueService.addComment(issue, "需要确认范围", "林夏");
 assert.equal(commented.comments.length, 1);
 assert.equal(commented.comments[0].text, "需要确认范围");
+assert.equal(getProjectActivities([commented])[0].issueTitle, "测试事项");
+
+const overdueIssue = issueService.createIssue({
+  title: "逾期风险",
+  type: "风险",
+  priority: "P0",
+  owner: "林夏",
+  dueDate: "2026-05-10",
+}, project);
+const alerts = getProjectAlerts([overdueIssue], new Date("2026-05-12"));
+assert.equal(alerts[0].tone, "danger");
+assert.equal(alerts[0].label, "逾期 2 天");
 
 const timeEntry = timeEntryService.create({
   reporter: "林夏",
@@ -74,6 +99,11 @@ assert.ok(updatedTimeEntry.updatedAt);
 assert.equal(calculateMonthlyTarget("2026-05"), 168);
 assert.ok(getMissingSubmitDates([timeEntry], "林夏", "2026-05").includes("2026-05-11"));
 assert.ok(!getMissingSubmitDates([timeEntry], "林夏", "2026-05").includes("2026-05-12"));
+
+const trashItem = createTrashItem("issue", issue);
+assert.equal(trashItem.type, "issue");
+assert.ok(isTrashRestorable(trashItem));
+assert.equal(TRASH_RETENTION_DAYS, 30);
 
 const memory = new Map();
 const adapter = createStorageAdapter({

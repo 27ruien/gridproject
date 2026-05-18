@@ -79,6 +79,7 @@
           </label>
 
           <div class="drawer-actions">
+            <button class="btn danger" type="button" @click="$emit('delete', issue.id)">删除任务</button>
             <button class="btn ghost" type="button" @click="$emit('advance', issue.id)">推进状态</button>
             <button class="btn primary" type="button" @click="save">保存事项</button>
           </div>
@@ -165,7 +166,7 @@ const props = defineProps({
   timeEntries: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["close", "update", "advance", "comment", "time-entry"]);
+const emit = defineEmits(["close", "update", "advance", "comment", "time-entry", "delete"]);
 const activeTab = ref("detail");
 const commentText = ref("");
 const tabs = [

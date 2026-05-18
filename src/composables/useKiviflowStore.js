@@ -6,6 +6,7 @@ import { stateService } from "../services/stateService.js";
 import { timeEntryService } from "../services/timeEntryService.js";
 import { isClosedStatus } from "../domain/workflow.js";
 import { isIssueRisky } from "../domain/issue.js";
+import { createTrashItem, isTrashRestorable } from "../domain/trash.js";
 
 const state = reactive(stateService.load());
 
@@ -16,6 +17,8 @@ export function useKiviflowStore() {
   const projects = computed(() => state.projects);
   const issues = computed(() => state.issues);
   const timeEntries = computed(() => state.timeEntries);
+  const trash = computed(() => state.trash);
+  const settings = computed(() => state.settings);
   const people = computed(() => projectService.people());
 
   const openIssues = computed(() => issues.value.filter((issue) => !isClosedStatus(issue.status)));
@@ -65,6 +68,38 @@ export function useKiviflowStore() {
     return project;
   }
 
+  function updateProject(projectId, patch) {
+    const index = state.projects.findIndex((project) => project.id === projectId);
+    if (index < 0) return null;
+
+    const project = projectService.updateProject(state.projects[index], patch);
+    state.projects.splice(index, 1, project);
+    return project;
+  }
+
+  function updateSettings(patch) {
+    state.settings = {
+      ...state.settings,
+      ...patch,
+      logoText: (patch.logoText || state.settings.logoText || "K").slice(0, 2),
+    };
+    return state.settings;
+  }
+
+  function deleteProject(projectId) {
+    const index = state.projects.findIndex((project) => project.id === projectId);
+    if (index < 0) return { ok: false, reason: "not-found" };
+
+    const projectIssues = getProjectIssues(projectId);
+    if (projectIssues.length) {
+      return { ok: false, reason: "has-issues", count: projectIssues.length };
+    }
+
+    const [project] = state.projects.splice(index, 1);
+    state.trash.unshift(createTrashItem("project", project));
+    return { ok: true };
+  }
+
   function createIssue(input, projectId) {
     const project = getProject(projectId);
     const issue = issueService.createIssue(input, project);
@@ -79,6 +114,35 @@ export function useKiviflowStore() {
     const issue = issueService.updateIssue(state.issues[index], patch);
     state.issues.splice(index, 1, issue);
     return issue;
+  }
+
+  function deleteIssue(issueId) {
+    const index = state.issues.findIndex((issue) => issue.id === issueId);
+    if (index < 0) return null;
+
+    const [issue] = state.issues.splice(index, 1);
+    state.trash.unshift(createTrashItem("issue", issue));
+    return issue;
+  }
+
+  function restoreTrashItem(trashId) {
+    const index = state.trash.findIndex((item) => item.id === trashId);
+    if (index < 0) return { ok: false, reason: "not-found" };
+
+    const item = state.trash[index];
+    if (!isTrashRestorable(item)) return { ok: false, reason: "expired" };
+
+    if (item.type === "project") {
+      if (state.projects.some((project) => project.id === item.entity.id)) return { ok: false, reason: "exists" };
+      state.projects.unshift(projectService.updateProject(item.entity, {}));
+    } else if (item.type === "issue") {
+      if (!state.projects.some((project) => project.id === item.entity.projectId)) return { ok: false, reason: "missing-project" };
+      if (state.issues.some((issue) => issue.id === item.entity.id)) return { ok: false, reason: "exists" };
+      state.issues.unshift(issueService.updateIssue(item.entity, {}));
+    }
+
+    state.trash.splice(index, 1);
+    return { ok: true, type: item.type, entity: item.entity };
   }
 
   function advanceIssue(issueId) {
@@ -165,6 +229,8 @@ export function useKiviflowStore() {
     projects,
     issues,
     timeEntries,
+    trash,
+    settings,
     people,
     openIssues,
     riskyIssues,
@@ -179,8 +245,13 @@ export function useKiviflowStore() {
     getProjectTimeEntries,
     summarizeProject,
     createProject,
+    updateProject,
+    updateSettings,
+    deleteProject,
     createIssue,
     updateIssue,
+    deleteIssue,
+    restoreTrashItem,
     advanceIssue,
     addIssueComment,
     addTimeEntry,

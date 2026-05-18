@@ -4,7 +4,8 @@
     <span class="row-main">
       <strong class="row-title">{{ project.name }}</strong>
       <span class="row-meta">
-        <span>{{ template.name }}</span>
+        <span>{{ template.badge }}</span>
+        <span>{{ project.status }}</span>
         <span>负责人：{{ project.owner }}</span>
         <span>{{ project.startDate }} - {{ project.dueDate }}</span>
         <span>投入：{{ summary.actualHours }} / {{ summary.estimatedHours }}h</span>

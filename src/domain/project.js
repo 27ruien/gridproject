@@ -1,10 +1,7 @@
 import { isClosedStatus } from "./workflow.js";
+import { summarizeMilestones } from "./milestone.js";
 
-export const WORKSPACE = {
-  id: "default-workspace",
-  name: "Kivisense 组织工作区",
-  plan: "商业化前端雏形",
-};
+export const PROJECT_STATUS_OPTIONS = ["规划中", "开发阶段", "测试阶段", "验收阶段", "上线阶段", "已暂停", "已完成"];
 
 export function calculateProjectProgress(issues) {
   if (!issues.length) return 0;
@@ -43,6 +40,7 @@ export function summarizeProject(project, issues) {
     }));
   const actualHours = issues.reduce((sum, issue) => sum + (Number(issue.actualHours) || 0), 0);
   const estimatedHours = issues.reduce((sum, issue) => sum + (Number(issue.estimatedHours) || 0), 0);
+  const milestoneSummary = summarizeMilestones(project.milestones);
 
   return {
     progress: calculateProjectProgress(issues),
@@ -55,6 +53,7 @@ export function summarizeProject(project, issues) {
     actualHours,
     estimatedHours,
     remainingHours: Math.max(0, estimatedHours - actualHours),
+    milestoneSummary,
     nextIssues,
     nextStep: nextIssue?.next || "暂无阻塞事项，可以补充下一批工作。",
   };

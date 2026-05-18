@@ -1,18 +1,26 @@
 import { localStorageAdapter } from "../storage/localStorageAdapter.js";
 import { normalizeIssue } from "../domain/issue.js";
 import { normalizeTimeEntry } from "../domain/timeEntry.js";
+import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
+import { normalizeTrashItem } from "../domain/trash.js";
+import { getTemplateById } from "../domain/template.js";
+import { normalizeMilestones } from "../domain/milestone.js";
 
 export const STORAGE_KEY = "kiviflow-platform-state-v1";
 const LEGACY_STORAGE_KEY = "kiviflow-vue-mvp-state";
 
 const seedState = {
+  settings: {
+    platformName: "KiviFlow",
+    logoText: "K",
+  },
   projects: [
     {
       id: "crm",
       name: "CRM 线索协同",
       templateId: "agile",
       owner: "林夏",
-      status: "进行中",
+      status: "开发阶段",
       startDate: "2026-05-01",
       dueDate: "2026-06-05",
       testDate: "2026-05-25",
@@ -28,7 +36,7 @@ const seedState = {
       name: "商场 AR 交付",
       templateId: "waterfall",
       owner: "韩越",
-      status: "设计确认",
+      status: "验收阶段",
       startDate: "2026-04-28",
       dueDate: "2026-06-20",
       testDate: "2026-06-08",
@@ -44,7 +52,7 @@ const seedState = {
       name: "AI 试衣平台",
       templateId: "agile",
       owner: "周程",
-      status: "规划中",
+      status: "测试阶段",
       startDate: "2026-05-06",
       dueDate: "2026-06-12",
       testDate: "2026-06-02",
@@ -148,6 +156,7 @@ const seedState = {
     { id: "t2", projectId: "crm", issueId: "i2", reporter: "周程", spentDate: "2026-05-13", hours: 6, note: "燃尽图接口联调" },
     { id: "t3", projectId: "mall", issueId: "i4", reporter: "韩越", spentDate: "2026-05-11", hours: 3, note: "整理客户需求确认材料" },
   ],
+  trash: [],
 };
 
 export const stateService = {
@@ -166,6 +175,8 @@ export const stateService = {
       projects: state.projects,
       issues: state.issues,
       timeEntries: state.timeEntries,
+      trash: state.trash,
+      settings: state.settings,
     }));
   },
 };
@@ -173,28 +184,50 @@ export const stateService = {
 function normalizeState(rawState) {
   const issues = rawState.issues || rawState.items || seedState.issues;
   return {
+    settings: normalizeSettings(rawState.settings || seedState.settings),
     projects: (rawState.projects || seedState.projects).map(normalizeProject),
     issues: issues.map(normalizeIssue),
     timeEntries: (rawState.timeEntries || seedState.timeEntries).map(normalizeTimeEntry),
+    trash: (rawState.trash || seedState.trash).map(normalizeTrashItem),
+  };
+}
+
+function normalizeSettings(settings) {
+  return {
+    platformName: settings.platformName || "KiviFlow",
+    logoText: (settings.logoText || "K").slice(0, 2),
   };
 }
 
 function normalizeProject(project) {
   const today = new Date().toISOString().slice(0, 10);
+  const template = getTemplateById(project.templateId || "agile");
+  const startDate = project.startDate || today;
   return {
     id: project.id,
     name: project.name || "未命名项目",
-    templateId: project.templateId || "agile",
+    templateId: template.id,
     owner: project.owner || "未分配",
-    status: project.status || "规划中",
-    startDate: project.startDate || today,
+    status: normalizeProjectStatus(project.status),
+    startDate,
     dueDate: project.dueDate || today,
     testDate: project.testDate || project.dueDate || today,
     acceptanceDate: project.acceptanceDate || project.dueDate || today,
     releaseDate: project.releaseDate || project.dueDate || today,
+    milestones: normalizeMilestones(project.milestones, template, startDate),
     health: Number.isFinite(project.health) ? project.health : 90,
     description: project.description || "暂无项目说明。",
     createdAt: project.createdAt || new Date().toISOString(),
     updatedAt: project.updatedAt || new Date().toISOString(),
   };
+}
+
+function normalizeProjectStatus(status) {
+  if (PROJECT_STATUS_OPTIONS.includes(status)) return status;
+  const legacyStatusMap = {
+    进行中: "开发阶段",
+    立项: "规划中",
+    设计确认: "验收阶段",
+  };
+  return legacyStatusMap[status] || "规划中";
 }
