@@ -1,0 +1,135 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr);
+}
+
+.mobile-shellbar,
+.sidebar-scrim {
+  display: none;
+}
+
+.app-shell.nav-collapsed {
+  grid-template-columns: var(--nav-collapsed) minmax(0, 1fr);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-200);
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  padding: var(--space-200) var(--space-150);
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+}
+
+.mobile-close {
+  display: none;
+}
+
+.workspace {
+  min-width: 0;
+  padding: var(--space-300) var(--content-pad) var(--space-400);
+}
+
+.topbar {
+  min-height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-200);
+  margin: calc(var(--space-300) * -1) calc(var(--content-pad) * -1) var(--space-300);
+  padding: 0 var(--content-pad);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.topbar-actions,
+.hero-actions,
+.modal-actions,
+.drawer-actions,
+.project-toolbar,
+.project-toolbar-actions,
+.schedule-import-actions,
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex-wrap: wrap;
+}
+
+.view-stack {
+  display: grid;
+  gap: var(--space-200);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-200);
+}
+
+.flush-panel {
+  padding: var(--space-150);
+}
+
+.panel-head,
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-200);
+  margin-bottom: var(--space-150);
+}
+
+.workspace-grid,
+.workbench-modules,
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: var(--space-200);
+  align-items: start;
+}
+
+.metrics,
+.summary-grid,
+.timesheet-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-150);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.form-two,
+.field-grid,
+.time-entry-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-150);
+}
+
+.create-layout,
+.schedule-import-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+  gap: var(--space-200);
+}
+
+.project-edit-layout {
+  grid-template-columns: 1fr;
+}

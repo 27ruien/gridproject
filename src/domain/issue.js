@@ -1,4 +1,5 @@
 import { normalizeStatus } from "./workflow.js";
+import { getIssueScheduleRisks } from "./scheduleImport.js";
 
 export const PRIORITIES = ["P0", "P1", "P2", "P3"];
 
@@ -28,13 +29,19 @@ export function normalizeIssue(issue) {
     description: issue.description || "暂无描述。",
     comments: Array.isArray(issue.comments) ? issue.comments : [],
     activity: Array.isArray(issue.activity) ? issue.activity : [],
+    scheduleKey: issue.scheduleKey || "",
+    scheduleModel: issue.scheduleModel || "",
+    scheduleOwners: Array.isArray(issue.scheduleOwners) ? issue.scheduleOwners : [],
+    scheduleWorkdays: Number(issue.scheduleWorkdays) || 0,
+    scheduleImportedAt: issue.scheduleImportedAt || "",
+    scheduleSource: issue.scheduleSource || "",
     createdAt: issue.createdAt || new Date().toISOString(),
     updatedAt: issue.updatedAt || new Date().toISOString(),
   };
 }
 
 export function isIssueRisky(issue) {
-  return issue.priority === "P0" || issue.type === "风险";
+  return issue.priority === "P0" || issue.type === "风险" || getIssueScheduleRisks(issue).length > 0;
 }
 
 export function filterIssues(issues, filters = {}) {

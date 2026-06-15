@@ -1,4 +1,5 @@
 import { isClosedStatus } from "./workflow.js";
+import { getIssueScheduleRisks } from "./scheduleImport.js";
 
 export function getProjectAlerts(issues, today = new Date()) {
   const todayStart = startOfDay(today);
@@ -28,16 +29,33 @@ function buildAlert(issue, todayStart) {
   const isOverdue = Number.isFinite(days) && days < 0;
   const isDueSoon = Number.isFinite(days) && days >= 0 && days <= 3;
   const isRisk = issue.priority === "P0" || issue.type === "风险";
+  const scheduleRisks = getIssueScheduleRisks(issue, todayStart);
 
   if (isOverdue) {
     return {
       issueId: issue.id,
       tone: "danger",
       rank: 0,
-      label: `逾期 ${Math.abs(days)} 天`,
+      label: issue.scheduleKey ? `排期逾期 ${Math.abs(days)} 天` : `逾期 ${Math.abs(days)} 天`,
       title: issue.title,
       owner: issue.owner,
       dueDate: issue.dueDate,
+      reason: issue.scheduleKey ? `${issue.scheduleModel || "排期"} 已超过计划截止日期。` : "",
+      next: issue.next,
+    };
+  }
+
+  if (scheduleRisks.length) {
+    const risk = scheduleRisks[0];
+    return {
+      issueId: issue.id,
+      tone: risk.tone,
+      rank: risk.rank,
+      label: risk.label,
+      title: issue.title,
+      owner: issue.owner,
+      dueDate: issue.dueDate,
+      reason: risk.reason,
       next: issue.next,
     };
   }
@@ -51,6 +69,7 @@ function buildAlert(issue, todayStart) {
       title: issue.title,
       owner: issue.owner,
       dueDate: issue.dueDate,
+      reason: "",
       next: issue.next,
     };
   }
@@ -64,6 +83,7 @@ function buildAlert(issue, todayStart) {
       title: issue.title,
       owner: issue.owner,
       dueDate: issue.dueDate,
+      reason: "",
       next: issue.next,
     };
   }

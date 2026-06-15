@@ -5,13 +5,9 @@
       <PriorityPill :priority="issue.priority" />
     </span>
     <strong>{{ issue.title }}</strong>
-    <p>{{ issue.next }}</p>
     <span class="card-meta">
-      <span>{{ issue.type }}</span>
       <span>执行：{{ issue.owner }}</span>
-      <span>创建：{{ issue.creator }}</span>
-      <span>{{ issue.startDate || "未设开始" }} - {{ issue.dueDate || "未设截止" }}</span>
-      <span>{{ issue.actualHours }}/{{ issue.estimatedHours }}h</span>
+      <span>截止：{{ issue.dueDate || "未设截止" }}</span>
     </span>
     <span class="card-actions" @click.stop>
       <select :value="issue.status" @change="$emit('status', issue.id, $event.target.value)">

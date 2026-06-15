@@ -107,6 +107,19 @@ export function useKiviflowStore() {
     return issue;
   }
 
+  function importProjectSchedule(projectId, text, options = {}) {
+    const project = getProject(projectId);
+    const result = issueService.importSchedule(text, project, getProjectIssues(project.id), options);
+
+    result.updated.forEach((issue) => {
+      const index = state.issues.findIndex((item) => item.id === issue.id);
+      if (index >= 0) state.issues.splice(index, 1, issue);
+    });
+    state.issues.unshift(...result.created);
+
+    return result;
+  }
+
   function updateIssue(issueId, patch) {
     const index = state.issues.findIndex((issue) => issue.id === issueId);
     if (index < 0) return null;
@@ -249,6 +262,7 @@ export function useKiviflowStore() {
     updateSettings,
     deleteProject,
     createIssue,
+    importProjectSchedule,
     updateIssue,
     deleteIssue,
     restoreTrashItem,

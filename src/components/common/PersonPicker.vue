@@ -8,7 +8,9 @@
       <section class="picker-panel">
         <header>
           <h3>{{ title }}</h3>
-          <button class="icon-btn" type="button" @click="open = false">×</button>
+          <button class="icon-btn" type="button" aria-label="关闭选择器" @click="open = false">
+            <Icon name="close" />
+          </button>
         </header>
         <input v-model="keyword" placeholder="搜索姓名" />
         <div class="picker-list">
@@ -30,6 +32,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
+import Icon from "../ui/Icon.vue";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },

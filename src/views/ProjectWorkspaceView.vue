@@ -2,22 +2,18 @@
   <section class="view-stack">
     <header class="project-hero compact-hero">
       <div class="project-heading">
-        <p class="eyebrow">项目负责人 · {{ project.owner }}</p>
+        <p class="eyebrow">项目 / {{ template.name }}</p>
         <div class="project-title-row">
           <h1>{{ project.name }}</h1>
-          <span class="template-chip">{{ template.badge }}</span>
+          <StatusLozenge :label="project.status" />
         </div>
         <p>{{ project.description }}</p>
-        <div class="status-chip-group" aria-label="项目当前状态">
-          <button
-            v-for="status in projectStatuses"
-            :key="status"
-            type="button"
-            :class="{ active: project.status === status }"
-            @click="$emit('update-project', project.id, { status })"
-          >
-            {{ status }}
-          </button>
+        <div class="project-meta-row">
+          <span>负责人：{{ project.owner }}</span>
+          <span>周期：{{ project.startDate }} - {{ project.dueDate }}</span>
+          <span>测试 {{ project.testDate }}</span>
+          <span>验收 {{ project.acceptanceDate }}</span>
+          <span>上线 {{ project.releaseDate }}</span>
         </div>
       </div>
 
@@ -35,34 +31,33 @@
         </div>
         <div class="project-signal-secondary">
           <article><span>待办事项</span><strong>{{ summary.openCount }}</strong></article>
-          <article><span>投入工时</span><strong>{{ summary.actualHours }}h</strong></article>
+          <article><span>排期风险</span><strong>{{ summary.scheduleRiskCount }}</strong></article>
           <article><span>里程碑</span><strong>{{ summary.milestoneSummary.progress }}%</strong></article>
-          <article><span>测试</span><strong>{{ project.testDate }}</strong></article>
-          <article><span>验收</span><strong>{{ project.acceptanceDate }}</strong></article>
-          <article><span>上线</span><strong>{{ project.releaseDate }}</strong></article>
         </div>
       </div>
 
       <div class="project-hero-actions">
+        <label class="project-status-select">
+          <span>项目状态</span>
+          <select :value="project.status" @change="$emit('update-project', project.id, { status: $event.target.value })">
+            <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
+          </select>
+        </label>
         <button class="btn ghost small" type="button" @click="$emit('edit-project', project.id)">编辑项目</button>
-        <button class="btn danger small" type="button" @click="$emit('delete-project', project.id)">删除项目</button>
+        <OverflowMenu>
+          <template #default="{ close }">
+            <button class="btn danger small" type="button" @click="close(); $emit('delete-project', project.id)">删除项目</button>
+          </template>
+        </OverflowMenu>
       </div>
     </header>
 
     <div class="project-toolbar">
-      <div class="project-tabs">
-        <button
-          v-for="view in template.views"
-          :key="view"
-          class="project-tab"
-          :class="{ active: activeView === view }"
-          type="button"
-          @click="activeView = view"
-        >
-          {{ view }}
-        </button>
+      <Tabs v-model="activeView" :items="template.views" />
+      <div class="project-toolbar-actions">
+        <button class="btn ghost small" type="button" @click="$emit('import-schedule')">导入排期</button>
+        <button class="btn primary small" type="button" @click="$emit('create-issue')">新建事项</button>
       </div>
-      <button class="btn primary small" type="button" @click="$emit('create-issue')">新建事项</button>
     </div>
 
     <IssueFilters v-model="filters" :people="people" @reset="resetFilters" />
@@ -85,7 +80,7 @@
           >
             <span class="insight-tone" :class="alert.tone">{{ alert.label }}</span>
             <strong>{{ alert.title }}</strong>
-            <small>{{ alert.owner }} · 截止 {{ alert.dueDate || "未设置" }} · {{ alert.next }}</small>
+            <small>{{ alert.owner }} · 截止 {{ alert.dueDate || "未设置" }} · {{ alert.reason || alert.next }}</small>
           </button>
         </div>
         <p v-else class="quiet-text">暂无逾期、P0、风险或临近到期事项。</p>
@@ -192,6 +187,9 @@ import { computed, reactive } from "vue";
 import { filterIssues } from "../domain/issue.js";
 import { getProjectActivities, getProjectAlerts } from "../domain/projectInsight.js";
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
+import Tabs from "../components/ui/Tabs.vue";
+import StatusLozenge from "../components/ui/StatusLozenge.vue";
+import OverflowMenu from "../components/ui/OverflowMenu.vue";
 import AgileBoard from "../components/project/AgileBoard.vue";
 import WaterfallPhaseView from "../components/project/WaterfallPhaseView.vue";
 import GanttChart from "../components/project/GanttChart.vue";
@@ -210,7 +208,7 @@ const props = defineProps({
 
 const activeView = defineModel("activeView", { type: String, required: true });
 
-const emit = defineEmits(["create-issue", "open-issue", "status", "advance", "update-project", "edit-project", "delete-project"]);
+const emit = defineEmits(["create-issue", "import-schedule", "open-issue", "status", "advance", "update-project", "edit-project", "delete-project"]);
 const projectStatuses = PROJECT_STATUS_OPTIONS;
 
 let filters = reactive({

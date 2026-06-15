@@ -22,7 +22,7 @@
         </article>
         <EmptyState
           v-if="!trash.length"
-          icon="↺"
+          icon-name="trash"
           title="回收站为空"
           description="删除的项目或任务会在这里保留 30 天。"
         />

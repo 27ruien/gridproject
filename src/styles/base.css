@@ -1,0 +1,85 @@
+h1 {
+  font-size: var(--text-page);
+  line-height: var(--line-page);
+  font-weight: 600;
+}
+
+h2 {
+  font-size: var(--text-section);
+  line-height: var(--line-section);
+  font-weight: 600;
+}
+
+h3 {
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+  font-weight: 600;
+}
+
+p,
+small {
+  color: var(--muted);
+}
+
+small {
+  font-size: var(--text-caption);
+  line-height: var(--line-caption);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 var(--space-150);
+}
+
+textarea {
+  min-height: 92px;
+  padding-block: var(--space-100);
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--brand);
+  outline: 2px solid color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+label {
+  display: grid;
+  gap: var(--space-050);
+}
+
+label span,
+.field-grid span,
+.form-label {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  line-height: var(--line-caption);
+  font-weight: 500;
+}
+
+.truncate {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.quiet-text {
+  color: var(--muted);
+  font-size: var(--text-control);
+}

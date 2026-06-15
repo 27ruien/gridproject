@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { PROJECT_TEMPLATES, getTemplateById } from "../src/domain/template.js";
 import { filterIssues } from "../src/domain/issue.js";
+import { getIssueScheduleRisks, parseScheduleText } from "../src/domain/scheduleImport.js";
 import { getNextStatus, ISSUE_STATUSES } from "../src/domain/workflow.js";
 import { getProjectActivities, getProjectAlerts } from "../src/domain/projectInsight.js";
 import { createProjectMilestones, summarizeMilestones } from "../src/domain/milestone.js";
@@ -33,6 +34,35 @@ assert.equal(projectService.updateProject(project, { status: "测试阶段" }).s
 assert.equal(projectService.updateProject(project, {
   milestones: project.milestones.map((milestone, index) => index === 0 ? { ...milestone, status: "已完成" } : milestone),
 }).milestones[0].status, "已完成");
+
+const scheduleText = [
+  "Model,事项名称,相关方,开始日期,工作日天数或结束日期,状态",
+  "需求,Scope addendum,Kivisense,2026-06-18,4天,未完成",
+  "设计,Creative Proposal,Kivisense,brand,2026-06-22,2026-07-03,未完成",
+].join("\n");
+const parsedSchedule = parseScheduleText(scheduleText);
+assert.equal(parsedSchedule.tasks.length, 2);
+assert.equal(parsedSchedule.tasks[0].model, "需求");
+assert.equal(parsedSchedule.tasks[0].dueDate, "2026-06-24");
+assert.deepEqual(parsedSchedule.tasks[1].owners, ["Kivisense", "Brands"]);
+assert.equal(parsedSchedule.tasks[1].status, "未完成");
+assert.equal(parseScheduleText("事项名称，Kivisense，开始日期 2026-06-01，周期 5天").tasks[0].dueDate, "2026-06-05");
+
+const scheduleImport = issueService.importSchedule(scheduleText, project, []);
+assert.equal(scheduleImport.created.length, 2);
+assert.equal(scheduleImport.created[0].scheduleSource, "gridtimeline");
+assert.equal(scheduleImport.created[0].estimatedHours, 32);
+const scheduleMerge = issueService.importSchedule(scheduleText, project, scheduleImport.created);
+assert.equal(scheduleMerge.created.length, 0);
+assert.equal(scheduleMerge.updated.length, 2);
+const delayedScheduleIssue = {
+  ...scheduleImport.created[0],
+  startDate: "2026-06-10",
+  dueDate: "2026-06-14",
+  status: "未开始",
+};
+assert.equal(getIssueScheduleRisks(delayedScheduleIssue, new Date("2026-06-16"))[0].label, "排期逾期 2 天");
+
 const issue = issueService.createIssue({
   title: "测试事项",
   type: "需求",

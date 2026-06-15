@@ -36,7 +36,7 @@
         </article>
       </div>
 
-      <div class="timesheet-filters">
+      <div class="timesheet-filters" :class="{ expanded: filtersExpanded }">
         <label>
           <span>全字段搜索</span>
           <input v-model="filters.keyword" placeholder="日期、项目、任务、填报人、说明、状态" />
@@ -48,33 +48,36 @@
             <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
           </select>
         </label>
-        <label>
+        <label class="filter-advanced">
           <span>任务</span>
           <select v-model="filters.issueId">
             <option value="">全部任务</option>
             <option v-for="issue in issues" :key="issue.id" :value="issue.id">{{ issue.title }}</option>
           </select>
         </label>
-        <label>
+        <label class="filter-advanced">
           <span>填报人</span>
           <PersonPicker v-model="filters.reporter" :people="people" title="筛选填报人" placeholder="全部" />
         </label>
-        <label>
+        <label class="filter-advanced">
           <span>开始日期</span>
           <input v-model="filters.dateFrom" type="date" />
         </label>
-        <label>
+        <label class="filter-advanced">
           <span>结束日期</span>
           <input v-model="filters.dateTo" type="date" />
         </label>
-        <label>
+        <label class="filter-advanced">
           <span>最小工时</span>
           <input v-model.number="filters.minHours" min="0" step="0.5" type="number" placeholder="不限" />
         </label>
-        <label>
+        <label class="filter-advanced">
           <span>最大工时</span>
           <input v-model.number="filters.maxHours" min="0" step="0.5" type="number" placeholder="不限" />
         </label>
+        <button class="btn ghost small" type="button" @click="filtersExpanded = !filtersExpanded">
+          {{ filtersExpanded ? "收起筛选" : `更多筛选${activeFilterCount ? ` ${activeFilterCount}` : ""}` }}
+        </button>
         <button class="btn ghost small" type="button" @click="resetFilters">重置</button>
       </div>
 
@@ -123,7 +126,9 @@
             <p class="eyebrow">{{ editingId ? "编辑工时" : "新建工时申报" }}</p>
             <h2>{{ editingId ? "调整单条任务工时" : "一个日期可同时申报多个任务" }}</h2>
           </div>
-          <button class="icon-btn" type="button" @click="modalOpen = false">×</button>
+          <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="modalOpen = false">
+            <Icon name="close" />
+          </button>
         </header>
         <div class="modal-body">
           <div class="form-two">
@@ -204,6 +209,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import PersonPicker from "../components/common/PersonPicker.vue";
 import EmptyState from "../components/common/EmptyState.vue";
+import Icon from "../components/ui/Icon.vue";
 import {
   calculateMonthlyTarget,
   createEntrySearchText,
@@ -227,6 +233,7 @@ const selectedMonth = ref(currentMonthValue());
 const modalOpen = ref(false);
 const editingId = ref("");
 const lineSeed = ref(1);
+const filtersExpanded = ref(false);
 const filters = reactive({
   keyword: "",
   projectId: "",
@@ -257,6 +264,7 @@ const submittedMonthEntries = computed(() => props.timeEntries.filter((entry) =>
 const submittedHours = computed(() => submittedMonthEntries.value.reduce((sum, entry) => sum + entry.hours, 0));
 const missingSubmitDates = computed(() => getMissingSubmitDates(props.timeEntries, props.managerName, selectedMonth.value));
 const formMissingDates = computed(() => getMissingSubmitDates(props.timeEntries, form.reporter, selectedMonth.value));
+const activeFilterCount = computed(() => ["issueId", "reporter", "dateFrom", "dateTo", "minHours", "maxHours"].filter((key) => filters[key] !== "").length);
 const canSubmit = computed(() => Boolean(
   form.reporter &&
   form.spentDate &&

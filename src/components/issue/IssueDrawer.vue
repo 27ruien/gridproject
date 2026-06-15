@@ -1,21 +1,19 @@
 <template>
-  <aside class="drawer" :class="{ open: issue }" :aria-hidden="!issue">
-    <template v-if="issue">
-      <header class="drawer-head">
-        <div>
-          <p class="eyebrow">{{ issue.code }} · {{ project.name }}</p>
-          <h2>{{ issue.title }}</h2>
-        </div>
-        <button class="icon-btn" type="button" aria-label="关闭详情" @click="$emit('close')">×</button>
-      </header>
-
+  <DetailPanel
+    :open="Boolean(issue)"
+    :title="issue?.title || ''"
+    :eyebrow="issue ? `${issue.code} · ${project.name}` : ''"
+    @close="$emit('close')"
+  >
+    <template #tabs>
       <nav class="drawer-tabs">
         <button v-for="tab in tabs" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
           {{ tab.label }}
         </button>
       </nav>
+    </template>
 
-      <div class="drawer-body">
+    <template v-if="issue">
         <section v-if="activeTab === 'detail'" class="drawer-section">
           <div class="field-grid">
             <label>
@@ -149,14 +147,14 @@
             <p v-if="!issue.activity.length">暂无活动记录。</p>
           </div>
         </section>
-      </div>
     </template>
-  </aside>
+  </DetailPanel>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import PersonPicker from "../common/PersonPicker.vue";
+import DetailPanel from "../ui/DetailPanel.vue";
 
 const props = defineProps({
   issue: { type: Object, default: null },

@@ -1,5 +1,6 @@
 import { isClosedStatus } from "./workflow.js";
 import { summarizeMilestones } from "./milestone.js";
+import { getIssueScheduleRisks } from "./scheduleImport.js";
 
 export const PROJECT_STATUS_OPTIONS = ["规划中", "开发阶段", "测试阶段", "验收阶段", "上线阶段", "已暂停", "已完成"];
 
@@ -14,9 +15,10 @@ export function calculateProjectHealth(project, issues) {
 
   const openCount = issues.filter((issue) => !isClosedStatus(issue.status)).length;
   const p0Count = issues.filter((issue) => issue.priority === "P0").length;
+  const scheduleRiskCount = issues.filter((issue) => getIssueScheduleRisks(issue).length).length;
   const overdueCount = issues.filter((issue) => issue.dueDate && !isClosedStatus(issue.status) && new Date(issue.dueDate) < startOfToday()).length;
   const progress = calculateProjectProgress(issues);
-  const score = 88 + Math.round(progress * 0.08) - openCount * 2 - p0Count * 6 - overdueCount * 8;
+  const score = 88 + Math.round(progress * 0.08) - openCount * 2 - p0Count * 6 - overdueCount * 8 - scheduleRiskCount * 4;
 
   return Math.max(35, Math.min(98, score));
 }
@@ -24,8 +26,10 @@ export function calculateProjectHealth(project, issues) {
 export function summarizeProject(project, issues) {
   const openIssues = issues.filter((issue) => !isClosedStatus(issue.status));
   const doneIssues = issues.filter((issue) => isClosedStatus(issue.status));
-  const risks = issues.filter((issue) => issue.priority === "P0" || issue.type === "风险");
+  const scheduleRiskIssues = issues.filter((issue) => getIssueScheduleRisks(issue).length);
+  const risks = issues.filter((issue) => issue.priority === "P0" || issue.type === "风险" || getIssueScheduleRisks(issue).length);
   const overdueIssues = issues.filter((issue) => issue.dueDate && !isClosedStatus(issue.status) && new Date(issue.dueDate) < startOfToday());
+  const scheduleIssues = issues.filter((issue) => issue.scheduleKey);
   const nextIssue = openIssues.find((issue) => issue.priority === "P0") || openIssues[0];
   const nextIssues = [...openIssues]
     .sort((a, b) => priorityWeight(a) - priorityWeight(b) || dateWeight(a.dueDate) - dateWeight(b.dueDate))
@@ -50,6 +54,8 @@ export function summarizeProject(project, issues) {
     doneCount: doneIssues.length,
     overdueCount: overdueIssues.length,
     riskCount: risks.length,
+    scheduleIssueCount: scheduleIssues.length,
+    scheduleRiskCount: scheduleRiskIssues.length,
     actualHours,
     estimatedHours,
     remainingHours: Math.max(0, estimatedHours - actualHours),

@@ -6,7 +6,9 @@
           <p class="eyebrow">{{ isEditing ? "编辑项目" : "创建项目" }}</p>
           <h2>{{ isEditing ? "更新项目基础信息" : "选择模板并初始化项目空间" }}</h2>
         </div>
-        <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="$emit('close')">×</button>
+        <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="$emit('close')">
+          <Icon name="close" />
+        </button>
       </header>
       <div class="modal-body" :class="isEditing ? 'project-edit-layout' : 'create-layout'">
         <div class="form-panel">
@@ -96,6 +98,7 @@
 import { computed, reactive, watch } from "vue";
 import TemplateCard from "../components/template/TemplateCard.vue";
 import PersonPicker from "../components/common/PersonPicker.vue";
+import Icon from "../components/ui/Icon.vue";
 import { addDays, formatDate } from "../services/projectService";
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 

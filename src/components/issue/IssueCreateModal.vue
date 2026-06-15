@@ -6,7 +6,9 @@
           <p class="eyebrow">{{ project.name }}</p>
           <h2>新建事项</h2>
         </div>
-        <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="$emit('close')">×</button>
+        <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="$emit('close')">
+          <Icon name="close" />
+        </button>
       </header>
       <div class="modal-body">
         <label>
@@ -78,6 +80,7 @@
 <script setup>
 import { reactive, watch } from "vue";
 import PersonPicker from "../common/PersonPicker.vue";
+import Icon from "../ui/Icon.vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },

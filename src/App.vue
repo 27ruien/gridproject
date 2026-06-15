@@ -1,46 +1,58 @@
 <template>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="brand-mark">{{ settings.logoText }}</span>
-        <div>
-          <strong>{{ settings.platformName }}</strong>
-        </div>
-      </div>
-
-      <nav class="nav">
-        <button
-          v-for="route in routes"
-          :key="route.key"
-          class="nav-item"
-          :class="{ active: currentView === route.key }"
-          type="button"
-          @click="setView(route.key)"
-        >
-          <span class="nav-icon" :class="`nav-icon-${route.icon}`" aria-hidden="true"></span>{{ route.label }}
-        </button>
-      </nav>
-
-      <section class="manager-card">
-        <span class="avatar">林</span>
-        <div>
-          <strong>{{ currentManager.name }}</strong>
-          <small>{{ currentManager.role }} · 管理 {{ projects.length }} 个项目</small>
-        </div>
-      </section>
-
-    </aside>
-
-    <main class="workspace">
+  <AppShell
+    :routes="routes"
+    :current-view="currentView"
+    :settings="settings"
+    :manager="currentManager"
+    :project-count="projects.length"
+    @navigate="setView"
+  >
       <header class="topbar">
         <div>
           <h1>{{ pageTitle }}</h1>
         </div>
-        <div class="topbar-actions">
+        <div class="topbar-actions" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
           <label class="search">
-            <span class="search-icon" aria-hidden="true"></span>
-            <input v-model="searchText" type="search" placeholder="搜索项目、事项或负责人" @keydown.enter="runSearch" />
+            <Icon name="search" />
+            <input
+              v-model="searchText"
+              type="search"
+              placeholder="搜索项目、事项或负责人"
+              @focus="searchFocused = true"
+              @input="selectedSearchIndex = 0"
+            />
           </label>
+          <div v-if="searchPanelOpen" class="search-panel">
+            <div v-if="searchResults.projects.length" class="search-result-group">
+              <p class="eyebrow">项目</p>
+              <button
+                v-for="result in searchResults.projects"
+                :key="result.id"
+                class="search-result"
+                :class="{ active: activeSearchResult?.kind === 'project' && activeSearchResult.id === result.id }"
+                type="button"
+                @click="openProject(result.id)"
+              >
+                <strong>{{ result.name }}</strong>
+                <small>{{ result.owner }} · {{ result.status }} · 截止 {{ result.dueDate }}</small>
+              </button>
+            </div>
+            <div v-if="searchResults.issues.length" class="search-result-group">
+              <p class="eyebrow">事项</p>
+              <button
+                v-for="result in searchResults.issues"
+                :key="result.id"
+                class="search-result"
+                :class="{ active: activeSearchResult?.kind === 'issue' && activeSearchResult.id === result.id }"
+                type="button"
+                @click="openIssueFromSearch(result.id)"
+              >
+                <strong>{{ result.title }}</strong>
+                <small>{{ result.code }} · {{ projectName(result.projectId) }} · {{ result.status }}</small>
+              </button>
+            </div>
+            <p v-if="!flatSearchResults.length" class="quiet-text">没有找到匹配结果。</p>
+          </div>
         </div>
       </header>
 
@@ -68,16 +80,7 @@
               <button class="btn primary small" type="button" @click="openProjectModal()">创建项目</button>
             </div>
           </div>
-          <div class="project-list">
-            <ProjectRow
-              v-for="row in projectRows"
-              :key="row.id"
-              :project="row"
-              :template="row.template"
-              :summary="row.summary"
-              @open="openProject"
-            />
-          </div>
+          <ProjectTable :projects="projectRows" @open="openProject" />
         </div>
       </section>
 
@@ -114,6 +117,7 @@
         :visible-issues="visibleIssues"
         :people="people"
         @create-issue="openIssueModal"
+        @import-schedule="openScheduleImport"
         @open-issue="openIssue"
         @status="setIssueStatus"
         @advance="advanceIssue"
@@ -121,7 +125,6 @@
         @edit-project="openProjectEditModal"
         @delete-project="deleteProject"
       />
-    </main>
 
     <IssueDrawer
       :issue="selectedIssue"
@@ -157,22 +160,34 @@
       @create="createIssue"
     />
 
-    <div class="toast" :class="{ show: toastMessage }">{{ toastMessage }}</div>
-  </div>
+    <ScheduleImportModal
+      :open="scheduleImportOpen"
+      :project="project"
+      @close="scheduleImportOpen = false"
+      @import="importProjectSchedule"
+    />
+
+    <Toast :message="toastMessage" />
+  </AppShell>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { ROUTES } from "./router/routes";
 import { useProjects } from "./composables/useProjects";
 import { useProjectWorkspace } from "./composables/useProjectWorkspace";
+import AppShell from "./components/ui/AppShell.vue";
+import Icon from "./components/ui/Icon.vue";
+import Toast from "./components/ui/Toast.vue";
+import { applyVisualScenario } from "./qa/visualScenarios.js";
 import DashboardView from "./views/DashboardView.vue";
 import ProjectWorkspaceView from "./views/ProjectWorkspaceView.vue";
 import ProjectCreateView from "./views/ProjectCreateView.vue";
 import TimesheetView from "./views/TimesheetView.vue";
 import TrashView from "./views/TrashView.vue";
 import PlatformSettingsView from "./views/PlatformSettingsView.vue";
-import ProjectRow from "./components/project/ProjectRow.vue";
+import ProjectTable from "./components/project/ProjectTable.vue";
+import ScheduleImportModal from "./components/project/ScheduleImportModal.vue";
 import IssueDrawer from "./components/issue/IssueDrawer.vue";
 import IssueCreateModal from "./components/issue/IssueCreateModal.vue";
 
@@ -186,7 +201,10 @@ const selectedTemplateId = ref("agile");
 const editingProjectId = ref("");
 const projectModalOpen = ref(false);
 const issueModalOpen = ref(false);
+const scheduleImportOpen = ref(false);
 const searchText = ref("");
+const searchFocused = ref(false);
+const selectedSearchIndex = ref(0);
 const toastMessage = ref("");
 const currentManager = {
   name: "林夏",
@@ -224,16 +242,54 @@ const selectedIssueProject = computed(() => selectedIssue.value ? store.getProje
 const selectedIssueTemplate = computed(() => selectedIssueProject.value ? store.getTemplate(selectedIssueProject.value.templateId) : templates.value[0]);
 const selectedIssueTimeEntries = computed(() => selectedIssue.value ? store.getIssueTimeEntries(selectedIssue.value.id) : []);
 const editingProject = computed(() => editingProjectId.value ? store.getProject(editingProjectId.value) : null);
+const normalizedSearch = computed(() => searchText.value.trim().toLowerCase());
+const searchResults = computed(() => {
+  if (normalizedSearch.value.length < 2) return { projects: [], issues: [] };
+  const projectsResult = projects.value
+    .filter((entry) => `${entry.name}${entry.owner}${entry.status}${entry.description}`.toLowerCase().includes(normalizedSearch.value))
+    .slice(0, 5)
+    .map((entry) => ({ ...entry, kind: "project" }));
+  const issuesResult = store.issues.value
+    .filter((entry) => `${entry.code}${entry.title}${entry.owner}${entry.creator}${entry.type}${entry.status}${entry.startDate}${entry.dueDate}`.toLowerCase().includes(normalizedSearch.value))
+    .slice(0, 6)
+    .map((entry) => ({ ...entry, kind: "issue" }));
+  return { projects: projectsResult, issues: issuesResult };
+});
+const flatSearchResults = computed(() => [...searchResults.value.projects, ...searchResults.value.issues]);
+const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
+const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
+
+onMounted(() => {
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get("view");
+  const projectId = params.get("project");
+  const tab = params.get("tab");
+  const issueId = params.get("issue");
+  const q = params.get("q");
+  const qaScenario = params.get("qa");
+
+  if (isLocalQaScenario(qaScenario)) applyVisualScenario(store.state, qaScenario);
+
+  if (q) searchText.value = q;
+  if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
+  if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) currentView.value = view;
+  if (tab) activeView.value = tab;
+  if (issueId && store.getIssue(issueId)) selectedIssueId.value = issueId;
+});
+
+watch([currentView, currentProjectId, activeView, selectedIssueId, searchText], syncUrlState);
 
 function setView(view) {
   currentView.value = view;
   selectedIssueId.value = null;
+  closeSearch();
 }
 
 function openProject(projectId) {
   currentProjectId.value = projectId;
   currentView.value = "project";
   selectedIssueId.value = null;
+  closeSearch();
 }
 
 function openProjectModal(templateId = "agile") {
@@ -256,7 +312,18 @@ function openIssueModal() {
   issueModalOpen.value = true;
 }
 
+function openScheduleImport() {
+  scheduleImportOpen.value = true;
+}
+
 function openIssue(issueId) {
+  selectedIssueId.value = issueId;
+}
+
+function openIssueFromSearch(issueId) {
+  const issue = store.getIssue(issueId);
+  if (!issue) return;
+  openProject(issue.projectId);
   selectedIssueId.value = issueId;
 }
 
@@ -308,6 +375,20 @@ function createIssue(input) {
   issueModalOpen.value = false;
   openIssue(created.id);
   showToast("事项已创建");
+}
+
+function importProjectSchedule(input) {
+  const result = store.importProjectSchedule(project.value.id, input.text, { merge: input.merge });
+  scheduleImportOpen.value = false;
+  activeView.value = "概览";
+
+  if (!result.totalCount) {
+    showToast("没有可导入的排期事项");
+    return;
+  }
+
+  const warningText = result.warnings.length ? `，${result.warnings.length} 行需检查` : "";
+  showToast(`已导入 ${result.created.length} 个、更新 ${result.updated.length} 个，排期风险 ${result.riskCount} 个${warningText}`);
 }
 
 function updateIssue(issueId, patch) {
@@ -382,23 +463,6 @@ function advanceIssue(issueId) {
   showToast(`已推进到：${advanced.status}`);
 }
 
-function runSearch() {
-  const keyword = searchText.value.trim();
-  if (!keyword) return;
-
-  const issue = store.issues.value.find((entry) => `${entry.code}${entry.title}${entry.owner}${entry.creator}${entry.type}${entry.startDate}${entry.dueDate}`.includes(keyword));
-  const matchedProject = projects.value.find((entry) => `${entry.name}${entry.owner}${entry.description}`.includes(keyword));
-
-  if (issue) {
-    openProject(issue.projectId);
-    openIssue(issue.id);
-  } else if (matchedProject) {
-    openProject(matchedProject.id);
-  } else {
-    showToast("没有找到匹配结果");
-  }
-}
-
 function restoreTrashItem(trashId) {
   const result = store.restoreTrashItem(trashId);
   if (result?.reason === "missing-project") {
@@ -427,5 +491,43 @@ function showToast(message) {
   showToast.timer = window.setTimeout(() => {
     toastMessage.value = "";
   }, 2200);
+}
+
+function moveSearch(step) {
+  if (!flatSearchResults.value.length) return;
+  selectedSearchIndex.value = (selectedSearchIndex.value + step + flatSearchResults.value.length) % flatSearchResults.value.length;
+}
+
+function openActiveSearchResult() {
+  const result = activeSearchResult.value;
+  if (!result) {
+    showToast("没有找到匹配结果");
+    return;
+  }
+  if (result.kind === "project") openProject(result.id);
+  if (result.kind === "issue") openIssueFromSearch(result.id);
+}
+
+function closeSearch() {
+  searchFocused.value = false;
+}
+
+function projectName(projectId) {
+  return projects.value.find((entry) => entry.id === projectId)?.name || "未知项目";
+}
+
+function isLocalQaScenario(qaScenario) {
+  if (!qaScenario) return false;
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function syncUrlState() {
+  const params = new URLSearchParams();
+  params.set("view", currentView.value);
+  if (currentProjectId.value) params.set("project", currentProjectId.value);
+  if (currentView.value === "project") params.set("tab", activeView.value);
+  if (selectedIssueId.value) params.set("issue", selectedIssueId.value);
+  if (searchText.value.trim()) params.set("q", searchText.value.trim());
+  window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
 }
 </script>
