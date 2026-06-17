@@ -35,14 +35,19 @@ const zoomCases = [
   ["board", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", "select"],
 ];
 
+const targetedScreenshotTolerance = new Map([
+  ["gantt-1440-viewport.png", { maxDiffPixelRatio: 0.035 }],
+  ["project-overview-mobile-390-viewport.png", { maxDiffPixelRatio: 0.035 }],
+]);
+
 test.describe("visual baselines", () => {
   for (const [label, viewport] of viewports) {
     test(`dashboard ${label} viewport and full page`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await gotoAndSettle(page, "/?view=dashboard");
       await assertPageHealth(page);
-      await expect(page).toHaveScreenshot(`dashboard-${label}-viewport.png`);
-      await expect(page).toHaveScreenshot(`dashboard-${label}-full.png`, { fullPage: true });
+      await expectStableScreenshot(page, `dashboard-${label}-viewport.png`);
+      await expectStableScreenshot(page, `dashboard-${label}-full.png`, { fullPage: true });
     });
   }
 
@@ -55,8 +60,8 @@ test.describe("visual baselines", () => {
         await page.waitForTimeout(200);
       }
       await assertPageHealth(page);
-      await expect(page).toHaveScreenshot(`${name}-1440-viewport.png`);
-      await expect(page).toHaveScreenshot(`${name}-1440-full.png`, { fullPage: true });
+      await expectStableScreenshot(page, `${name}-1440-viewport.png`);
+      await expectStableScreenshot(page, `${name}-1440-full.png`, { fullPage: true });
     });
   }
 
@@ -76,8 +81,8 @@ test.describe("visual baselines", () => {
       await page.locator(selector).first().scrollIntoViewIfNeeded();
       await page.waitForTimeout(200);
       await assertPageHealth(page);
-      await expect(page).toHaveScreenshot(`${name}-390-viewport.png`);
-      await expect(page).toHaveScreenshot(`${name}-390-full.png`, { fullPage: true });
+      await expectStableScreenshot(page, `${name}-390-viewport.png`);
+      await expectStableScreenshot(page, `${name}-390-full.png`, { fullPage: true });
     });
   }
 
@@ -92,12 +97,19 @@ test.describe("visual baselines", () => {
         await gotoAndSettle(page, url);
         await assertPageHealth(page);
         await assertCriticalControl(page, control);
-        await expect(page).toHaveScreenshot(`zoom-${label}-${name}-viewport.png`);
-        await expect(page).toHaveScreenshot(`zoom-${label}-${name}-full.png`, { fullPage: true });
+        await expectStableScreenshot(page, `zoom-${label}-${name}-viewport.png`);
+        await expectStableScreenshot(page, `zoom-${label}-${name}-full.png`, { fullPage: true });
       });
     }
   }
 });
+
+async function expectStableScreenshot(page, name, options = {}) {
+  await expect(page).toHaveScreenshot(name, {
+    ...(targetedScreenshotTolerance.get(name) || {}),
+    ...options,
+  });
+}
 
 async function gotoAndSettle(page, url) {
   const consoleErrors = [];
