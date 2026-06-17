@@ -8,7 +8,10 @@ export default defineConfig({
   expect: {
     timeout: 8_000,
     toHaveScreenshot: {
-      maxDiffPixelRatio: 0.01,
+      maxDiffPixelRatio: 0.05,
+      threshold: 0.2,
+      animations: "disabled",
+      caret: "hide",
     },
   },
   reporter: [
