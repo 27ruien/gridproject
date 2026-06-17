@@ -1,16 +1,5 @@
 <template>
-  <div v-if="open" class="modal-backdrop" @click.self="$emit('close')">
-    <section class="modal">
-      <header class="drawer-head">
-        <div>
-          <p class="eyebrow">{{ project.name }}</p>
-          <h2>新建事项</h2>
-        </div>
-        <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="$emit('close')">
-          <Icon name="close" />
-        </button>
-      </header>
-      <div class="modal-body">
+  <Modal :open="open" title="新建事项" :eyebrow="project?.name || '未选择项目'" @close="$emit('close')">
         <label>
           <span>事项类型</span>
           <select v-model="form.type">
@@ -68,23 +57,22 @@
           <span>下一步</span>
           <input v-model="form.next" placeholder="例如：确认负责人并补齐验收口径" />
         </label>
-        <div class="modal-actions">
-          <button class="btn ghost" type="button" @click="$emit('close')">取消</button>
-          <button class="btn primary" type="button" @click="submit">创建事项</button>
-        </div>
-      </div>
-    </section>
-  </div>
+    <template #footer>
+      <Button variant="ghost" @click="$emit('close')">取消</Button>
+      <Button variant="primary" @click="submit">创建事项</Button>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
 import { reactive, watch } from "vue";
 import PersonPicker from "../common/PersonPicker.vue";
-import Icon from "../ui/Icon.vue";
+import Button from "../ui/Button.vue";
+import Modal from "../ui/Modal.vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  project: { type: Object, required: true },
+  project: { type: Object, default: null },
   template: { type: Object, required: true },
   people: { type: Array, required: true },
 });
@@ -106,7 +94,7 @@ const form = reactive({
 });
 
 watch(() => props.open, (open) => {
-  if (!open) return;
+  if (!open || !props.project) return;
   form.type = props.template.defaultIssueType;
   form.title = "";
   form.owner = props.project.owner;
@@ -121,6 +109,7 @@ watch(() => props.open, (open) => {
 });
 
 function submit() {
+  if (!props.project) return;
   emit("create", { ...form });
 }
 </script>

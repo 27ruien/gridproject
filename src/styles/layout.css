@@ -13,6 +13,16 @@
   grid-template-columns: var(--nav-collapsed) minmax(0, 1fr);
 }
 
+.app-shell.nav-collapsed .brand strong,
+.app-shell.nav-collapsed .manager-card div,
+.app-shell.nav-collapsed .nav-item span:last-child {
+  display: none;
+}
+
+.app-shell.nav-collapsed .sidebar {
+  padding-inline: var(--space-100);
+}
+
 .sidebar {
   position: sticky;
   top: 0;

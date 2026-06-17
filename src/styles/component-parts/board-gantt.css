@@ -1,0 +1,211 @@
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(280px, 28vw, 320px);
+  gap: var(--space-150);
+  overflow-x: auto;
+  padding-bottom: var(--space-100);
+  overscroll-behavior-x: contain;
+}
+
+.board-column {
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+  padding: var(--space-100);
+  display: grid;
+  align-content: start;
+  gap: var(--space-100);
+}
+
+.board-column header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-100);
+  background: var(--surface-subtle);
+  padding-bottom: var(--space-050);
+}
+
+.board-mobile-group header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+}
+
+.issue-card {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-100);
+  display: grid;
+  gap: var(--space-100);
+  text-align: left;
+}
+
+.issue-card p {
+  font-size: var(--text-control);
+}
+
+.issue-card-main,
+.issue-title-cell {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  display: grid;
+  gap: var(--space-050);
+  text-align: left;
+}
+
+.issue-card-main strong,
+.issue-title-cell strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+}
+
+.card-actions select {
+  min-width: 0;
+}
+
+.gantt {
+  display: grid;
+  gap: var(--space-150);
+  overflow: hidden;
+}
+
+.gantt-mobile-list {
+  display: none;
+}
+
+.gantt-mobile-card {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-150);
+  display: grid;
+  gap: var(--space-050);
+  text-align: left;
+}
+
+.gantt-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-150);
+  align-items: flex-start;
+}
+
+.gantt-grid {
+  --tick-count: 6;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+
+.gantt-axis,
+.gantt-row {
+  min-width: 900px;
+  display: grid;
+  grid-template-columns: 260px minmax(520px, 1fr);
+  gap: var(--space-150);
+}
+
+.gantt-axis {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  min-height: 40px;
+  align-items: center;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  font-size: var(--text-caption);
+  padding: 0 var(--space-150);
+}
+
+.gantt-task-heading,
+.gantt-title {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: inherit;
+}
+
+.gantt-ticks {
+  display: grid;
+  grid-template-columns: repeat(var(--tick-count), minmax(80px, 1fr));
+  gap: var(--space-100);
+  align-items: center;
+}
+
+.gantt-ticks span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-row {
+  min-height: 52px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding: var(--space-100) var(--space-150);
+  text-align: left;
+  align-items: center;
+}
+
+.gantt-lane {
+  position: relative;
+  height: 28px;
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  overflow: hidden;
+}
+
+.gantt-lane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(90deg, rgba(95, 107, 122, 0.18) 1px, transparent 1px);
+  background-size: 14% 100%;
+}
+
+.gantt-bar {
+  position: absolute;
+  top: 4px;
+  height: 20px;
+  min-width: 44px;
+  border-radius: var(--radius-control);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-100);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-bar.info { background: var(--blue); }
+.gantt-bar.success { background: var(--green); }
+.gantt-bar.danger { background: var(--red); }
+.gantt-bar.neutral { background: var(--brand); }

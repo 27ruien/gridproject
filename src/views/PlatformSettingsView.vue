@@ -24,7 +24,7 @@
             <input v-model="form.platformName" placeholder="例如 KiviFlow" />
           </label>
           <div class="modal-actions">
-            <button class="btn primary" type="button" @click="save">保存设置</button>
+            <Button variant="primary" @click="save">保存设置</Button>
           </div>
         </div>
       </div>
@@ -34,6 +34,7 @@
 
 <script setup>
 import { reactive, watch } from "vue";
+import Button from "../components/ui/Button.vue";
 
 const props = defineProps({
   settings: { type: Object, required: true },

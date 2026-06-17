@@ -1,0 +1,235 @@
+
+.metric,
+.metrics article,
+.timesheet-stats article {
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-150);
+  display: grid;
+  align-content: space-between;
+  gap: var(--space-100);
+}
+
+.metric span,
+.metrics span,
+.timesheet-stats span {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.metric strong,
+.metrics strong,
+.timesheet-stats strong {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.progress,
+.progress-line {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.progress span,
+.progress-line i {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: var(--brand);
+}
+
+.segmented-control,
+.project-tabs,
+.drawer-tabs {
+  display: inline-flex;
+  gap: var(--space-050);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  padding: var(--space-050);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.segmented-control button,
+.project-tab,
+.drawer-tabs button {
+  min-height: 28px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  padding: 0 var(--space-100);
+  white-space: nowrap;
+}
+
+.segmented-control button.active,
+.project-tab.active,
+.drawer-tabs button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.toolbar,
+.filter-bar,
+.timesheet-toolbar,
+.timesheet-filters {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-150);
+  display: flex;
+  align-items: end;
+  gap: var(--space-150);
+  flex-wrap: wrap;
+}
+
+.filter-bar label,
+.timesheet-filters label {
+  flex: 1 1 180px;
+}
+
+.filter-keyword {
+  flex-basis: 280px;
+}
+
+.filter-advanced {
+  display: none;
+}
+
+.filter-bar.expanded .filter-advanced,
+.timesheet-filters.expanded .filter-advanced {
+  display: grid;
+}
+
+.filter-chip-list {
+  display: flex;
+  gap: var(--space-050);
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.filter-chip {
+  min-height: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding: 0 var(--space-100);
+}
+
+.project-list,
+.work-list,
+.dashboard-project-list,
+.cards,
+.insight-list,
+.project-activity-stream,
+.settings-list,
+.activity-list,
+.trash-list,
+.time-entry-list,
+.comment-list,
+.timesheet-lines {
+  display: grid;
+  gap: var(--space-100);
+}
+
+.dashboard-project-row {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  padding: var(--space-100) var(--space-150);
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 112px minmax(120px, 160px) 80px;
+  align-items: center;
+  gap: var(--space-150);
+  text-align: left;
+}
+
+.dashboard-project-row:hover {
+  border-color: var(--line-strong);
+  background: #fbfcfe;
+}
+
+.dashboard-project-main,
+.dashboard-progress {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-025);
+}
+
+.dashboard-progress {
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+}
+
+.dashboard-risk {
+  justify-self: end;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.dashboard-risk.danger {
+  color: var(--red);
+}
+
+.dashboard-project-empty {
+  min-height: 72px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  padding: var(--space-150);
+  text-align: center;
+}
+
+.template-select {
+  display: grid;
+  gap: var(--space-100);
+}
+
+.template-card {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-150);
+  display: grid;
+  gap: var(--space-100);
+  text-align: left;
+}
+
+.template-card:hover,
+.template-card.selected {
+  border-color: var(--brand);
+  background: #fbfcfe;
+}
+
+.template-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-100);
+}
+
+.template-card ul {
+  margin: 0;
+  padding-left: var(--space-200);
+  color: var(--muted);
+}
+
+.template-views {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}

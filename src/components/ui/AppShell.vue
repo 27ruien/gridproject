@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell" @keydown.esc="mobileNavOpen = false">
+  <div class="app-shell" :class="{ 'nav-collapsed': navCollapsed }" @keydown.esc="mobileNavOpen = false">
     <header class="mobile-shellbar">
       <div class="brand">
         <span class="brand-mark">{{ settings.logoText }}</span>
@@ -18,6 +18,7 @@
             <strong>{{ settings.platformName }}</strong>
           </div>
         </div>
+        <IconButton class="collapse-toggle" icon="menu" :label="navCollapsed ? '展开导航' : '收起导航'" @click="toggleCollapsed" />
         <IconButton class="mobile-close" icon="close" label="关闭导航" @click="mobileNavOpen = false" />
       </div>
 
@@ -27,6 +28,8 @@
           :key="route.key"
           class="nav-item"
           :class="{ active: currentView === route.key }"
+          :aria-label="route.label"
+          :data-tooltip="route.label"
           type="button"
           @click="navigate(route.key)"
         >
@@ -51,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Icon from "./Icon.vue";
 import IconButton from "./IconButton.vue";
 
@@ -65,13 +68,34 @@ const props = defineProps({
 
 const emit = defineEmits(["navigate"]);
 const mobileNavOpen = ref(false);
+const navCollapsed = ref(false);
+const navPreference = "kiviflow.navCollapsed";
 
 watch(() => props.currentView, () => {
   mobileNavOpen.value = false;
 });
 
+onMounted(() => {
+  const saved = window.localStorage.getItem(navPreference);
+  navCollapsed.value = saved ? saved === "true" : window.innerWidth >= 768 && window.innerWidth < 1024;
+  window.addEventListener("resize", syncResponsiveCollapse);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", syncResponsiveCollapse);
+});
+
 function navigate(routeKey) {
   emit("navigate", routeKey);
   mobileNavOpen.value = false;
+}
+
+function toggleCollapsed() {
+  navCollapsed.value = !navCollapsed.value;
+  window.localStorage.setItem(navPreference, String(navCollapsed.value));
+}
+
+function syncResponsiveCollapse() {
+  if (window.innerWidth < 768) navCollapsed.value = false;
 }
 </script>

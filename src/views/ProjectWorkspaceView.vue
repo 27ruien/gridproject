@@ -11,29 +11,28 @@
         <div class="project-meta-row">
           <span>负责人：{{ project.owner }}</span>
           <span>周期：{{ project.startDate }} - {{ project.dueDate }}</span>
-          <span>测试 {{ project.testDate }}</span>
-          <span>验收 {{ project.acceptanceDate }}</span>
-          <span>上线 {{ project.releaseDate }}</span>
+          <span>关键日期：测试 {{ project.testDate }} · 验收 {{ project.acceptanceDate }} · 上线 {{ project.releaseDate }}</span>
         </div>
       </div>
 
-      <div class="project-signal-panel">
-        <div class="project-signal-primary">
-          <article>
-            <span>项目健康度</span>
-            <strong>{{ summary.health }}</strong>
-          </article>
-          <article>
-            <span>项目进度</span>
-            <strong>{{ summary.progress }}%</strong>
-            <div class="progress-line"><i :style="{ width: `${summary.progress}%` }"></i></div>
-          </article>
-        </div>
-        <div class="project-signal-secondary">
-          <article><span>待办事项</span><strong>{{ summary.openCount }}</strong></article>
-          <article><span>排期风险</span><strong>{{ summary.scheduleRiskCount }}</strong></article>
-          <article><span>里程碑</span><strong>{{ summary.milestoneSummary.progress }}%</strong></article>
-        </div>
+      <div class="project-kpi-strip">
+        <article>
+          <span>健康度</span>
+          <strong>{{ summary.health }}</strong>
+        </article>
+        <article>
+          <span>进度</span>
+          <strong>{{ summary.progress }}%</strong>
+          <div class="progress-line"><i :style="{ width: `${summary.progress}%` }"></i></div>
+        </article>
+        <article>
+          <span>待办</span>
+          <strong>{{ summary.openCount }}</strong>
+        </article>
+        <article>
+          <span>风险</span>
+          <strong>{{ summary.scheduleRiskCount }}</strong>
+        </article>
       </div>
 
       <div class="project-hero-actions">
@@ -43,26 +42,26 @@
             <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
           </select>
         </label>
-        <button class="btn ghost small" type="button" @click="$emit('edit-project', project.id)">编辑项目</button>
+        <Button variant="ghost" size="small" @click="$emit('edit-project', project.id)">编辑项目</Button>
         <OverflowMenu>
           <template #default="{ close }">
-            <button class="btn danger small" type="button" @click="close(); $emit('delete-project', project.id)">删除项目</button>
+            <Button variant="danger" size="small" @click="close(); $emit('delete-project', project.id)">删除项目</Button>
           </template>
         </OverflowMenu>
       </div>
     </header>
 
     <div class="project-toolbar">
-      <Tabs v-model="activeView" :items="template.views" />
+      <Tabs v-model="activeView" :items="template.views" id-base="project-workspace-tabs" />
       <div class="project-toolbar-actions">
-        <button class="btn ghost small" type="button" @click="$emit('import-schedule')">导入排期</button>
-        <button class="btn primary small" type="button" @click="$emit('create-issue')">新建事项</button>
+        <Button variant="ghost" size="small" @click="$emit('import-schedule')">导入排期</Button>
+        <Button variant="primary" size="small" @click="$emit('create-issue')">新建事项</Button>
       </div>
     </div>
 
     <IssueFilters v-model="filters" :people="people" @reset="resetFilters" />
 
-    <section v-if="activeView === '概览'" class="workspace-grid">
+    <section v-if="activeView === '概览'" :id="tabPanelId('概览')" class="workspace-grid" role="tabpanel" :aria-labelledby="tabId('概览')">
       <div class="panel">
         <div class="panel-head">
           <div>
@@ -134,7 +133,7 @@
       </div>
     </section>
 
-    <section v-else-if="activeView === '看板' || activeView === '阶段计划'" class="panel flush-panel">
+    <section v-else-if="activeView === '看板' || activeView === '阶段计划'" :id="tabPanelId(activeView)" class="panel flush-panel" role="tabpanel" :aria-labelledby="tabId(activeView)">
       <AgileBoard
         :issues="filteredVisibleIssues"
         :statuses="template.workflow"
@@ -144,7 +143,7 @@
       />
     </section>
 
-    <section v-else-if="activeView === '里程碑'" class="panel">
+    <section v-else-if="activeView === '里程碑'" :id="tabPanelId('里程碑')" class="panel" role="tabpanel" :aria-labelledby="tabId('里程碑')">
       <WaterfallPhaseView
         :milestones="project.milestones"
         :issues="issues"
@@ -153,11 +152,11 @@
       />
     </section>
 
-    <section v-else-if="activeView === '甘特图'" class="panel">
+    <section v-else-if="activeView === '甘特图'" :id="tabPanelId('甘特图')" class="panel" role="tabpanel" :aria-labelledby="tabId('甘特图')">
       <GanttChart :issues="filteredVisibleIssues" @open="$emit('open-issue', $event)" />
     </section>
 
-    <section v-else class="panel">
+    <section v-else :id="tabPanelId(activeView)" class="panel" role="tabpanel" :aria-labelledby="tabId(activeView)">
       <div class="panel-head">
         <div>
           <h2>{{ activeView }}</h2>
@@ -187,6 +186,7 @@ import { computed, reactive } from "vue";
 import { filterIssues } from "../domain/issue.js";
 import { getProjectActivities, getProjectAlerts } from "../domain/projectInsight.js";
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
+import Button from "../components/ui/Button.vue";
 import Tabs from "../components/ui/Tabs.vue";
 import StatusLozenge from "../components/ui/StatusLozenge.vue";
 import OverflowMenu from "../components/ui/OverflowMenu.vue";
@@ -247,5 +247,17 @@ function formatActivityTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function tabId(value) {
+  return `project-workspace-tabs-tab-${slug(value)}`;
+}
+
+function tabPanelId(value) {
+  return `project-workspace-tabs-panel-${slug(value)}`;
+}
+
+function slug(value) {
+  return encodeURIComponent(String(value)).replace(/%/g, "");
 }
 </script>

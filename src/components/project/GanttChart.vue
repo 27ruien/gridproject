@@ -8,9 +8,12 @@
       <span class="pill neutral">{{ issues.length }} 个任务</span>
     </div>
 
-    <div v-if="issues.length" class="gantt-grid">
+    <div v-if="issues.length" class="gantt-grid" :style="{ '--tick-count': ticks.length }">
       <div class="gantt-axis">
-        <span v-for="tick in ticks" :key="tick">{{ tick.slice(5) }}</span>
+        <span class="gantt-task-heading">事项</span>
+        <div class="gantt-ticks">
+          <span v-for="tick in ticks" :key="tick">{{ tick.slice(5) }}</span>
+        </div>
       </div>
       <button v-for="issue in sortedIssues" :key="issue.id" class="gantt-row" type="button" @click="$emit('open', issue.id)">
         <span class="gantt-title">
@@ -25,6 +28,16 @@
           >
             {{ issue.status }}
           </span>
+        </span>
+      </button>
+    </div>
+    <div v-if="issues.length" class="gantt-mobile-list">
+      <button v-for="issue in sortedIssues" :key="`mobile-${issue.id}`" class="gantt-mobile-card" type="button" @click="$emit('open', issue.id)">
+        <strong class="truncate">{{ issue.title }}</strong>
+        <small>{{ issue.code }} · {{ issue.owner }}</small>
+        <span class="mobile-card-meta">
+          <span>{{ issue.startDate || "未设开始" }} - {{ issue.dueDate || "未设截止" }}</span>
+          <span class="pill neutral">{{ issue.status }}</span>
         </span>
       </button>
     </div>
@@ -104,4 +117,3 @@ function formatDate(date) {
   return normalizeDate(date).toISOString().slice(0, 10);
 }
 </script>
-

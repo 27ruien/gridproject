@@ -5,7 +5,6 @@ import { templateService } from "../services/templateService.js";
 import { stateService } from "../services/stateService.js";
 import { timeEntryService } from "../services/timeEntryService.js";
 import { isClosedStatus } from "../domain/workflow.js";
-import { isIssueRisky } from "../domain/issue.js";
 import { createTrashItem, isTrashRestorable } from "../domain/trash.js";
 
 const state = reactive(stateService.load());
@@ -22,7 +21,6 @@ export function useKiviflowStore() {
   const people = computed(() => projectService.people());
 
   const openIssues = computed(() => issues.value.filter((issue) => !isClosedStatus(issue.status)));
-  const riskyIssues = computed(() => issues.value.filter(isIssueRisky));
   const agileProjects = computed(() => projects.value.filter((project) => project.templateId === "agile"));
   const waterfallProjects = computed(() => projects.value.filter((project) => project.templateId === "waterfall"));
   const averageHealth = computed(() => {
@@ -246,7 +244,6 @@ export function useKiviflowStore() {
     settings,
     people,
     openIssues,
-    riskyIssues,
     agileProjects,
     waterfallProjects,
     averageHealth,

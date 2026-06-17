@@ -20,8 +20,8 @@
       <span>创建人</span>
       <PersonPicker v-model="filters.creator" :people="peopleWithAll" title="筛选创建人" placeholder="全部" />
     </label>
-    <button class="btn ghost small" type="button" @click="showMore = !showMore">{{ showMore ? "收起筛选" : "更多筛选" }}</button>
-    <button class="btn ghost small" type="button" @click="$emit('reset')">重置</button>
+    <Button variant="ghost" size="small" @click="showMore = !showMore">{{ showMore ? "收起筛选" : "更多筛选" }}</Button>
+    <Button variant="ghost" size="small" @click="$emit('reset')">重置</Button>
     <div v-if="chips.length" class="filter-chip-list">
       <button v-for="chip in chips" :key="chip.key" class="filter-chip" type="button" @click="clearChip(chip.key)">
         {{ chip.label }}
@@ -33,6 +33,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import PersonPicker from "../common/PersonPicker.vue";
+import Button from "../ui/Button.vue";
 
 const filters = defineModel({ type: Object, required: true });
 const props = defineProps({

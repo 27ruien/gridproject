@@ -1,25 +1,28 @@
 <template>
-  <button class="issue-card" type="button" @click="$emit('open', issue.id)">
-    <span class="card-meta">
-      <span>{{ issue.code }}</span>
-      <PriorityPill :priority="issue.priority" />
-    </span>
-    <strong>{{ issue.title }}</strong>
-    <span class="card-meta">
-      <span>执行：{{ issue.owner }}</span>
-      <span>截止：{{ issue.dueDate || "未设截止" }}</span>
-    </span>
-    <span class="card-actions" @click.stop>
+  <article class="issue-card">
+    <button class="issue-card-main" type="button" @click="$emit('open', issue.id)">
+      <span class="card-meta">
+        <span>{{ issue.code }}</span>
+        <PriorityPill :priority="issue.priority" />
+      </span>
+      <strong>{{ issue.title }}</strong>
+      <span class="card-meta">
+        <span>执行：{{ issue.owner }}</span>
+        <span>截止：{{ issue.dueDate || "未设截止" }}</span>
+      </span>
+    </button>
+    <div class="card-actions">
       <select :value="issue.status" @change="$emit('status', issue.id, $event.target.value)">
         <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
       </select>
-      <button class="btn ghost tiny" type="button" @click="$emit('advance', issue.id)">推进</button>
-    </span>
-  </button>
+      <Button variant="ghost" size="tiny" @click="$emit('advance', issue.id)">推进</Button>
+    </div>
+  </article>
 </template>
 
 <script setup>
 import PriorityPill from "../common/PriorityPill.vue";
+import Button from "../ui/Button.vue";
 
 defineProps({
   issue: { type: Object, required: true },

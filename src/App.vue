@@ -11,18 +11,22 @@
         <div>
           <h1>{{ pageTitle }}</h1>
         </div>
-        <div class="topbar-actions" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
+        <div ref="searchRoot" class="search-combobox" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
           <label class="search">
             <Icon name="search" />
             <input
-              v-model="searchText"
+              v-model="rawSearchText"
               type="search"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-controls="searchPanelId"
+              :aria-expanded="searchPanelOpen"
               placeholder="搜索项目、事项或负责人"
               @focus="searchFocused = true"
-              @input="selectedSearchIndex = 0"
+              @input="handleSearchInput"
             />
           </label>
-          <div v-if="searchPanelOpen" class="search-panel">
+          <div v-if="searchPanelOpen" :id="searchPanelId" class="search-panel" role="listbox" :aria-label="`搜索结果 ${flatSearchResults.length} 条`">
             <div v-if="searchResults.projects.length" class="search-result-group">
               <p class="eyebrow">项目</p>
               <button
@@ -30,6 +34,8 @@
                 :key="result.id"
                 class="search-result"
                 :class="{ active: activeSearchResult?.kind === 'project' && activeSearchResult.id === result.id }"
+                role="option"
+                :aria-selected="activeSearchResult?.kind === 'project' && activeSearchResult.id === result.id"
                 type="button"
                 @click="openProject(result.id)"
               >
@@ -44,6 +50,8 @@
                 :key="result.id"
                 class="search-result"
                 :class="{ active: activeSearchResult?.kind === 'issue' && activeSearchResult.id === result.id }"
+                role="option"
+                :aria-selected="activeSearchResult?.kind === 'issue' && activeSearchResult.id === result.id"
                 type="button"
                 @click="openIssueFromSearch(result.id)"
               >
@@ -61,7 +69,6 @@
         :projects="projects"
         :project-rows="projectRows"
         :open-issues="openIssues"
-        :risky-issues="riskyIssues"
         :manager-name="currentManager.name"
         @show-projects="setView('projects')"
         @open-project="openProject"
@@ -70,16 +77,12 @@
 
       <section v-else-if="currentView === 'projects'" class="view-stack">
         <div class="panel">
-          <div class="panel-head">
-            <div>
-              <h2>项目库</h2>
-              <p>按模板、健康度和进度扫描所有项目。</p>
-            </div>
-            <div class="topbar-actions">
-              <button class="btn ghost small" type="button" @click="setView('trash')">回收站</button>
-              <button class="btn primary small" type="button" @click="openProjectModal()">创建项目</button>
-            </div>
-          </div>
+          <PageHeader title="项目库" description="按模板、健康度和进度扫描所有项目。">
+            <template #actions>
+              <Button variant="ghost" size="small" @click="setView('trash')">回收站</Button>
+              <Button variant="primary" size="small" @click="openProjectModal()">创建项目</Button>
+            </template>
+          </PageHeader>
           <ProjectTable :projects="projectRows" @open="openProject" />
         </div>
       </section>
@@ -123,7 +126,7 @@
         @advance="advanceIssue"
         @update-project="updateProject"
         @edit-project="openProjectEditModal"
-        @delete-project="deleteProject"
+        @delete-project="requestDeleteProject"
       />
 
     <IssueDrawer
@@ -137,7 +140,7 @@
       @advance="advanceIssue"
       @comment="addIssueComment"
       @time-entry="addTimeEntry"
-      @delete="deleteIssue"
+      @delete="requestDeleteIssue"
     />
 
     <ProjectCreateView
@@ -167,18 +170,30 @@
       @import="importProjectSchedule"
     />
 
+    <ConfirmDialog
+      :open="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-text="confirmDialog.confirmText"
+      @cancel="closeConfirmDialog"
+      @confirm="confirmDialog.onConfirm"
+    />
+
     <Toast :message="toastMessage" />
   </AppShell>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ROUTES } from "./router/routes";
 import { useProjects } from "./composables/useProjects";
 import { useProjectWorkspace } from "./composables/useProjectWorkspace";
 import AppShell from "./components/ui/AppShell.vue";
+import Button from "./components/ui/Button.vue";
 import Icon from "./components/ui/Icon.vue";
+import PageHeader from "./components/ui/PageHeader.vue";
 import Toast from "./components/ui/Toast.vue";
+import ConfirmDialog from "./components/ui/ConfirmDialog.vue";
 import { applyVisualScenario } from "./qa/visualScenarios.js";
 import DashboardView from "./views/DashboardView.vue";
 import ProjectWorkspaceView from "./views/ProjectWorkspaceView.vue";
@@ -202,10 +217,16 @@ const editingProjectId = ref("");
 const projectModalOpen = ref(false);
 const issueModalOpen = ref(false);
 const scheduleImportOpen = ref(false);
-const searchText = ref("");
+const rawSearchText = ref("");
+const debouncedSearchText = ref("");
 const searchFocused = ref(false);
+const searchRoot = ref(null);
 const selectedSearchIndex = ref(0);
 const toastMessage = ref("");
+const isRestoringUrl = ref(false);
+const lastUrl = ref("");
+const searchPanelId = `search-results-${Math.random().toString(36).slice(2)}`;
+let searchTimer = 0;
 const currentManager = {
   name: "林夏",
   role: "项目经理",
@@ -216,7 +237,6 @@ const {
   projects,
   people,
   openIssues,
-  riskyIssues,
   projectRows,
   settings,
 } = store;
@@ -242,7 +262,14 @@ const selectedIssueProject = computed(() => selectedIssue.value ? store.getProje
 const selectedIssueTemplate = computed(() => selectedIssueProject.value ? store.getTemplate(selectedIssueProject.value.templateId) : templates.value[0]);
 const selectedIssueTimeEntries = computed(() => selectedIssue.value ? store.getIssueTimeEntries(selectedIssue.value.id) : []);
 const editingProject = computed(() => editingProjectId.value ? store.getProject(editingProjectId.value) : null);
-const normalizedSearch = computed(() => searchText.value.trim().toLowerCase());
+const confirmDialog = ref({
+  open: false,
+  title: "",
+  message: "",
+  confirmText: "确认删除",
+  onConfirm: () => {},
+});
+const normalizedSearch = computed(() => debouncedSearchText.value.trim().toLowerCase());
 const searchResults = computed(() => {
   if (normalizedSearch.value.length < 2) return { projects: [], issues: [] };
   const projectsResult = projects.value
@@ -261,23 +288,21 @@ const activeSearchResult = computed(() => flatSearchResults.value[selectedSearch
 
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
-  const view = params.get("view");
-  const projectId = params.get("project");
-  const tab = params.get("tab");
-  const issueId = params.get("issue");
-  const q = params.get("q");
   const qaScenario = params.get("qa");
-
   if (isLocalQaScenario(qaScenario)) applyVisualScenario(store.state, qaScenario);
-
-  if (q) searchText.value = q;
-  if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
-  if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) currentView.value = view;
-  if (tab) activeView.value = tab;
-  if (issueId && store.getIssue(issueId)) selectedIssueId.value = issueId;
+  applyUrlState(params);
+  syncUrlState("replace");
+  document.addEventListener("pointerdown", handleOutsideSearch);
+  window.addEventListener("popstate", handlePopState);
 });
 
-watch([currentView, currentProjectId, activeView, selectedIssueId, searchText], syncUrlState);
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleOutsideSearch);
+  window.removeEventListener("popstate", handlePopState);
+  window.clearTimeout(searchTimer);
+});
+
+watch([currentView, currentProjectId, activeView, selectedIssueId], () => syncUrlState("push"));
 
 function setView(view) {
   currentView.value = view;
@@ -350,6 +375,17 @@ function saveProject(projectId, patch) {
   showToast("项目信息已保存");
 }
 
+function requestDeleteProject(projectId) {
+  const target = store.getProject(projectId);
+  confirmDialog.value = {
+    open: true,
+    title: "删除项目",
+    message: `确认删除“${target?.name || "该项目"}”？删除后会进入回收站，30 天内可恢复。`,
+    confirmText: "删除项目",
+    onConfirm: () => deleteProject(projectId),
+  };
+}
+
 function deleteProject(projectId) {
   const result = store.deleteProject(projectId);
   if (result?.reason === "has-issues") {
@@ -362,6 +398,7 @@ function deleteProject(projectId) {
   }
   currentView.value = "projects";
   currentProjectId.value = store.projects.value[0]?.id || "";
+  closeConfirmDialog();
   showToast("项目已移入回收站，可在 30 天内恢复");
 }
 
@@ -396,6 +433,17 @@ function updateIssue(issueId, patch) {
   showToast("事项已保存");
 }
 
+function requestDeleteIssue(issueId) {
+  const target = store.getIssue(issueId);
+  confirmDialog.value = {
+    open: true,
+    title: "删除任务",
+    message: `确认删除“${target?.title || "该任务"}”？删除后会进入回收站，30 天内可恢复。`,
+    confirmText: "删除任务",
+    onConfirm: () => deleteIssue(issueId),
+  };
+}
+
 function deleteIssue(issueId) {
   const deleted = store.deleteIssue(issueId);
   if (!deleted) {
@@ -403,6 +451,7 @@ function deleteIssue(issueId) {
     return;
   }
   selectedIssueId.value = null;
+  closeConfirmDialog();
   showToast("任务已移入回收站，可在 30 天内恢复");
 }
 
@@ -512,6 +561,28 @@ function closeSearch() {
   searchFocused.value = false;
 }
 
+function handleSearchInput() {
+  selectedSearchIndex.value = 0;
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => {
+    debouncedSearchText.value = rawSearchText.value;
+  }, 200);
+}
+
+function handleOutsideSearch(event) {
+  if (!searchRoot.value?.contains(event.target)) closeSearch();
+}
+
+function closeConfirmDialog() {
+  confirmDialog.value = {
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "确认删除",
+    onConfirm: () => {},
+  };
+}
+
 function projectName(projectId) {
   return projects.value.find((entry) => entry.id === projectId)?.name || "未知项目";
 }
@@ -521,13 +592,41 @@ function isLocalQaScenario(qaScenario) {
   return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
 }
 
-function syncUrlState() {
+function applyUrlState(params) {
+  isRestoringUrl.value = true;
+  const view = params.get("view");
+  const projectId = params.get("project");
+  const tab = params.get("tab");
+  const issueId = params.get("issue");
+  const q = params.get("q");
+  if (q) {
+    rawSearchText.value = q;
+    debouncedSearchText.value = q;
+  }
+  if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
+  if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) currentView.value = view;
+  if (tab) activeView.value = tab;
+  selectedIssueId.value = issueId && store.getIssue(issueId) ? issueId : null;
+  window.setTimeout(() => {
+    isRestoringUrl.value = false;
+  }, 0);
+}
+
+function handlePopState() {
+  applyUrlState(new URLSearchParams(window.location.search));
+}
+
+function syncUrlState(mode = "replace") {
+  if (isRestoringUrl.value) return;
   const params = new URLSearchParams();
   params.set("view", currentView.value);
   if (currentProjectId.value) params.set("project", currentProjectId.value);
   if (currentView.value === "project") params.set("tab", activeView.value);
   if (selectedIssueId.value) params.set("issue", selectedIssueId.value);
-  if (searchText.value.trim()) params.set("q", searchText.value.trim());
-  window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
+  const nextUrl = `${window.location.pathname}?${params.toString()}`;
+  if (nextUrl === lastUrl.value || nextUrl === `${window.location.pathname}${window.location.search}`) return;
+  lastUrl.value = nextUrl;
+  if (mode === "push") window.history.pushState({}, "", nextUrl);
+  else window.history.replaceState({}, "", nextUrl);
 }
 </script>

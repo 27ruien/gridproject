@@ -1,21 +1,41 @@
 <template>
-  <DataTable :columns="columns" :rows="projects" empty-text="暂无项目。创建项目后会在这里显示关键进度和风险信号。" @row-click="$emit('open', $event.id)">
-    <template #row="{ row }">
-      <span class="project-table-main">
+  <div class="project-table-wrap">
+    <DataTable :columns="columns" :rows="projects" empty-text="暂无项目。创建项目后会在这里显示关键进度和风险信号。" @row-click="$emit('open', $event.id)">
+      <template #row="{ row }">
+        <span class="project-table-main">
+          <strong class="truncate">{{ row.name }}</strong>
+          <small class="truncate">{{ row.description }}</small>
+        </span>
+        <StatusLozenge :label="row.status" />
+        <span class="truncate">{{ row.owner }}</span>
+        <span class="table-progress">
+          <strong>{{ row.summary.progress }}%</strong>
+          <ProgressBar :value="row.summary.progress" />
+        </span>
+        <span class="truncate">{{ row.template.badge }}</span>
+        <span class="truncate">{{ row.dueDate }}</span>
+        <span>{{ row.summary.riskCount }} / {{ row.summary.overdueCount }}</span>
+      </template>
+    </DataTable>
+    <div class="project-mobile-list">
+      <button v-for="row in projects" :key="`card-${row.id}`" class="project-mobile-card" type="button" @click="$emit('open', row.id)">
+        <span class="mobile-card-meta">
+          <StatusLozenge :label="row.status" />
+          <span>{{ row.summary.riskCount }} / {{ row.summary.overdueCount }}</span>
+        </span>
         <strong class="truncate">{{ row.name }}</strong>
-        <small class="truncate">{{ row.description }}</small>
-      </span>
-      <StatusLozenge :label="row.status" />
-      <span class="truncate">{{ row.owner }}</span>
-      <span class="table-progress">
-        <strong>{{ row.summary.progress }}%</strong>
-        <ProgressBar :value="row.summary.progress" />
-      </span>
-      <span class="truncate">{{ row.template.badge }}</span>
-      <span class="truncate">{{ row.dueDate }}</span>
-      <span>{{ row.summary.riskCount }} / {{ row.summary.overdueCount }}</span>
-    </template>
-  </DataTable>
+        <small class="line-clamp-2">{{ row.description }}</small>
+        <span class="mobile-card-meta">
+          <span>{{ row.owner }} · {{ row.template.badge }}</span>
+          <span>{{ row.dueDate }}</span>
+        </span>
+        <span class="table-progress">
+          <strong>{{ row.summary.progress }}%</strong>
+          <ProgressBar :value="row.summary.progress" />
+        </span>
+      </button>
+    </div>
+  </div>
 </template>
 
 <script setup>

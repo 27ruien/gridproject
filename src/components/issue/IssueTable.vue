@@ -11,11 +11,21 @@
       <span>工时</span>
       <span>状态</span>
     </div>
-    <button v-for="issue in issues" :key="issue.id" class="issue-table-row" type="button" @click="$emit('open', issue.id)">
+    <div
+      v-for="issue in issues"
+      :key="issue.id"
+      class="issue-table-row"
+      role="row"
+      tabindex="0"
+      @keydown.enter.prevent="openFromRow($event, issue.id)"
+      @keydown.space.prevent="openFromRow($event, issue.id)"
+    >
       <span>{{ issue.type }}</span>
       <span>
-        <strong>{{ issue.title }}</strong>
-        <small>{{ issue.code }} · {{ issue.next }}</small>
+        <button class="issue-title-cell" type="button" @click="$emit('open', issue.id)">
+          <strong>{{ issue.title }}</strong>
+          <small>{{ issue.code }} · {{ issue.next }}</small>
+        </button>
       </span>
       <span>{{ issue.owner }}</span>
       <span>{{ issue.creator }}</span>
@@ -28,7 +38,23 @@
           <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
         </select>
       </span>
-    </button>
+    </div>
+
+    <div class="issue-mobile-list">
+      <article v-for="issue in issues" :key="`mobile-${issue.id}`" class="issue-mobile-card">
+        <button class="issue-title-cell" type="button" @click="$emit('open', issue.id)">
+          <span class="card-meta">
+            <span>{{ issue.code }}</span>
+            <PriorityPill :priority="issue.priority" />
+          </span>
+          <strong>{{ issue.title }}</strong>
+          <small>{{ issue.type }} · {{ issue.owner }} · {{ issue.dueDate || "未设截止" }}</small>
+        </button>
+        <select :value="issue.status" @change="$emit('status', issue.id, $event.target.value)">
+          <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
+        </select>
+      </article>
+    </div>
   </div>
 </template>
 
@@ -40,5 +66,10 @@ defineProps({
   statuses: { type: Array, required: true },
 });
 
-defineEmits(["open", "status"]);
+const emit = defineEmits(["open", "status"]);
+
+function openFromRow(event, issueId) {
+  if (event.target !== event.currentTarget) return;
+  emit("open", issueId);
+}
 </script>

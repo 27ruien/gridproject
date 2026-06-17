@@ -4,15 +4,9 @@
       <span>{{ modelValue || placeholder }}</span>
       <small>选择</small>
     </button>
-    <div v-if="open" class="picker-backdrop" @click.self="open = false">
-      <section class="picker-panel">
-        <header>
-          <h3>{{ title }}</h3>
-          <button class="icon-btn" type="button" aria-label="关闭选择器" @click="open = false">
-            <Icon name="close" />
-          </button>
-        </header>
-        <input v-model="keyword" placeholder="搜索姓名" />
+    <Modal :open="open" :title="title" size="picker-modal" @close="close">
+      <div class="picker-panel">
+        <input v-model="keyword" data-autofocus placeholder="搜索姓名" />
         <div class="picker-list">
           <button
             v-for="person in filteredPeople"
@@ -25,14 +19,14 @@
             <strong>{{ person || "全部" }}</strong>
           </button>
         </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from "vue";
-import Icon from "../ui/Icon.vue";
+import Modal from "../ui/Modal.vue";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
@@ -50,6 +44,10 @@ const filteredPeople = computed(() => props.people.filter((person) => !keyword.v
 
 function select(person) {
   emit("update:modelValue", person);
+  close();
+}
+
+function close() {
   open.value = false;
   keyword.value = "";
 }

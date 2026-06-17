@@ -12,11 +12,11 @@
         <div class="panel-head">
           <div>
             <h2>我的项目</h2>
-            <p>优先展示状态、负责人、进度、截止日期和风险信号。</p>
+            <p>优先展示状态、进度、截止日期和风险信号。</p>
           </div>
-          <button class="btn ghost small" type="button" @click="$emit('show-projects')">查看全部</button>
+          <Button variant="ghost" size="small" @click="$emit('show-projects')">查看全部</Button>
         </div>
-        <ProjectTable :projects="projectRows" @open="$emit('open-project', $event)" />
+        <DashboardProjectList :projects="projectRows" @open="$emit('open-project', $event)" />
       </section>
 
       <section class="panel">
@@ -59,18 +59,18 @@
 <script setup>
 import { computed, ref } from "vue";
 import PriorityPill from "../components/common/PriorityPill.vue";
+import Button from "../components/ui/Button.vue";
 import Metric from "../components/ui/Metric.vue";
-import ProjectTable from "../components/project/ProjectTable.vue";
+import DashboardProjectList from "../components/project/DashboardProjectList.vue";
 
 const props = defineProps({
   projects: { type: Array, required: true },
   projectRows: { type: Array, required: true },
   openIssues: { type: Array, required: true },
-  riskyIssues: { type: Array, required: true },
   managerName: { type: String, required: true },
 });
 
-defineEmits(["open-project", "open-issue"]);
+defineEmits(["show-projects", "open-project", "open-issue"]);
 
 const activeTodoTab = ref("mine");
 

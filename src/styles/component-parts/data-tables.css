@@ -1,0 +1,131 @@
+.issue-table,
+.timesheet-table,
+.pm-project-table,
+.data-table {
+  display: grid;
+  gap: var(--space-050);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.issue-table-head,
+.issue-table-row,
+.timesheet-head,
+.timesheet-row,
+.pm-project-head,
+.pm-project-row,
+.data-table-head,
+.data-table-row {
+  display: grid;
+  gap: var(--space-100);
+  align-items: center;
+}
+
+.issue-table-head,
+.issue-table-row {
+  grid-template-columns: minmax(76px, 0.6fr) minmax(220px, 2fr) minmax(78px, 0.7fr) minmax(78px, 0.7fr) minmax(74px, 0.6fr) minmax(98px, 0.7fr) minmax(98px, 0.7fr) minmax(74px, 0.6fr) minmax(116px, 0.8fr);
+  min-width: 920px;
+}
+
+.timesheet-head,
+.timesheet-row {
+  grid-template-columns: minmax(96px, 0.8fr) minmax(80px, 0.7fr) minmax(140px, 1fr) minmax(220px, 1.6fr) minmax(64px, 0.5fr) minmax(70px, 0.6fr) minmax(180px, 1.3fr) minmax(70px, 0.5fr);
+  min-width: 920px;
+}
+
+.issue-table-head,
+.timesheet-head,
+.pm-project-head,
+.data-table-head {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  color: var(--muted);
+  font-size: var(--text-caption);
+  background: var(--surface-subtle);
+  border-radius: var(--radius-control);
+  padding: var(--space-100) var(--space-150);
+}
+
+.issue-table-row,
+.timesheet-row,
+.data-table-row {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  padding: var(--space-100) var(--space-150);
+}
+
+.issue-mobile-list,
+.timesheet-mobile-list,
+.project-mobile-list,
+.board-mobile-list {
+  display: none;
+}
+
+.issue-mobile-card,
+.timesheet-mobile-card,
+.project-mobile-card,
+.board-mobile-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-150);
+  display: grid;
+  gap: var(--space-100);
+}
+
+.mobile-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+  color: var(--muted);
+  font-size: var(--text-control);
+}
+
+.data-table-head,
+.data-table-row {
+  min-width: 780px;
+}
+
+.data-table-row {
+  text-align: left;
+}
+
+.data-table-head > *,
+.data-table-row > * {
+  min-width: 0;
+}
+
+.data-table-empty {
+  min-width: 780px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding: var(--space-300);
+  text-align: center;
+}
+
+.project-table-main {
+  display: grid;
+  gap: var(--space-025);
+}
+
+.overflow-panel .ui-button {
+  width: 100%;
+  justify-content: flex-start;
+  border: 0;
+}
+
+.issue-table-row small,
+.timesheet-row small,
+.gantt-title small {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

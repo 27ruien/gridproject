@@ -1,14 +1,13 @@
 <template>
   <Teleport to="body">
     <aside
-      class="detail-panel"
-      :class="{ open }"
+      v-if="open"
+      ref="panel"
+      class="detail-panel open"
       role="dialog"
       aria-modal="true"
-      :aria-hidden="!open"
       :aria-labelledby="titleId"
       tabindex="-1"
-      @keydown.esc="$emit('close')"
     >
       <header class="drawer-head">
         <div>
@@ -28,7 +27,8 @@
 </template>
 
 <script setup>
-import { watch } from "vue";
+import { computed, ref } from "vue";
+import { useOverlay } from "../../composables/useOverlay.js";
 import Icon from "./Icon.vue";
 
 const props = defineProps({
@@ -37,11 +37,11 @@ const props = defineProps({
   eyebrow: { type: String, default: "" },
 });
 
-defineEmits(["close"]);
+const emit = defineEmits(["close"]);
 
+const panel = ref(null);
 const titleId = `detail-${Math.random().toString(36).slice(2)}`;
+const isOpen = computed(() => props.open);
 
-watch(() => props.open, (open) => {
-  document.body.classList.toggle("modal-locked", open);
-});
+useOverlay(isOpen, panel, () => emit("close"));
 </script>

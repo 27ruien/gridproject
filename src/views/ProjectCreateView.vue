@@ -1,16 +1,12 @@
 <template>
-  <div v-if="open" class="modal-backdrop" @click.self="$emit('close')">
-    <section class="modal project-modal" :class="{ large: !isEditing, medium: isEditing }">
-      <header class="drawer-head">
-        <div>
-          <p class="eyebrow">{{ isEditing ? "编辑项目" : "创建项目" }}</p>
-          <h2>{{ isEditing ? "更新项目基础信息" : "选择模板并初始化项目空间" }}</h2>
-        </div>
-        <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="$emit('close')">
-          <Icon name="close" />
-        </button>
-      </header>
-      <div class="modal-body" :class="isEditing ? 'project-edit-layout' : 'create-layout'">
+  <Modal
+    :open="open"
+    :title="isEditing ? '更新项目基础信息' : '选择模板并初始化项目空间'"
+    :eyebrow="isEditing ? '编辑项目' : '创建项目'"
+    :size="isEditing ? 'medium' : 'large'"
+    @close="$emit('close')"
+  >
+      <div :class="isEditing ? 'project-edit-layout' : 'create-layout'">
         <div class="form-panel">
           <label class="full-field">
             <span>项目名称</span>
@@ -84,21 +80,20 @@
             />
           </div>
         </div>
-
-        <div class="modal-actions wide">
-          <button class="btn ghost" type="button" @click="$emit('close')">取消</button>
-          <button class="btn primary" type="button" @click="submit">{{ isEditing ? "保存项目" : "创建项目" }}</button>
-        </div>
-      </div>
-    </section>
-  </div>
+    </div>
+    <template #footer>
+      <Button variant="ghost" @click="$emit('close')">取消</Button>
+      <Button variant="primary" @click="submit">{{ isEditing ? "保存项目" : "创建项目" }}</Button>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
 import { computed, reactive, watch } from "vue";
 import TemplateCard from "../components/template/TemplateCard.vue";
 import PersonPicker from "../components/common/PersonPicker.vue";
-import Icon from "../components/ui/Icon.vue";
+import Button from "../components/ui/Button.vue";
+import Modal from "../components/ui/Modal.vue";
 import { addDays, formatDate } from "../services/projectService";
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 

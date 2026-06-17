@@ -1,3 +1,12 @@
+@media (max-width: 1599px) and (min-width: 1200px) {
+  .project-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "heading actions"
+      "metrics metrics";
+  }
+}
+
 @media (max-width: 1439px) {
   :root {
     --nav-width: 224px;
@@ -9,29 +18,21 @@
   .dashboard-layout {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 1199px) {
   .project-hero {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "heading"
+      "metrics"
+      "actions";
   }
 }
 
 @media (max-width: 1023px) {
   :root {
     --content-pad: 16px;
-  }
-
-  .app-shell {
-    grid-template-columns: var(--nav-collapsed) minmax(0, 1fr);
-  }
-
-  .app-shell .brand strong,
-  .app-shell .manager-card div,
-  .app-shell .nav-item span:last-child {
-    display: none;
-  }
-
-  .sidebar {
-    padding-inline: var(--space-100);
   }
 
   .create-layout,
@@ -138,13 +139,14 @@
 
   .search,
   .global-search,
+  .search-combobox,
   .project-toolbar-actions,
   .topbar-actions {
     width: 100%;
   }
 
-  .project-toolbar-actions .btn,
-  .topbar-actions .btn {
+  .project-toolbar-actions .ui-button,
+  .topbar-actions .ui-button {
     flex: 1;
   }
 
@@ -170,8 +172,22 @@
   .project-signal-primary,
   .project-signal-secondary,
   .project-signal-row,
-  .card-kpis {
-    grid-template-columns: 1fr;
+  .card-kpis,
+  .project-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .project-kpi-strip article + article {
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .project-kpi-strip article:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+
+  .project-kpi-strip article:nth-child(2n) {
+    border-left: 1px solid var(--line);
   }
 
   .modal-backdrop {
@@ -183,27 +199,32 @@
     max-height: calc(100vh - 16px);
   }
 
+  .data-table,
   .issue-table-head,
-  .issue-table-row {
-    min-width: 780px;
-    grid-template-columns: 84px minmax(220px, 1fr) 82px 82px 82px 104px 104px;
-  }
-
-  .issue-table-head span:nth-child(4),
-  .issue-table-row > span:nth-child(4),
-  .issue-table-head span:nth-child(8),
-  .issue-table-row > span:nth-child(8) {
-    display: none;
-  }
-
+  .issue-table-row,
   .timesheet-head,
-  .timesheet-row {
-    min-width: 760px;
-    grid-template-columns: 96px 84px minmax(150px, 1fr) minmax(220px, 1.4fr) 64px 80px 76px;
+  .timesheet-row,
+  .board,
+  .gantt-grid {
+    display: none;
   }
 
-  .timesheet-head span:nth-child(7),
-  .timesheet-row > span:nth-child(7) {
-    display: none;
+  .project-mobile-list,
+  .issue-mobile-list,
+  .timesheet-mobile-list,
+  .board-mobile-list,
+  .gantt-mobile-list {
+    display: grid;
+    gap: var(--space-100);
+  }
+
+  .dashboard-project-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .dashboard-progress,
+  .table-progress {
+    grid-template-columns: 44px minmax(0, 1fr);
   }
 }

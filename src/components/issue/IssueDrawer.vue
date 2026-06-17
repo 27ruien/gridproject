@@ -77,9 +77,9 @@
           </label>
 
           <div class="drawer-actions">
-            <button class="btn danger" type="button" @click="$emit('delete', issue.id)">删除任务</button>
-            <button class="btn ghost" type="button" @click="$emit('advance', issue.id)">推进状态</button>
-            <button class="btn primary" type="button" @click="save">保存事项</button>
+            <Button variant="danger" @click="$emit('delete', issue.id)">删除任务</Button>
+            <Button variant="ghost" @click="$emit('advance', issue.id)">推进状态</Button>
+            <Button variant="primary" @click="save">保存事项</Button>
           </div>
         </section>
 
@@ -90,7 +90,7 @@
           </div>
           <div class="comment-box">
             <textarea v-model="commentText" placeholder="记录沟通结论、风险或需要对齐的信息"></textarea>
-            <button class="btn primary small" type="button" @click="submitComment">添加评论</button>
+            <Button variant="primary" size="small" @click="submitComment">添加评论</Button>
           </div>
           <div class="comment-list">
             <p v-for="comment in issue.comments" :key="comment.id">
@@ -124,7 +124,7 @@
               <span>说明</span>
               <input v-model="timeForm.note" placeholder="说明本次工时用于什么工作" />
             </label>
-            <button class="btn primary small" type="button" @click="submitTimeEntry">提交工时</button>
+            <Button variant="primary" size="small" @click="submitTimeEntry">提交工时</Button>
           </div>
           <div class="time-entry-list">
             <article v-for="entry in timeEntries" :key="entry.id">
@@ -154,6 +154,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import PersonPicker from "../common/PersonPicker.vue";
+import Button from "../ui/Button.vue";
 import DetailPanel from "../ui/DetailPanel.vue";
 
 const props = defineProps({

@@ -3,11 +3,12 @@
     <div class="empty-icon"><Icon :name="iconName" /></div>
     <h3>{{ title }}</h3>
     <p>{{ description }}</p>
-    <button v-if="action" class="btn primary small" type="button" @click="$emit('action')">{{ action }}</button>
+    <Button v-if="action" variant="primary" size="small" @click="$emit('action')">{{ action }}</Button>
   </section>
 </template>
 
 <script setup>
+import Button from "../ui/Button.vue";
 import Icon from "../ui/Icon.vue";
 
 defineProps({

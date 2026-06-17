@@ -7,7 +7,7 @@
           <h2>按月申报、按任务拆分、按职责查看</h2>
           <p>一个申报日期可关联多个任务；我负责的看项目成员提交，我提交的看个人申报进度。</p>
         </div>
-        <button class="btn primary small" type="button" @click="openCreate">新建申报</button>
+        <Button variant="primary" size="small" @click="openCreate">新建申报</Button>
       </div>
 
       <div class="timesheet-toolbar">
@@ -75,10 +75,10 @@
           <span>最大工时</span>
           <input v-model.number="filters.maxHours" min="0" step="0.5" type="number" placeholder="不限" />
         </label>
-        <button class="btn ghost small" type="button" @click="filtersExpanded = !filtersExpanded">
+        <Button variant="ghost" size="small" @click="filtersExpanded = !filtersExpanded">
           {{ filtersExpanded ? "收起筛选" : `更多筛选${activeFilterCount ? ` ${activeFilterCount}` : ""}` }}
-        </button>
-        <button class="btn ghost small" type="button" @click="resetFilters">重置</button>
+        </Button>
+        <Button variant="ghost" size="small" @click="resetFilters">重置</Button>
       </div>
 
       <div v-if="roleView === 'submitted'" class="missing-dates-panel">
@@ -107,7 +107,21 @@
           <strong>{{ entry.hours }}h</strong>
           <span>{{ entry.status }}</span>
           <span>{{ entry.note || "未填写" }}</span>
-          <button class="btn ghost tiny" type="button" @click="openEdit(entry)">编辑</button>
+          <Button variant="ghost" size="tiny" @click="openEdit(entry)">编辑</Button>
+        </div>
+        <div class="timesheet-mobile-list">
+          <article v-for="entry in filteredEntries" :key="`mobile-${entry.id}`" class="timesheet-mobile-card">
+            <span class="mobile-card-meta">
+              <strong>{{ entry.spentDate }}</strong>
+              <span>{{ entry.hours }}h</span>
+            </span>
+            <strong class="truncate">{{ issueName(entry.issueId) }}</strong>
+            <small class="line-clamp-2">{{ projectName(entry.projectId) }} · {{ entry.reporter }} · {{ entry.note || "未填写说明" }}</small>
+            <span class="mobile-card-meta">
+              <span>{{ entry.status }}</span>
+              <Button variant="ghost" size="tiny" @click="openEdit(entry)">编辑</Button>
+            </span>
+          </article>
         </div>
         <EmptyState
           v-if="!filteredEntries.length"
@@ -119,18 +133,13 @@
       </div>
     </div>
 
-    <div v-if="modalOpen" class="modal-backdrop" @click.self="modalOpen = false">
-      <section class="modal large">
-        <header class="drawer-head">
-          <div>
-            <p class="eyebrow">{{ editingId ? "编辑工时" : "新建工时申报" }}</p>
-            <h2>{{ editingId ? "调整单条任务工时" : "一个日期可同时申报多个任务" }}</h2>
-          </div>
-          <button class="icon-btn" type="button" aria-label="关闭弹窗" @click="modalOpen = false">
-            <Icon name="close" />
-          </button>
-        </header>
-        <div class="modal-body">
+    <Modal
+      :open="modalOpen"
+      :title="editingId ? '调整单条任务工时' : '一个日期可同时申报多个任务'"
+      :eyebrow="editingId ? '编辑工时' : '新建工时申报'"
+      size="large"
+      @close="modalOpen = false"
+    >
           <div class="form-two">
             <label>
               <span>申报人</span>
@@ -161,7 +170,7 @@
                 <h3>任务明细</h3>
                 <small>每一行会保存为独立工时记录，便于后续审批、统计和按任务追踪。</small>
               </div>
-              <button v-if="!editingId" class="btn ghost small" type="button" @click="addLine">添加任务</button>
+              <Button v-if="!editingId" variant="ghost" size="small" @click="addLine">添加任务</Button>
             </div>
             <div v-for="(line, index) in form.lines" :key="line.localId" class="timesheet-line">
               <label>
@@ -184,24 +193,22 @@
                 <span>说明</span>
                 <input v-model="line.note" placeholder="本次投入内容" />
               </label>
-              <button
+              <Button
                 v-if="!editingId && form.lines.length > 1"
-                class="btn ghost tiny"
-                type="button"
+                variant="ghost"
+                size="tiny"
                 @click="removeLine(index)"
               >
                 移除
-              </button>
+              </Button>
             </div>
           </div>
 
-          <div class="modal-actions">
-            <button class="btn ghost" type="button" @click="modalOpen = false">取消</button>
-            <button class="btn primary" type="button" :disabled="!canSubmit" @click="submit">保存</button>
-          </div>
-        </div>
-      </section>
-    </div>
+      <template #footer>
+        <Button variant="ghost" @click="modalOpen = false">取消</Button>
+        <Button variant="primary" :disabled="!canSubmit" @click="submit">保存</Button>
+      </template>
+    </Modal>
   </section>
 </template>
 
@@ -209,7 +216,8 @@
 import { computed, reactive, ref, watch } from "vue";
 import PersonPicker from "../components/common/PersonPicker.vue";
 import EmptyState from "../components/common/EmptyState.vue";
-import Icon from "../components/ui/Icon.vue";
+import Button from "../components/ui/Button.vue";
+import Modal from "../components/ui/Modal.vue";
 import {
   calculateMonthlyTarget,
   createEntrySearchText,

@@ -16,9 +16,9 @@
             <strong>{{ item.entity.name || item.entity.title }}</strong>
             <small>删除于 {{ formatDateTime(item.deletedAt) }} · 剩余 {{ remainingDays(item) }} 天可恢复</small>
           </div>
-          <button class="btn primary small" type="button" :disabled="remainingDays(item) <= 0" @click="$emit('restore', item.id)">
+          <Button variant="primary" size="small" :disabled="remainingDays(item) <= 0" @click="$emit('restore', item.id)">
             恢复
-          </button>
+          </Button>
         </article>
         <EmptyState
           v-if="!trash.length"
@@ -33,6 +33,7 @@
 
 <script setup>
 import EmptyState from "../components/common/EmptyState.vue";
+import Button from "../components/ui/Button.vue";
 import { TRASH_RETENTION_DAYS, daysSinceDeleted } from "../domain/trash.js";
 
 defineProps({
