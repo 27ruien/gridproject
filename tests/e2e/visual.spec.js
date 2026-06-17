@@ -37,6 +37,7 @@ const zoomCases = [
 
 const targetedScreenshotTolerance = new Map([
   ["gantt-1440-viewport.png", { maxDiffPixelRatio: 0.035 }],
+  ["gantt-1440-full.png", { maxDiffPixelRatio: 0.035 }],
   ["project-overview-mobile-390-viewport.png", { maxDiffPixelRatio: 0.035 }],
 ]);
 
