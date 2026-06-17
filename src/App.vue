@@ -119,6 +119,10 @@
         :summary="summary"
         :visible-issues="visibleIssues"
         :people="people"
+        :url-filters="workspaceUrlFilters"
+        :sort="workspaceSort"
+        :page="workspacePage"
+        :view-mode="workspaceViewMode"
         @create-issue="openIssueModal"
         @import-schedule="openScheduleImport"
         @open-issue="openIssue"
@@ -127,6 +131,7 @@
         @update-project="updateProject"
         @edit-project="openProjectEditModal"
         @delete-project="requestDeleteProject"
+        @url-state="updateWorkspaceUrlState"
       />
 
     <IssueDrawer
@@ -219,6 +224,10 @@ const issueModalOpen = ref(false);
 const scheduleImportOpen = ref(false);
 const rawSearchText = ref("");
 const debouncedSearchText = ref("");
+const workspaceUrlFilters = ref({});
+const workspaceSort = ref("");
+const workspacePage = ref("");
+const workspaceViewMode = ref("");
 const searchFocused = ref(false);
 const searchRoot = ref(null);
 const selectedSearchIndex = ref(0);
@@ -285,6 +294,7 @@ const searchResults = computed(() => {
 const flatSearchResults = computed(() => [...searchResults.value.projects, ...searchResults.value.issues]);
 const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
 const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
+const workspaceFilterParam = computed(() => encodeFilters(workspaceUrlFilters.value));
 
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
@@ -302,7 +312,7 @@ onBeforeUnmount(() => {
   window.clearTimeout(searchTimer);
 });
 
-watch([currentView, currentProjectId, activeView, selectedIssueId], () => syncUrlState("push"));
+watch([currentView, currentProjectId, activeView, selectedIssueId, debouncedSearchText, workspaceFilterParam, workspaceSort, workspacePage, workspaceViewMode], () => syncUrlState("push"));
 
 function setView(view) {
   currentView.value = view;
@@ -583,6 +593,13 @@ function closeConfirmDialog() {
   };
 }
 
+function updateWorkspaceUrlState({ filters = workspaceUrlFilters.value, sort = workspaceSort.value, page = workspacePage.value, viewMode = workspaceViewMode.value }) {
+  workspaceUrlFilters.value = { ...filters };
+  workspaceSort.value = sort || "";
+  workspacePage.value = page ? String(page) : "";
+  workspaceViewMode.value = viewMode || "";
+}
+
 function projectName(projectId) {
   return projects.value.find((entry) => entry.id === projectId)?.name || "未知项目";
 }
@@ -599,10 +616,12 @@ function applyUrlState(params) {
   const tab = params.get("tab");
   const issueId = params.get("issue");
   const q = params.get("q");
-  if (q) {
-    rawSearchText.value = q;
-    debouncedSearchText.value = q;
-  }
+  rawSearchText.value = q || "";
+  debouncedSearchText.value = q || "";
+  workspaceUrlFilters.value = parseFilters(params.get("filters"));
+  workspaceSort.value = params.get("sort") || "";
+  workspacePage.value = params.get("page") || "";
+  workspaceViewMode.value = params.get("viewMode") || "";
   if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
   if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) currentView.value = view;
   if (tab) activeView.value = tab;
@@ -623,10 +642,30 @@ function syncUrlState(mode = "replace") {
   if (currentProjectId.value) params.set("project", currentProjectId.value);
   if (currentView.value === "project") params.set("tab", activeView.value);
   if (selectedIssueId.value) params.set("issue", selectedIssueId.value);
+  if (debouncedSearchText.value.trim()) params.set("q", debouncedSearchText.value.trim());
+  if (workspaceFilterParam.value) params.set("filters", workspaceFilterParam.value);
+  if (workspaceSort.value) params.set("sort", workspaceSort.value);
+  if (workspacePage.value) params.set("page", workspacePage.value);
+  if (workspaceViewMode.value) params.set("viewMode", workspaceViewMode.value);
   const nextUrl = `${window.location.pathname}?${params.toString()}`;
   if (nextUrl === lastUrl.value || nextUrl === `${window.location.pathname}${window.location.search}`) return;
   lastUrl.value = nextUrl;
   if (mode === "push") window.history.pushState({}, "", nextUrl);
   else window.history.replaceState({}, "", nextUrl);
+}
+
+function encodeFilters(filters = {}) {
+  const compact = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== "" && value !== null && value !== undefined));
+  return Object.keys(compact).length ? JSON.stringify(compact) : "";
+}
+
+function parseFilters(value) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 </script>

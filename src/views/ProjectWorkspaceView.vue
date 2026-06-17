@@ -182,7 +182,7 @@
 </template>
 
 <script setup>
-import { computed, reactive } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { filterIssues } from "../domain/issue.js";
 import { getProjectActivities, getProjectAlerts } from "../domain/projectInsight.js";
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
@@ -204,12 +204,17 @@ const props = defineProps({
   summary: { type: Object, required: true },
   visibleIssues: { type: Array, required: true },
   people: { type: Array, required: true },
+  urlFilters: { type: Object, default: () => ({}) },
+  sort: { type: String, default: "" },
+  page: { type: String, default: "" },
+  viewMode: { type: String, default: "" },
 });
 
 const activeView = defineModel("activeView", { type: String, required: true });
 
-const emit = defineEmits(["create-issue", "import-schedule", "open-issue", "status", "advance", "update-project", "edit-project", "delete-project"]);
+const emit = defineEmits(["create-issue", "import-schedule", "open-issue", "status", "advance", "update-project", "edit-project", "delete-project", "url-state"]);
 const projectStatuses = PROJECT_STATUS_OPTIONS;
+let applyingUrlState = false;
 
 let filters = reactive({
   keyword: "",
@@ -218,18 +223,30 @@ let filters = reactive({
   owner: "",
   creator: "",
 });
+const issueSort = ref(props.sort || "");
+const issuePage = ref(props.page || "");
+const issueViewMode = ref(props.viewMode || "");
 
-const filteredIssues = computed(() => filterIssues(props.issues, filters));
-const filteredVisibleIssues = computed(() => filterIssues(props.visibleIssues, filters));
+const filteredIssues = computed(() => sortIssues(filterIssues(props.issues, filters)));
+const filteredVisibleIssues = computed(() => sortIssues(filterIssues(props.visibleIssues, filters)));
 const projectAlerts = computed(() => getProjectAlerts(filteredIssues.value));
 const recentActivities = computed(() => getProjectActivities(props.issues));
 
+watch(() => props.urlFilters, (nextFilters) => {
+  applyingUrlState = true;
+  applyFilters(nextFilters || {});
+  applyingUrlState = false;
+}, { immediate: true, deep: true });
+
+watch(() => props.sort, (value) => { issueSort.value = value || ""; }, { immediate: true });
+watch(() => props.page, (value) => { issuePage.value = value || ""; }, { immediate: true });
+watch(() => props.viewMode, (value) => { issueViewMode.value = value || ""; }, { immediate: true });
+
+watch(filters, () => emitUrlState(), { deep: true });
+watch([issueSort, issuePage, issueViewMode], () => emitUrlState());
+
 function resetFilters() {
-  filters.keyword = "";
-  filters.dateFrom = "";
-  filters.dateTo = "";
-  filters.owner = "";
-  filters.creator = "";
+  applyFilters({});
 }
 
 function updateMilestoneStatus(index, status) {
@@ -259,5 +276,38 @@ function tabPanelId(value) {
 
 function slug(value) {
   return encodeURIComponent(String(value)).replace(/%/g, "");
+}
+
+function applyFilters(nextFilters) {
+  filters.keyword = nextFilters.keyword || "";
+  filters.dateFrom = nextFilters.dateFrom || "";
+  filters.dateTo = nextFilters.dateTo || "";
+  filters.owner = nextFilters.owner || "";
+  filters.creator = nextFilters.creator || "";
+}
+
+function emitUrlState() {
+  if (applyingUrlState) return;
+  emit("url-state", {
+    filters: { ...filters },
+    sort: issueSort.value,
+    page: issuePage.value,
+    viewMode: issueViewMode.value,
+  });
+}
+
+function sortIssues(issues) {
+  if (issueSort.value === "dueDate:asc") return [...issues].sort((a, b) => dateValue(a.dueDate) - dateValue(b.dueDate));
+  if (issueSort.value === "dueDate:desc") return [...issues].sort((a, b) => dateValue(b.dueDate) - dateValue(a.dueDate));
+  if (issueSort.value === "priority") return [...issues].sort((a, b) => priorityValue(a.priority) - priorityValue(b.priority));
+  return issues;
+}
+
+function dateValue(value) {
+  return value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
+}
+
+function priorityValue(value) {
+  return { P0: 0, P1: 1, P2: 2, P3: 3 }[value] ?? 4;
 }
 </script>

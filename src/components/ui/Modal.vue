@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="modal-backdrop" @click.self="$emit('close')">
+    <div v-if="open" class="modal-backdrop" @click.self="closeFromBackdrop">
       <section ref="panel" class="modal" :class="size" role="dialog" aria-modal="true" :aria-labelledby="titleId" tabindex="-1">
         <header class="drawer-head">
           <slot name="header">
@@ -42,5 +42,9 @@ const panel = ref(null);
 const titleId = `modal-${Math.random().toString(36).slice(2)}`;
 const isOpen = computed(() => props.open);
 
-useOverlay(isOpen, panel, () => emit("close"));
+const { isTop } = useOverlay(isOpen, panel, () => emit("close"));
+
+function closeFromBackdrop() {
+  if (isTop.value) emit("close");
+}
 </script>

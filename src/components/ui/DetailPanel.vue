@@ -5,7 +5,6 @@
       ref="panel"
       class="detail-panel open"
       role="dialog"
-      aria-modal="true"
       :aria-labelledby="titleId"
       tabindex="-1"
     >
@@ -43,5 +42,8 @@ const panel = ref(null);
 const titleId = `detail-${Math.random().toString(36).slice(2)}`;
 const isOpen = computed(() => props.open);
 
-useOverlay(isOpen, panel, () => emit("close"));
+useOverlay(isOpen, panel, () => emit("close"), {
+  lockScroll: false,
+  trapFocus: false,
+});
 </script>

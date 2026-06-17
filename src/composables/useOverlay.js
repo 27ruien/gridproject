@@ -1,94 +1,41 @@
-import { nextTick, onBeforeUnmount, watch } from "vue";
-
-const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  "textarea:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "[tabindex]:not([tabindex='-1'])",
-].join(",");
-
-let lockCount = 0;
+import { computed, nextTick, onBeforeUnmount, watch } from "vue";
+import { focusOverlay, isTopOverlay, pushOverlay, removeOverlay } from "./overlayManager.js";
 
 export function useOverlay(openRef, panelRef, close, options = {}) {
   let previouslyFocused = null;
+  let overlayId = "";
 
-  function lockBody() {
-    lockCount += 1;
-    document.body.classList.add("modal-locked");
-  }
-
-  function unlockBody() {
-    lockCount = Math.max(0, lockCount - 1);
-    if (!lockCount) document.body.classList.remove("modal-locked");
-  }
-
-  function focusInitial() {
-    const panel = panelRef.value;
-    if (!panel) return;
-    const preferred = options.initialFocus?.value || panel.querySelector("[data-autofocus]");
-    const firstFocusable = preferred || getFocusable(panel)[0];
-    (firstFocusable || panel).focus({ preventScroll: true });
-  }
-
-  function handleKeydown(event) {
-    if (!openRef.value) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close?.();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const panel = panelRef.value;
-    if (!panel) return;
-    const focusable = getFocusable(panel);
-    if (!focusable.length) {
-      event.preventDefault();
-      panel.focus({ preventScroll: true });
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
+  const isTop = computed(() => Boolean(overlayId && isTopOverlay(overlayId)));
 
   watch(openRef, async (open) => {
     if (open) {
       previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      lockBody();
-      document.addEventListener("keydown", handleKeydown, true);
+      overlayId = options.id || `overlay-${Math.random().toString(36).slice(2)}`;
+      pushOverlay({
+        id: overlayId,
+        panelRef,
+        close,
+        previouslyFocused,
+        initialFocus: options.initialFocus,
+        lockScroll: options.lockScroll,
+        trapFocus: options.trapFocus,
+        closeOnEscape: options.closeOnEscape,
+        closeOnOutside: options.closeOnOutside,
+        restoreFocus: options.restoreFocus,
+      });
       await nextTick();
-      focusInitial();
+      focusOverlay(overlayId);
       return;
     }
 
-    document.removeEventListener("keydown", handleKeydown, true);
-    unlockBody();
-    if (options.restoreFocus !== false) previouslyFocused?.focus?.({ preventScroll: true });
+    removeOverlay(overlayId);
+    overlayId = "";
     previouslyFocused = null;
   });
 
   onBeforeUnmount(() => {
-    if (openRef.value) unlockBody();
-    document.removeEventListener("keydown", handleKeydown, true);
+    if (overlayId) removeOverlay(overlayId);
   });
-}
 
-function getFocusable(container) {
-  return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
-    .filter((element) => !element.hasAttribute("disabled") && !element.closest("[inert]") && isVisible(element));
-}
-
-function isVisible(element) {
-  const style = window.getComputedStyle(element);
-  return style.display !== "none" && style.visibility !== "hidden";
+  return { isTop };
 }

@@ -7,7 +7,8 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node tests/domain.test.js",
-    "test:visual": "node scripts/capture-visuals.mjs",
+    "test:visual": "playwright test -c playwright.config.js",
+    "test:visual:update": "playwright test -c playwright.config.js --update-snapshots",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "vue": "^3.5.22"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "playwright": "^1.60.0"
   }
 }
