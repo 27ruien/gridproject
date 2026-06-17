@@ -5,6 +5,14 @@
     :eyebrow="issue ? `${issue.code} · ${project.name}` : ''"
     @close="$emit('close')"
   >
+    <template v-if="issue" #actions>
+      <OverflowMenu>
+        <template #default="{ close }">
+          <Button variant="danger" size="small" @click="close(); $emit('delete', issue.id)">删除任务</Button>
+        </template>
+      </OverflowMenu>
+    </template>
+
     <template #tabs>
       <nav class="drawer-tabs">
         <button v-for="tab in tabs" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
@@ -77,8 +85,6 @@
           </label>
 
           <div class="drawer-actions">
-            <Button variant="danger" @click="$emit('delete', issue.id)">删除任务</Button>
-            <Button variant="ghost" @click="$emit('advance', issue.id)">推进状态</Button>
             <Button variant="primary" @click="save">保存事项</Button>
           </div>
         </section>
@@ -156,6 +162,7 @@ import { computed, reactive, ref, watch } from "vue";
 import PersonPicker from "../common/PersonPicker.vue";
 import Button from "../ui/Button.vue";
 import DetailPanel from "../ui/DetailPanel.vue";
+import OverflowMenu from "../ui/OverflowMenu.vue";
 
 const props = defineProps({
   issue: { type: Object, default: null },
@@ -165,7 +172,7 @@ const props = defineProps({
   timeEntries: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["close", "update", "advance", "comment", "time-entry", "delete"]);
+const emit = defineEmits(["close", "update", "comment", "time-entry", "delete"]);
 const activeTab = ref("detail");
 const commentText = ref("");
 const tabs = [

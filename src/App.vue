@@ -127,7 +127,6 @@
         @import-schedule="openScheduleImport"
         @open-issue="openIssue"
         @status="setIssueStatus"
-        @advance="advanceIssue"
         @update-project="updateProject"
         @edit-project="openProjectEditModal"
         @delete-project="requestDeleteProject"
@@ -142,7 +141,6 @@
       :time-entries="selectedIssueTimeEntries"
       @close="selectedIssueId = null"
       @update="updateIssue"
-      @advance="advanceIssue"
       @comment="addIssueComment"
       @time-entry="addTimeEntry"
       @delete="requestDeleteIssue"
@@ -312,7 +310,8 @@ onBeforeUnmount(() => {
   window.clearTimeout(searchTimer);
 });
 
-watch([currentView, currentProjectId, activeView, selectedIssueId, debouncedSearchText, workspaceFilterParam, workspaceSort, workspacePage, workspaceViewMode], () => syncUrlState("push"));
+watch([currentView, currentProjectId, activeView, selectedIssueId], () => syncUrlState("push"));
+watch([debouncedSearchText, workspaceFilterParam, workspaceSort, workspacePage, workspaceViewMode], () => syncUrlState("replace"));
 
 function setView(view) {
   currentView.value = view;

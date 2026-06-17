@@ -1,5 +1,5 @@
 <template>
-  <div class="issue-table">
+  <div class="issue-table" :class="`density-${density}`">
     <div class="issue-table-head">
       <span>类型</span>
       <span>事项</span>
@@ -64,6 +64,7 @@ import PriorityPill from "../common/PriorityPill.vue";
 defineProps({
   issues: { type: Array, required: true },
   statuses: { type: Array, required: true },
+  density: { type: String, default: "comfortable" },
 });
 
 const emit = defineEmits(["open", "status"]);

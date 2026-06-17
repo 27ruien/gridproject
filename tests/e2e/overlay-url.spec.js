@@ -15,6 +15,21 @@ test("nested person picker Escape only closes child overlay", async ({ page }) =
   await expect(page.locator(".modal .picker-trigger").first()).toBeFocused();
 });
 
+test("top modal focus trap pulls Tab focus back from outside elements", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "新建事项" }).click();
+  await expect(page.getByRole("dialog", { name: "新建事项" })).toBeVisible();
+
+  await page.evaluate(() => document.querySelector(".topbar input")?.focus());
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest(".modal")))).toBe(true);
+
+  await page.evaluate(() => document.querySelector(".topbar input")?.focus());
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest(".modal")))).toBe(true);
+});
+
 test("URL q, filters, sort, page, and viewMode restore, clear, and support history", async ({ page }) => {
   const filters = encodeURIComponent(JSON.stringify({ keyword: "缓存", owner: "林夏" }));
   const stateUrl = `/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88&q=CRM&filters=${filters}&sort=dueDate%3Aasc&page=2&viewMode=compact`;
@@ -38,4 +53,54 @@ test("URL q, filters, sort, page, and viewMode restore, clear, and support histo
   await page.goForward({ waitUntil: "networkidle" });
   await expect(page.getByPlaceholder("搜索项目、事项或负责人")).toHaveValue("CRM");
   await expect(page.getByPlaceholder("标题、编号、类型、描述")).toHaveValue("缓存");
+});
+
+test("search, filters, sort, page, and viewMode replace history while navigation pushes", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?qa=bulk&view=project&project=crm&tab=Sprint", { waitUntil: "networkidle" });
+  const beforeReplace = await page.evaluate(() => history.length);
+
+  const globalSearch = page.getByPlaceholder("搜索项目、事项或负责人");
+  await globalSearch.fill("C");
+  await page.waitForTimeout(260);
+  await globalSearch.fill("CRM");
+  await page.waitForTimeout(260);
+  await globalSearch.fill("CRM 缓存");
+  await page.waitForTimeout(260);
+  expect(await page.evaluate(() => history.length)).toBe(beforeReplace);
+
+  await page.getByPlaceholder("标题、编号、类型、描述").fill("批量视觉");
+  await page.locator(".issue-list-controls select").selectOption("priority");
+  await page.getByRole("button", { name: "紧凑" }).click();
+  await page.getByRole("button", { name: "下一页" }).click();
+  expect(await page.evaluate(() => history.length)).toBe(beforeReplace);
+  await expect(page).toHaveURL(/q=CRM/);
+  await expect(page).toHaveURL(/filters=/);
+  await expect(page).toHaveURL(/sort=priority/);
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page).toHaveURL(/viewMode=compact/);
+
+  await page.getByRole("tab", { name: "看板" }).click();
+  await expect(page).toHaveURL(/tab=%E7%9C%8B%E6%9D%BF/);
+  await expect.poll(() => page.evaluate(() => history.length)).toBeGreaterThan(beforeReplace);
+});
+
+test("issue page and compact viewMode change the real issue list", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?qa=bulk&view=project&project=crm&tab=Sprint&page=2&viewMode=compact", { waitUntil: "networkidle" });
+
+  await expect(page.locator(".issue-table")).toHaveClass(/density-compact/);
+  await expect(page.locator(".issue-table-row")).toHaveCount(10);
+  await expect(page.locator(".pagination-bar")).toContainText("第 2 /");
+
+  const pageTwoFirstTitle = await page.locator(".issue-table-row .issue-title-cell strong").first().innerText();
+  await page.getByRole("button", { name: "舒适" }).click();
+  await expect(page.locator(".issue-table")).toHaveClass(/density-comfortable/);
+  await expect(page.locator(".issue-table-row")).toHaveCount(6);
+  await expect(page.locator(".pagination-bar")).toContainText("第 1 /");
+  await expect(page).not.toHaveURL(/page=2/);
+  await expect(page).not.toHaveURL(/viewMode=compact/);
+
+  const pageOneFirstTitle = await page.locator(".issue-table-row .issue-title-cell strong").first().innerText();
+  expect(pageOneFirstTitle).not.toBe(pageTwoFirstTitle);
 });

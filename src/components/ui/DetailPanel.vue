@@ -13,9 +13,12 @@
           <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
           <h2 :id="titleId">{{ title }}</h2>
         </div>
-        <button class="icon-btn" type="button" aria-label="关闭详情" @click="$emit('close')">
-          <Icon name="close" />
-        </button>
+        <div class="drawer-head-actions">
+          <slot name="actions" />
+          <button class="icon-btn" type="button" aria-label="关闭详情" @click="$emit('close')">
+            <Icon name="close" />
+          </button>
+        </div>
       </header>
       <slot name="tabs" />
       <div class="drawer-body">

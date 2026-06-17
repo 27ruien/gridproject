@@ -57,6 +57,41 @@
   padding: var(--space-100) var(--space-150);
 }
 
+.issue-table.density-compact .issue-table-head,
+.issue-table.density-compact .issue-table-row {
+  grid-template-columns: minmax(64px, 0.5fr) minmax(220px, 2.2fr) minmax(72px, 0.6fr) minmax(72px, 0.6fr) minmax(64px, 0.5fr) minmax(92px, 0.7fr) minmax(92px, 0.7fr) minmax(62px, 0.5fr) minmax(108px, 0.7fr);
+}
+
+.issue-table.density-compact .issue-table-row {
+  min-height: 36px;
+  padding: var(--space-075) var(--space-100);
+}
+
+.issue-list-controls,
+.pagination-bar,
+.pagination-bar > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+
+.issue-list-controls {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.issue-list-controls label {
+  min-width: 180px;
+}
+
+.pagination-bar {
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  padding-top: var(--space-150);
+}
+
 .issue-mobile-list,
 .timesheet-mobile-list,
 .project-mobile-list,

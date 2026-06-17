@@ -150,6 +150,17 @@
     flex: 1;
   }
 
+  .project-hero-actions {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .project-status-select {
+    flex: 1 1 100%;
+  }
+
   .project-row,
   .work-row,
   .trash-row {
@@ -173,8 +184,27 @@
   .project-signal-secondary,
   .project-signal-row,
   .card-kpis,
+  .metrics,
+  .timesheet-stats,
   .project-kpi-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-100);
+  }
+
+  .metrics article,
+  .timesheet-stats article {
+    min-height: 72px;
+    padding: var(--space-100);
+    gap: var(--space-050);
+  }
+
+  .metrics strong,
+  .timesheet-stats strong {
+    font-size: 20px;
+  }
+
+  .timesheet-stats article:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .project-kpi-strip article + article {

@@ -139,7 +139,6 @@
         :statuses="template.workflow"
         @open="$emit('open-issue', $event)"
         @status="(...args) => $emit('status', ...args)"
-        @advance="$emit('advance', $event)"
       />
     </section>
 
@@ -156,17 +155,33 @@
       <GanttChart :issues="filteredVisibleIssues" @open="$emit('open-issue', $event)" />
     </section>
 
-    <section v-else :id="tabPanelId(activeView)" class="panel" role="tabpanel" :aria-labelledby="tabId(activeView)">
+    <section v-else :id="tabPanelId(activeView)" class="panel issue-list-panel" :class="`is-${normalizedViewMode}`" role="tabpanel" :aria-labelledby="tabId(activeView)">
       <div class="panel-head">
         <div>
           <h2>{{ activeView }}</h2>
           <p>{{ template.positioning }}</p>
         </div>
+        <div class="issue-list-controls">
+          <label>
+            <span>排序</span>
+            <select v-model="issueSort">
+              <option value="">默认排序</option>
+              <option value="dueDate:asc">截止日期由近到远</option>
+              <option value="dueDate:desc">截止日期由远到近</option>
+              <option value="priority">优先级优先</option>
+            </select>
+          </label>
+          <div class="segmented-control" aria-label="事项列表密度">
+            <button type="button" :class="{ active: normalizedViewMode === 'comfortable' }" @click="setIssueViewMode('comfortable')">舒适</button>
+            <button type="button" :class="{ active: normalizedViewMode === 'compact' }" @click="setIssueViewMode('compact')">紧凑</button>
+          </div>
+        </div>
       </div>
       <IssueTable
-        v-if="filteredVisibleIssues.length"
-        :issues="filteredVisibleIssues"
+        v-if="paginatedVisibleIssues.length"
+        :issues="paginatedVisibleIssues"
         :statuses="template.workflow"
+        :density="normalizedViewMode"
         @open="$emit('open-issue', $event)"
         @status="(...args) => $emit('status', ...args)"
       />
@@ -177,6 +192,13 @@
         :action="template.emptyState.action"
         @action="$emit('create-issue')"
       />
+      <div v-if="filteredVisibleIssues.length" class="pagination-bar">
+        <span>第 {{ currentPage }} / {{ totalPages }} 页 · 共 {{ filteredVisibleIssues.length }} 项</span>
+        <div>
+          <Button variant="ghost" size="small" :disabled="currentPage <= 1" @click="setIssuePage(currentPage - 1)">上一页</Button>
+          <Button variant="ghost" size="small" :disabled="currentPage >= totalPages" @click="setIssuePage(currentPage + 1)">下一页</Button>
+        </div>
+      </div>
     </section>
   </section>
 </template>
@@ -212,8 +234,12 @@ const props = defineProps({
 
 const activeView = defineModel("activeView", { type: String, required: true });
 
-const emit = defineEmits(["create-issue", "import-schedule", "open-issue", "status", "advance", "update-project", "edit-project", "delete-project", "url-state"]);
+const emit = defineEmits(["create-issue", "import-schedule", "open-issue", "status", "update-project", "edit-project", "delete-project", "url-state"]);
 const projectStatuses = PROJECT_STATUS_OPTIONS;
+const pageSizes = {
+  comfortable: 6,
+  compact: 10,
+};
 let applyingUrlState = false;
 
 let filters = reactive({
@@ -229,6 +255,14 @@ const issueViewMode = ref(props.viewMode || "");
 
 const filteredIssues = computed(() => sortIssues(filterIssues(props.issues, filters)));
 const filteredVisibleIssues = computed(() => sortIssues(filterIssues(props.visibleIssues, filters)));
+const normalizedViewMode = computed(() => issueViewMode.value === "compact" ? "compact" : "comfortable");
+const pageSize = computed(() => pageSizes[normalizedViewMode.value]);
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredVisibleIssues.value.length / pageSize.value)));
+const currentPage = computed(() => clamp(parseInt(issuePage.value || "1", 10) || 1, 1, totalPages.value));
+const paginatedVisibleIssues = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredVisibleIssues.value.slice(start, start + pageSize.value);
+});
 const projectAlerts = computed(() => getProjectAlerts(filteredIssues.value));
 const recentActivities = computed(() => getProjectActivities(props.issues));
 
@@ -239,14 +273,34 @@ watch(() => props.urlFilters, (nextFilters) => {
 }, { immediate: true, deep: true });
 
 watch(() => props.sort, (value) => { issueSort.value = value || ""; }, { immediate: true });
-watch(() => props.page, (value) => { issuePage.value = value || ""; }, { immediate: true });
-watch(() => props.viewMode, (value) => { issueViewMode.value = value || ""; }, { immediate: true });
+watch(() => props.page, (value) => { issuePage.value = normalizePageParam(value); }, { immediate: true });
+watch(() => props.viewMode, (value) => { issueViewMode.value = value === "compact" ? "compact" : ""; }, { immediate: true });
 
-watch(filters, () => emitUrlState(), { deep: true });
-watch([issueSort, issuePage, issueViewMode], () => emitUrlState());
+watch(filters, () => {
+  if (!applyingUrlState) issuePage.value = "";
+  emitUrlState();
+}, { deep: true });
+watch(issueSort, () => {
+  if (!applyingUrlState) issuePage.value = "";
+  emitUrlState();
+});
+watch([issuePage, issueViewMode], () => emitUrlState());
+watch(totalPages, () => {
+  if ((parseInt(issuePage.value || "1", 10) || 1) > totalPages.value) setIssuePage(totalPages.value);
+});
 
 function resetFilters() {
   applyFilters({});
+}
+
+function setIssuePage(page) {
+  const nextPage = clamp(page, 1, totalPages.value);
+  issuePage.value = nextPage > 1 ? String(nextPage) : "";
+}
+
+function setIssueViewMode(mode) {
+  issueViewMode.value = mode === "compact" ? "compact" : "";
+  issuePage.value = "";
 }
 
 function updateMilestoneStatus(index, status) {
@@ -291,8 +345,8 @@ function emitUrlState() {
   emit("url-state", {
     filters: { ...filters },
     sort: issueSort.value,
-    page: issuePage.value,
-    viewMode: issueViewMode.value,
+    page: currentPage.value > 1 ? String(currentPage.value) : "",
+    viewMode: normalizedViewMode.value === "compact" ? "compact" : "",
   });
 }
 
@@ -309,5 +363,14 @@ function dateValue(value) {
 
 function priorityValue(value) {
   return { P0: 0, P1: 1, P2: 2, P3: 3 }[value] ?? 4;
+}
+
+function normalizePageParam(value) {
+  const page = parseInt(value || "1", 10);
+  return Number.isFinite(page) && page > 1 ? String(page) : "";
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 </script>

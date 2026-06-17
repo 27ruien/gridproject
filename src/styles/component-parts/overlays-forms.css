@@ -166,6 +166,13 @@
   overflow-wrap: anywhere;
 }
 
+.drawer-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-075);
+  flex: 0 0 auto;
+}
+
 .drawer-body {
   min-height: 0;
   overflow: auto;

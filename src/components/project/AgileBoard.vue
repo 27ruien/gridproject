@@ -14,7 +14,6 @@
             :statuses="statuses"
             @open="$emit('open', $event)"
             @status="(...args) => $emit('status', ...args)"
-            @advance="$emit('advance', $event)"
           />
           <EmptyState
             v-if="!grouped[status]?.length"
@@ -37,7 +36,6 @@
           :statuses="statuses"
           @open="$emit('open', $event)"
           @status="(...args) => $emit('status', ...args)"
-          @advance="$emit('advance', $event)"
         />
       </section>
     </div>
@@ -54,7 +52,7 @@ const props = defineProps({
   statuses: { type: Array, required: true },
 });
 
-defineEmits(["open", "status", "advance"]);
+defineEmits(["open", "status"]);
 
 const grouped = computed(() => props.statuses.reduce((result, status) => {
   result[status] = props.issues.filter((issue) => issue.status === status);

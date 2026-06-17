@@ -8,7 +8,7 @@ export default defineConfig({
   expect: {
     timeout: 8_000,
     toHaveScreenshot: {
-      maxDiffPixelRatio: 0.05,
+      maxDiffPixelRatio: 0.02,
       threshold: 0.2,
       animations: "disabled",
       caret: "hide",
@@ -30,7 +30,7 @@ export default defineConfig({
   webServer: {
     command: "npm run dev -- --host 127.0.0.1",
     url: "http://127.0.0.1:5173",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

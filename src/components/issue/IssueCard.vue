@@ -15,19 +15,17 @@
       <select :value="issue.status" @change="$emit('status', issue.id, $event.target.value)">
         <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
       </select>
-      <Button variant="ghost" size="tiny" @click="$emit('advance', issue.id)">推进</Button>
     </div>
   </article>
 </template>
 
 <script setup>
 import PriorityPill from "../common/PriorityPill.vue";
-import Button from "../ui/Button.vue";
 
 defineProps({
   issue: { type: Object, required: true },
   statuses: { type: Array, required: true },
 });
 
-defineEmits(["open", "status", "advance"]);
+defineEmits(["open", "status"]);
 </script>

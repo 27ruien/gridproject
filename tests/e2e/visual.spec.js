@@ -11,6 +11,7 @@ const viewports = [
 
 const visualCases = [
   ["dashboard", "/?view=dashboard"],
+  ["project-header", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88"],
   ["project-overview", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88"],
   ["issue-detail", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88&issue=i1"],
   ["issue-modal", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", async (page) => {
@@ -25,6 +26,13 @@ const visualCases = [
   ["long-text", "/?qa=long&view=dashboard"],
   ["bulk-gantt", "/?qa=bulk&view=project&project=crm&tab=%E7%94%98%E7%89%B9%E5%9B%BE"],
   ["empty-dashboard", "/?qa=empty&view=dashboard"],
+];
+
+const zoomCases = [
+  ["dashboard", "/?view=dashboard", "查看全部"],
+  ["project-overview", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", "新建事项"],
+  ["issue-detail", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88&issue=i1", "保存事项"],
+  ["board", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", "select"],
 ];
 
 test.describe("visual baselines", () => {
@@ -72,6 +80,23 @@ test.describe("visual baselines", () => {
       await expect(page).toHaveScreenshot(`${name}-390-full.png`, { fullPage: true });
     });
   }
+
+  for (const zoom of [1.25, 1.5, 2]) {
+    for (const [name, url, control] of zoomCases) {
+      const label = `${Math.round(zoom * 100)}`;
+      test(`${name} browser zoom ${label}%`, async ({ page }) => {
+        await page.setViewportSize({
+          width: Math.floor(1440 / zoom),
+          height: Math.floor(900 / zoom),
+        });
+        await gotoAndSettle(page, url);
+        await assertPageHealth(page);
+        await assertCriticalControl(page, control);
+        await expect(page).toHaveScreenshot(`zoom-${label}-${name}-viewport.png`);
+        await expect(page).toHaveScreenshot(`zoom-${label}-${name}-full.png`, { fullPage: true });
+      });
+    }
+  }
 });
 
 async function gotoAndSettle(page, url) {
@@ -82,9 +107,34 @@ async function gotoAndSettle(page, url) {
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto(url, { waitUntil: "networkidle" });
+  await page.addStyleTag({
+    content: `
+      :root, body, button, input, select, textarea {
+        font-family: Arial, Helvetica, sans-serif !important;
+      }
+      *, *::before, *::after {
+        animation-duration: 0s !important;
+        transition-duration: 0s !important;
+        scroll-behavior: auto !important;
+      }
+    `,
+  });
   await page.waitForTimeout(250);
   page.__consoleErrors = consoleErrors;
   page.__pageErrors = pageErrors;
+}
+
+async function assertCriticalControl(page, control) {
+  if (control === "select") {
+    const select = page.locator(".board select:visible, .board-mobile-list select:visible").first();
+    await expect(select).toBeVisible();
+    await expect(select).toBeEnabled();
+    return;
+  }
+
+  const button = page.getByRole("button", { name: control }).first();
+  await expect(button).toBeVisible();
+  await expect(button).toBeEnabled();
 }
 
 async function assertPageHealth(page) {
