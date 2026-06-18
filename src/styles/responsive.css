@@ -133,6 +133,7 @@
   .project-toolbar,
   .cost-week-filter,
   .cost-toolbar,
+  .user-toolbar,
   .timesheet-toolbar,
   .missing-dates-panel {
     align-items: stretch;
@@ -195,12 +196,14 @@
   .metrics,
   .timesheet-stats,
   .cost-summary-grid,
+  .user-summary-grid,
   .project-kpi-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-100);
   }
 
-  .cost-toolbar {
+  .cost-toolbar,
+  .user-toolbar {
     grid-template-columns: 1fr;
   }
 

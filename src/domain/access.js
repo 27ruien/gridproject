@@ -15,12 +15,22 @@ export const PROJECT_MEMBER_STATUS = {
   INACTIVE: "INACTIVE",
 };
 
+export const USER_PERMISSIONS = {
+  VIEW: "user.view",
+  CREATE: "user.create",
+  UPDATE: "user.update",
+  DELETE: "user.delete",
+  RESET_PASSWORD: "user.reset_password",
+};
+
+const DEV_PASSWORD_HASH = "$argon2id$v=19$m=1024,t=2,p=1$Z3JpZHByb2plY3QtZGV2$2g8lN7Wssmdevplaceholderhash";
+
 export const DEMO_USERS = [
-  { id: "user-admin", organizationId: ORGANIZATION_ID, name: "管理员", email: "admin@gridproject.local", role: ORGANIZATION_ROLES.ADMIN, status: USER_STATUS.ACTIVE },
-  { id: "user-linxia", organizationId: ORGANIZATION_ID, name: "林夏", email: "linxia@gridproject.local", role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE },
-  { id: "user-zhoucheng", organizationId: ORGANIZATION_ID, name: "周程", email: "zhoucheng@gridproject.local", role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE },
-  { id: "user-hanyue", organizationId: ORGANIZATION_ID, name: "韩越", email: "hanyue@gridproject.local", role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE },
-  { id: "user-chenche", organizationId: ORGANIZATION_ID, name: "陈澈", email: "chenche@gridproject.local", role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE },
+  { id: "user-admin", organizationId: ORGANIZATION_ID, name: "管理员", email: "admin@gridproject.local", passwordHash: DEV_PASSWORD_HASH, role: ORGANIZATION_ROLES.ADMIN, status: USER_STATUS.ACTIVE, lastLoginAt: "2026-06-18T08:30:00.000Z", deletedAt: null, deletedById: null, createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" },
+  { id: "user-linxia", organizationId: ORGANIZATION_ID, name: "林夏", email: "linxia@gridproject.local", passwordHash: DEV_PASSWORD_HASH, role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE, lastLoginAt: "2026-06-17T10:20:00.000Z", deletedAt: null, deletedById: null, createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" },
+  { id: "user-zhoucheng", organizationId: ORGANIZATION_ID, name: "周程", email: "zhoucheng@gridproject.local", passwordHash: DEV_PASSWORD_HASH, role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE, lastLoginAt: "2026-06-16T09:10:00.000Z", deletedAt: null, deletedById: null, createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" },
+  { id: "user-hanyue", organizationId: ORGANIZATION_ID, name: "韩越", email: "hanyue@gridproject.local", passwordHash: DEV_PASSWORD_HASH, role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE, lastLoginAt: "2026-06-15T13:00:00.000Z", deletedAt: null, deletedById: null, createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" },
+  { id: "user-chenche", organizationId: ORGANIZATION_ID, name: "陈澈", email: "chenche@gridproject.local", passwordHash: DEV_PASSWORD_HASH, role: ORGANIZATION_ROLES.MEMBER, status: USER_STATUS.ACTIVE, lastLoginAt: null, deletedAt: null, deletedById: null, createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" },
 ];
 
 export function buildAccessContext(user, organizationId = ORGANIZATION_ID) {
@@ -30,7 +40,7 @@ export function buildAccessContext(user, organizationId = ORGANIZATION_ID) {
     user,
     userId: user.id,
     isAdmin: user.role === ORGANIZATION_ROLES.ADMIN,
-    isActiveUser: user.status === USER_STATUS.ACTIVE && user.organizationId === organizationId,
+    isActiveUser: user.status === USER_STATUS.ACTIVE && user.organizationId === organizationId && !user.deletedAt,
   };
 }
 
@@ -85,4 +95,3 @@ export function isActiveProjectMember(context, project, projectMembers) {
 export function isProjectOwner(context, project) {
   return Boolean(context?.isActiveUser && project?.ownerId && project.ownerId === context.userId);
 }
-

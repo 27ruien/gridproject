@@ -6,10 +6,9 @@ import {
 } from "../../domain/cost.js";
 
 export class CostCalculationService {
-  constructor({ projects, records, costRecords, rates, costRates, timeEntries, issues, users }) {
+  constructor({ projects, records, costRecords, timeEntries, issues, users }) {
     this.projects = projects || [];
     this.records = records || costRecords || [];
-    this.rates = rates || costRates || [];
     this.timeEntries = timeEntries || [];
     this.issues = issues || [];
     this.users = users || [];
@@ -39,7 +38,6 @@ export class CostCalculationService {
     return {
       project,
       record,
-      rates: this.rates.filter((rate) => rate.projectCostRecordId === record.id),
       timeEntries: this.timeEntries,
       issues: this.issues,
       users: this.users,

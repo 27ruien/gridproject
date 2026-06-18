@@ -4,8 +4,8 @@
       <div class="panel-head">
         <div>
           <p class="eyebrow">成本管理</p>
-          <h2>按项目管理固定人天成本与工时支出</h2>
-          <p>仅 ADMIN 和项目 Owner 可查看成本金额、人员排行与导出入口。</p>
+          <h2>按项目管理计划人天与实际投入</h2>
+          <p>本模块中的成本指项目人力投入，不包含人员薪资、单价或任何货币金额。</p>
         </div>
         <Button variant="primary" size="small" :disabled="!eligibleProjects.length" @click="openCreate">新建成本管理记录</Button>
       </div>
@@ -19,8 +19,9 @@
           <span>排序</span>
           <select v-model="sort">
             <option value="updatedAt:desc">最近更新</option>
-            <option value="cost:desc">累计成本最高</option>
-            <option value="hours:desc">累计工时最高</option>
+            <option value="burnRate:desc">人天消耗率最高</option>
+            <option value="actualHours:desc">实际总工时最高</option>
+            <option value="remaining:asc">剩余人天最少</option>
             <option value="project:asc">项目名称 A-Z</option>
           </select>
         </label>
@@ -28,12 +29,13 @@
 
       <div class="cost-table">
         <div class="cost-table-head">
-          <span>项目</span><span>Owner</span><span>人天成本</span><span>工时</span><span>人天</span><span>累计成本</span><span>币种</span><span>更新时间</span><span>操作</span>
+          <span>项目</span><span>Owner</span><span>项目总人天</span><span>实际总工时</span><span>实际人天</span><span>剩余人天</span><span>消耗率</span><span>参与人员</span><span>更新时间</span><span>操作</span>
         </div>
         <div
           v-for="row in pagedRows"
           :key="row.id"
           class="cost-table-row"
+          :class="{ 'is-overrun': row.summary.remainingPersonDays < 0 }"
           role="button"
           tabindex="0"
           @click="openDetail(row.id)"
@@ -45,11 +47,12 @@
             <small>{{ row.project.code || row.project.id }}</small>
           </span>
           <span>{{ row.summary.ownerName }}</span>
-          <span>{{ formatCurrency(row.summary.currentAmountPerPersonDay, row.currency) }}</span>
-          <span>{{ row.summary.totalHours }}h</span>
-          <span>{{ row.summary.totalPersonDays }}</span>
-          <strong>{{ formatCurrency(row.summary.totalCost, row.currency) }}</strong>
-          <span>{{ row.currency }}</span>
+          <span>{{ row.summary.plannedPersonDays }} 人天</span>
+          <span>{{ row.summary.actualHours }} 小时</span>
+          <span>{{ row.summary.actualPersonDays }} 人天</span>
+          <strong>{{ row.summary.remainingPersonDays }} 人天</strong>
+          <span>{{ row.summary.personDayBurnRate }}%</span>
+          <span>{{ row.summary.participantCount }} 人</span>
           <span>{{ dateOnly(row.updatedAt) }}</span>
           <span class="table-action-text">查看详情</span>
         </div>
@@ -61,9 +64,9 @@
               <span>{{ row.project.code || row.project.id }}</span>
             </span>
             <div class="cost-card-metrics">
-              <span>工时 {{ row.summary.totalHours }}h</span>
-              <span>人天 {{ row.summary.totalPersonDays }}</span>
-              <strong>{{ formatCurrency(row.summary.totalCost, row.currency) }}</strong>
+              <span>计划 {{ row.summary.plannedPersonDays }} 人天</span>
+              <span>实际 {{ row.summary.actualPersonDays }} 人天</span>
+              <strong>{{ row.summary.personDayBurnRate }}%</strong>
             </div>
             <Button variant="ghost" size="small" @click="openDetail(row.id)">查看详情</Button>
           </article>
@@ -72,7 +75,7 @@
         <EmptyState
           v-if="!pagedRows.length"
           title="暂无可见成本记录"
-          description="先选择你负责的项目并创建成本管理记录。普通项目成员不会看到成本金额。"
+          description="先选择你负责的项目并创建成本管理记录。普通项目成员不会看到成本管理入口。"
           action="新建成本管理记录"
           @action="openCreate"
         />
@@ -100,37 +103,6 @@
       </template>
 
       <div v-if="selectedSummary" class="cost-detail-stack">
-        <section class="cost-summary-grid">
-          <article>
-            <span>项目代码</span>
-            <strong>{{ selectedSummary.projectCode }}</strong>
-          </article>
-          <article>
-            <span>Owner</span>
-            <strong>{{ selectedSummary.ownerName }}</strong>
-          </article>
-          <article>
-            <span>当前人天成本</span>
-            <strong>{{ formatCurrency(selectedSummary.currentAmountPerPersonDay, selectedSummary.currency) }}</strong>
-          </article>
-          <article>
-            <span>标准工时/人天</span>
-            <strong>{{ selectedSummary.standardHoursPerDay }}h</strong>
-          </article>
-          <article>
-            <span>累计工时</span>
-            <strong>{{ selectedSummary.totalHours }}h</strong>
-          </article>
-          <article>
-            <span>累计人天</span>
-            <strong>{{ selectedSummary.totalPersonDays }}</strong>
-          </article>
-          <article>
-            <span>累计成本</span>
-            <strong>{{ formatCurrency(selectedSummary.totalCost, selectedSummary.currency) }}</strong>
-          </article>
-        </section>
-
         <section class="cost-week-filter">
           <div>
             <strong>周筛选</strong>
@@ -145,33 +117,65 @@
           </div>
         </section>
 
+        <section class="cost-summary-grid">
+          <article>
+            <span>项目代码</span>
+            <strong>{{ selectedSummary.projectCode }}</strong>
+          </article>
+          <article>
+            <span>Owner</span>
+            <strong>{{ selectedSummary.ownerName }}</strong>
+          </article>
+          <article>
+            <span>项目计划总人天</span>
+            <strong>{{ selectedSummary.plannedPersonDays }} 人天</strong>
+          </article>
+          <article>
+            <span>标准每日工时</span>
+            <strong>{{ selectedSummary.standardHoursPerDay }} 小时</strong>
+          </article>
+          <article>
+            <span>{{ isWeekFiltered ? "本周实际工时" : "实际总工时" }}</span>
+            <strong>{{ selectedSummary.actualHours }} 小时</strong>
+          </article>
+          <article>
+            <span>{{ isWeekFiltered ? "本周实际人天" : "实际人天" }}</span>
+            <strong>{{ selectedSummary.actualPersonDays }} 人天</strong>
+          </article>
+          <article v-if="!isWeekFiltered">
+            <span>剩余人天</span>
+            <strong>{{ selectedSummary.remainingPersonDays }} 人天</strong>
+          </article>
+          <article v-if="!isWeekFiltered">
+            <span>人天消耗率</span>
+            <strong>{{ selectedSummary.personDayBurnRate }}%</strong>
+          </article>
+          <article>
+            <span>参与人员数量</span>
+            <strong>{{ selectedSummary.participantCount }} 人</strong>
+          </article>
+        </section>
+
+        <p v-if="isWeekFiltered" class="quiet-text">
+          周筛选仅影响实际工时、实际人天、人员投入、Top 5、Raw Data 和 Excel 导出；项目计划总人天保持全周期口径。
+        </p>
+
         <section class="cost-edit-panel">
           <div class="section-head">
             <div>
-              <h3>费率与设置</h3>
-              <small>修改人天成本会关闭旧费率并新增历史费率。</small>
+              <h3>计划人天设置</h3>
+              <small>项目总人天是完整项目周期的计划投入，不会随工时自动变化。</small>
             </div>
             <Button variant="primary" size="small" @click="saveSelectedRecord">保存设置</Button>
           </div>
           <div class="form-two">
             <label>
-              <span>固定人天成本</span>
-              <input v-model.number="editForm.amountPerPersonDay" min="0" step="100" type="number" />
+              <span>项目总人天</span>
+              <input v-model.number="editForm.plannedPersonDays" min="0.01" step="0.5" type="number" />
             </label>
             <label>
-              <span>币种</span>
-              <select v-model="editForm.currency">
-                <option value="CNY">CNY</option>
-                <option value="USD">USD</option>
-              </select>
-            </label>
-            <label>
-              <span>标准工时/人天</span>
-              <input v-model.number="editForm.standardHoursPerDay" min="1" max="24" step="0.5" type="number" />
-            </label>
-            <label>
-              <span>费率生效日期</span>
-              <input v-model="editForm.effectiveFrom" type="date" />
+              <span>标准每日工时</span>
+              <input v-model.number="editForm.standardHoursPerDay" min="0.5" max="24" step="0.5" type="number" />
             </label>
           </div>
           <label>
@@ -183,8 +187,8 @@
         <section class="cost-section">
           <div class="section-head">
             <div>
-              <h3>项目人员支出</h3>
-              <small>按人员成本从高到低排序。</small>
+              <h3>人员工时投入</h3>
+              <small>按实际工时从高到低排序。</small>
             </div>
           </div>
           <div class="cost-people-list">
@@ -193,28 +197,28 @@
                 <strong>{{ person.name }}</strong>
                 <small>{{ person.email }}</small>
               </span>
-              <span>{{ person.hours }}h</span>
+              <span>{{ person.hours }} 小时</span>
               <span>{{ person.personDays }} 人天</span>
-              <strong>{{ formatCurrency(person.cost, selectedSummary.currency) }}</strong>
               <span>{{ person.share }}%</span>
+              <span>{{ person.entryCount }} 条</span>
             </div>
-            <p v-if="!selectedSummary.people.length" class="quiet-text">当前筛选下暂无可计入成本的工时。</p>
+            <p v-if="!selectedSummary.people.length" class="quiet-text">当前筛选下暂无可计入统计的工时。</p>
           </div>
         </section>
 
         <section class="cost-section">
           <div class="section-head">
             <div>
-              <h3>Top 5 人员成本</h3>
-              <small>人员不足 5 人时展示实际人数。</small>
+              <h3>Top 5 人员投入</h3>
+              <small>按实际工时从高到低展示。</small>
             </div>
           </div>
           <div class="top-cost-list">
             <div v-for="(person, index) in topPeople" :key="person.userId" class="top-cost-row">
               <strong>{{ index + 1 }}</strong>
               <span>{{ person.name }}</span>
-              <span>{{ person.hours }}h / {{ person.personDays }} 人天</span>
-              <span>{{ formatCurrency(person.cost, selectedSummary.currency) }}</span>
+              <span>{{ person.hours }} 小时 / {{ person.personDays }} 人天</span>
+              <span>{{ person.share }}%</span>
               <i :style="{ width: `${Math.max(6, Number(person.share))}%` }"></i>
             </div>
           </div>
@@ -229,7 +233,7 @@
           </div>
           <div class="cost-raw-table">
             <div class="cost-raw-head">
-              <span>日期</span><span>人员</span><span>事项</span><span>工时</span><span>人天成本</span><span>计算成本</span><span>状态</span>
+              <span>日期</span><span>人员</span><span>事项</span><span>实际工时</span><span>标准每日工时</span><span>折算人天</span><span>状态</span>
             </div>
             <div v-for="entry in pagedRawData" :key="entry.id" class="cost-raw-row">
               <span>{{ entry.workDate }}</span>
@@ -238,9 +242,9 @@
                 <strong>{{ entry.issueCode }}</strong>
                 <small>{{ entry.issueTitle }}</small>
               </span>
-              <span>{{ entry.hours }}h</span>
-              <span>{{ formatCurrency(entry.amountPerPersonDay, entry.currency) }}</span>
-              <strong>{{ formatCurrency(entry.cost, entry.currency) }}</strong>
+              <span>{{ entry.hours }} 小时</span>
+              <span>{{ entry.standardHoursPerDay }} 小时</span>
+              <strong>{{ entry.personDays }} 人天</strong>
               <span>{{ entry.status }}</span>
             </div>
           </div>
@@ -270,33 +274,22 @@
           </select>
         </label>
         <label>
-          <span>固定人天成本</span>
-          <input v-model.number="createForm.amountPerPersonDay" min="0" step="100" type="number" />
+          <span>项目总人天</span>
+          <input v-model.number="createForm.plannedPersonDays" min="0.01" step="0.5" type="number" />
         </label>
         <label>
-          <span>币种</span>
-          <select v-model="createForm.currency">
-            <option value="CNY">CNY</option>
-            <option value="USD">USD</option>
-          </select>
-        </label>
-        <label>
-          <span>标准工时/人天</span>
-          <input v-model.number="createForm.standardHoursPerDay" min="1" max="24" step="0.5" type="number" />
-        </label>
-        <label>
-          <span>费率生效日期</span>
-          <input v-model="createForm.effectiveFrom" type="date" />
+          <span>标准每日工时</span>
+          <input v-model.number="createForm.standardHoursPerDay" min="0.5" max="24" step="0.5" type="number" />
         </label>
       </div>
       <label>
         <span>备注</span>
-        <textarea v-model="createForm.notes" rows="3" placeholder="例如外包、内部核算或客户项目预算口径" />
+        <textarea v-model="createForm.notes" rows="3" placeholder="例如项目完整周期计划投入 120 人天" />
       </label>
 
       <template #footer>
         <Button variant="ghost" @click="createOpen = false">取消</Button>
-        <Button variant="primary" :disabled="!createForm.projectId || createForm.amountPerPersonDay < 0" @click="submitCreate">创建</Button>
+        <Button variant="primary" :disabled="!createForm.projectId || createForm.plannedPersonDays <= 0" @click="submitCreate">创建</Button>
       </template>
     </Modal>
   </section>
@@ -304,7 +297,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
-import { calculateProjectCost, getCurrentRate, normalizeWeekFilter } from "../domain/cost.js";
+import { calculateProjectCost, normalizeWeekFilter } from "../domain/cost.js";
 import { CostAccessPolicy } from "../server/policies/costAccessPolicy.js";
 import Button from "../components/ui/Button.vue";
 import DetailPanel from "../components/ui/DetailPanel.vue";
@@ -317,7 +310,6 @@ const props = defineProps({
   users: { type: Array, required: true },
   timeEntries: { type: Array, required: true },
   costRecords: { type: Array, required: true },
-  costRates: { type: Array, required: true },
   context: { type: Object, required: true },
 });
 
@@ -334,10 +326,8 @@ const createOpen = ref(false);
 const weekStart = ref("");
 const createForm = reactive(defaultCreateForm());
 const editForm = reactive({
-  amountPerPersonDay: 0,
-  currency: "CNY",
+  plannedPersonDays: 0,
   standardHoursPerDay: 8,
-  effectiveFrom: "",
   notes: "",
 });
 
@@ -347,16 +337,14 @@ const recordRows = computed(() => props.costRecords
   .filter((record) => CostAccessPolicy.canViewCost(props.context, projectMap.value.get(record.projectId)))
   .map((record) => {
     const project = projectMap.value.get(record.projectId);
-    const rates = props.costRates.filter((rate) => rate.projectCostRecordId === record.id);
     const summary = calculateProjectCost({
       project,
       record,
-      rates,
       timeEntries: props.timeEntries,
       issues: props.issues,
       users: props.users,
     });
-    return { ...record, project, rates, currentRate: getCurrentRate(rates), summary };
+    return { ...record, project, summary };
   }));
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLowerCase();
@@ -371,7 +359,6 @@ const selectedSummary = computed(() => {
   return calculateProjectCost({
     project: selectedRow.value.project,
     record: selectedRow.value,
-    rates: selectedRow.value.rates,
     timeEntries: props.timeEntries,
     issues: props.issues,
     users: props.users,
@@ -385,19 +372,18 @@ const eligibleProjects = computed(() => props.projects.filter((project) => (
   CostAccessPolicy.canManageCost(props.context, project) &&
   !props.costRecords.some((record) => record.projectId === project.id && record.status === "ACTIVE" && !record.deletedAt)
 )));
+const isWeekFiltered = computed(() => Boolean(normalizeWeekFilter(weekStart.value)));
 const weekRangeLabel = computed(() => {
   const range = normalizeWeekFilter(weekStart.value);
-  return range ? `${range.start} 至 ${range.end}` : "未筛选，展示全部可计入成本工时";
+  return range ? `${range.start} 至 ${range.end}` : "未筛选，展示全周期可计入工时";
 });
 
 watch([search, sort], () => { page.value = 1; });
 watch(selectedRow, (row) => {
   rawPage.value = 1;
   if (!row) return;
-  editForm.amountPerPersonDay = Number(row.currentRate?.amountPerPersonDay || 0);
-  editForm.currency = row.currency || "CNY";
+  editForm.plannedPersonDays = Number(row.plannedPersonDays || 0);
   editForm.standardHoursPerDay = Number(row.standardHoursPerDay) || 8;
-  editForm.effectiveFrom = new Date().toISOString().slice(0, 10);
   editForm.notes = row.notes || "";
 });
 watch(selectedSummary, () => { rawPage.value = 1; });
@@ -441,19 +427,19 @@ function mondayOf(date) {
   const copy = new Date(date);
   const day = copy.getDay();
   copy.setDate(copy.getDate() + (day === 0 ? -6 : 1 - day));
-  return copy.toISOString().slice(0, 10);
+  return [
+    copy.getFullYear(),
+    String(copy.getMonth() + 1).padStart(2, "0"),
+    String(copy.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function sortRows(rows) {
-  if (sort.value === "cost:desc") return [...rows].sort((a, b) => Number(b.summary.totalCost) - Number(a.summary.totalCost));
-  if (sort.value === "hours:desc") return [...rows].sort((a, b) => Number(b.summary.totalHours) - Number(a.summary.totalHours));
+  if (sort.value === "burnRate:desc") return [...rows].sort((a, b) => Number(b.summary.personDayBurnRate) - Number(a.summary.personDayBurnRate));
+  if (sort.value === "actualHours:desc") return [...rows].sort((a, b) => Number(b.summary.actualHours) - Number(a.summary.actualHours));
+  if (sort.value === "remaining:asc") return [...rows].sort((a, b) => Number(a.summary.remainingPersonDays) - Number(b.summary.remainingPersonDays));
   if (sort.value === "project:asc") return [...rows].sort((a, b) => a.project.name.localeCompare(b.project.name, "zh-CN"));
   return [...rows].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-}
-
-function formatCurrency(value, currency = "CNY") {
-  const number = Number(value || 0);
-  return `${currency} ${number.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function dateOnly(value) {
@@ -463,10 +449,8 @@ function dateOnly(value) {
 function defaultCreateForm() {
   return {
     projectId: "",
-    amountPerPersonDay: 1200,
-    currency: "CNY",
+    plannedPersonDays: "",
     standardHoursPerDay: 8,
-    effectiveFrom: new Date().toISOString().slice(0, 10),
     notes: "",
   };
 }

@@ -186,10 +186,10 @@ const seedState = {
       id: "cost-crm",
       organizationId: ORGANIZATION_ID,
       projectId: "crm",
-      currency: "CNY",
+      plannedPersonDays: 120,
       standardHoursPerDay: 8,
       status: "ACTIVE",
-      notes: "CRM 项目固定人天成本，默认纳入已提交和已审批工时。",
+      notes: "CRM 项目计划投入人天，默认纳入已提交和已审批工时。",
       createdById: "user-linxia",
       updatedById: "user-linxia",
       createdAt: "2026-05-01T00:00:00.000Z",
@@ -198,9 +198,7 @@ const seedState = {
       deletedById: null,
     },
   ],
-  costRates: [
-    { id: "rate-crm-1", projectCostRecordId: "cost-crm", amountPerPersonDay: 1200, effectiveFrom: "2026-05-01", effectiveTo: null, createdById: "user-linxia", createdAt: "2026-05-01T00:00:00.000Z" },
-  ],
+  sessions: [],
   auditLogs: [],
   trash: [],
 };
@@ -223,9 +221,9 @@ export const stateService = {
       timeEntries: state.timeEntries,
       projectMembers: state.projectMembers,
       costRecords: state.costRecords,
-      costRates: state.costRates,
+      sessions: state.sessions,
       auditLogs: state.auditLogs,
-      users: state.users,
+      users: state.users.map(({ passwordHash, ...user }) => user),
       organization: state.organization,
       trash: state.trash,
       settings: state.settings,
@@ -244,7 +242,7 @@ function normalizeState(rawState) {
     timeEntries: (rawState.timeEntries || seedState.timeEntries).map(normalizeTimeEntry),
     projectMembers: normalizeProjectMembers(rawState.projectMembers, rawState.projects || seedState.projects),
     costRecords: normalizeCostRecords(rawState.costRecords || seedState.costRecords),
-    costRates: normalizeCostRates(rawState.costRates || seedState.costRates),
+    sessions: normalizeSessions(rawState.sessions || seedState.sessions),
     auditLogs: rawState.auditLogs || seedState.auditLogs,
     trash: (rawState.trash || seedState.trash).map(normalizeTrashItem),
   };
@@ -293,8 +291,14 @@ function normalizeUsers(users) {
     organizationId: user.organizationId || ORGANIZATION_ID,
     name: user.name || "未命名成员",
     email: user.email || `${user.id || "user"}@gridproject.local`,
+    passwordHash: user.passwordHash || "$argon2id$v=19$m=1024,t=2,p=1$Z3JpZHByb2plY3QtZGV2$2g8lN7Wssmdevplaceholderhash",
     role: user.role === "ADMIN" ? "ADMIN" : "MEMBER",
     status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+    lastLoginAt: user.lastLoginAt || null,
+    deletedAt: user.deletedAt || null,
+    deletedById: user.deletedById || null,
+    createdAt: user.createdAt || new Date().toISOString(),
+    updatedAt: user.updatedAt || user.createdAt || new Date().toISOString(),
   }));
 }
 
@@ -316,7 +320,7 @@ function normalizeCostRecords(records) {
     id: record.id,
     organizationId: record.organizationId || ORGANIZATION_ID,
     projectId: record.projectId,
-    currency: record.currency || "CNY",
+    plannedPersonDays: Number(record.plannedPersonDays) > 0 ? Number(record.plannedPersonDays) : 120,
     standardHoursPerDay: Number(record.standardHoursPerDay) || 8,
     status: record.status || "ACTIVE",
     notes: record.notes || "",
@@ -329,15 +333,15 @@ function normalizeCostRecords(records) {
   }));
 }
 
-function normalizeCostRates(rates) {
-  return rates.map((rate) => ({
-    id: rate.id,
-    projectCostRecordId: rate.projectCostRecordId,
-    amountPerPersonDay: Number(rate.amountPerPersonDay) || 0,
-    effectiveFrom: rate.effectiveFrom || new Date().toISOString().slice(0, 10),
-    effectiveTo: rate.effectiveTo || null,
-    createdById: rate.createdById || "user-linxia",
-    createdAt: rate.createdAt || new Date().toISOString(),
+function normalizeSessions(sessions) {
+  return sessions.map((session) => ({
+    id: session.id,
+    organizationId: session.organizationId || ORGANIZATION_ID,
+    userId: session.userId,
+    tokenHash: session.tokenHash || "",
+    expiresAt: session.expiresAt || new Date().toISOString(),
+    revokedAt: session.revokedAt || null,
+    createdAt: session.createdAt || new Date().toISOString(),
   }));
 }
 

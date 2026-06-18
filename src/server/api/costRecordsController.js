@@ -13,7 +13,6 @@ export function createCostRecordsController(repository) {
         projects: repository.projects,
         users: repository.users,
         records: repository.costRecords,
-        rates: repository.costRates,
         timeEntries: repository.timeEntries,
         issues: repository.issues,
         search: request.query.search || "",
@@ -36,7 +35,6 @@ export function createCostRecordsController(repository) {
       });
       if (!result.ok) return error(result.status, result.message, requestId);
       repository.costRecords.push(result.record);
-      repository.costRates.push(result.rate);
       repository.auditLogs.push(result.auditLog);
       return ok({ requestId, record: result.record }, 201);
     },
@@ -55,11 +53,9 @@ export function createCostRecordsController(repository) {
       const record = getRecord(repository, request.params.id, context);
       if (!record) return notFound(requestId);
       const project = getProject(repository, record.projectId, context);
-      const recordRates = repository.costRates.filter((rate) => rate.projectCostRecordId === record.id);
-      const result = costService.updateCostRecord({ context, record, project, rates: recordRates, patch: request.body });
+      const result = costService.updateCostRecord({ context, record, project, patch: request.body });
       if (!result.ok) return error(result.status, result.message, requestId);
       replaceById(repository.costRecords, result.record);
-      repository.costRates = repository.costRates.filter((rate) => rate.projectCostRecordId !== record.id).concat(result.rates);
       repository.auditLogs.push(...result.auditLogs);
       return ok({ requestId, record: result.record });
     },
@@ -193,4 +189,3 @@ function createAuditLog(context, action, entityId, data) {
 function cryptoRandomId() {
   return `req-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
-

@@ -6,20 +6,20 @@ export const COST_RECORD_STATUS = {
   ARCHIVED: "ARCHIVED",
 };
 
-export const DEFAULT_COST_CURRENCY = "CNY";
 export const DEFAULT_STANDARD_HOURS_PER_DAY = 8;
 export const COST_INCLUDED_STATUSES = [TIME_ENTRY_STATUS.SUBMITTED, TIME_ENTRY_STATUS.APPROVED];
 
 export function calculateProjectCost({
   project,
   record,
-  rates,
   timeEntries,
   issues = [],
   users = [],
   filter = {},
 }) {
-  const scopedEntries = getCostRawData({ project, record, rates, timeEntries, issues, users, filter });
+  const scopedEntries = getCostRawData({ project, record, timeEntries, issues, users, filter });
+  const plannedPersonDays = decimal(record.plannedPersonDays);
+  const standardHoursPerDay = decimal(record.standardHoursPerDay || DEFAULT_STANDARD_HOURS_PER_DAY);
   const peopleMap = new Map();
 
   scopedEntries.forEach((entry) => {
@@ -29,38 +29,40 @@ export function calculateProjectCost({
       email: entry.personEmail,
       hours: new Decimal(0),
       days: new Decimal(0),
-      cost: new Decimal(0),
+      entryCount: 0,
+      lastWorkDate: "",
     };
     previous.hours = previous.hours.plus(entry.hoursDecimal);
     previous.days = previous.days.plus(entry.personDaysDecimal);
-    previous.cost = previous.cost.plus(entry.costDecimal);
+    previous.entryCount += 1;
+    previous.lastWorkDate = [previous.lastWorkDate, entry.workDate].filter(Boolean).sort().at(-1) || "";
     peopleMap.set(entry.userId, previous);
   });
 
+  const actualHours = scopedEntries.reduce((sum, entry) => sum.plus(entry.hoursDecimal), new Decimal(0));
+  const actualPersonDays = standardHoursPerDay.gt(0) ? actualHours.div(standardHoursPerDay) : new Decimal(0);
+  const remainingPersonDays = plannedPersonDays.minus(actualPersonDays);
+  const personDayBurnRate = plannedPersonDays.gt(0) ? actualPersonDays.div(plannedPersonDays).mul(100) : new Decimal(0);
   const people = Array.from(peopleMap.values())
-    .map((person) => formatCostPerson(person))
-    .sort((a, b) => Number(b.cost) - Number(a.cost));
-  const totalHours = people.reduce((sum, person) => sum.plus(person.hours), new Decimal(0));
-  const totalDays = people.reduce((sum, person) => sum.plus(person.personDays), new Decimal(0));
-  const totalCost = people.reduce((sum, person) => sum.plus(person.cost), new Decimal(0));
+    .map((person) => formatCostPerson(person, actualHours))
+    .sort((a, b) => Number(b.hours) - Number(a.hours));
 
   return {
     projectId: project.id,
     projectName: project.name,
     projectCode: project.code || project.id,
     ownerName: userLabel(users, project.ownerId, project.owner),
-    currency: record.currency || DEFAULT_COST_CURRENCY,
-    standardHoursPerDay: decimal(record.standardHoursPerDay || DEFAULT_STANDARD_HOURS_PER_DAY).toNumber(),
-    currentAmountPerPersonDay: formatMoney(getCurrentRate(rates)?.amountPerPersonDay || 0),
-    totalHours: formatHours(totalHours),
-    totalPersonDays: formatDays(totalDays),
-    totalCost: formatMoney(totalCost),
-    people: people.map((person) => ({
-      ...person,
-      cost: formatMoney(person.cost),
-      share: totalCost.gt(0) ? decimal(person.cost).div(totalCost).mul(100).toDecimalPlaces(1).toString() : "0",
-    })),
-    rawData: scopedEntries.map(formatRawCostEntry),
+    plannedPersonDays: formatDays(plannedPersonDays),
+    standardHoursPerDay: standardHoursPerDay.toNumber(),
+    actualHours: formatHours(actualHours),
+    totalHours: formatHours(actualHours),
+    actualPersonDays: formatDays(actualPersonDays),
+    totalPersonDays: formatDays(actualPersonDays),
+    remainingPersonDays: formatDays(remainingPersonDays),
+    personDayBurnRate: formatPercent(personDayBurnRate),
+    participantCount: people.length,
+    people,
+    rawData: scopedEntries.map((entry) => formatRawCostEntry(entry, plannedPersonDays)),
   };
 }
 
@@ -78,7 +80,6 @@ export function getTopPeopleCosts(projectId, input, limit = 5) {
 export function getCostRawData({
   project,
   record,
-  rates,
   timeEntries,
   issues = [],
   users = [],
@@ -90,11 +91,8 @@ export function getCostRawData({
     .filter((entry) => isCostIncludedEntry(entry, project.id, filter))
     .map((entry) => {
       const workDate = entry.workDate || entry.spentDate;
-      const rate = rateForWorkDate(rates, workDate);
       const hoursDecimal = decimal(entry.hours || 0);
       const personDaysDecimal = standardHours.gt(0) ? hoursDecimal.div(standardHours) : new Decimal(0);
-      const amountPerPersonDayDecimal = decimal(rate?.amountPerPersonDay || 0);
-      const costDecimal = personDaysDecimal.mul(amountPerPersonDayDecimal);
       const issue = issueMap.get(entry.issueId) || {};
       return {
         id: entry.id,
@@ -111,10 +109,7 @@ export function getCostRawData({
         isoWeek: isoWeekLabel(workDate),
         hoursDecimal,
         personDaysDecimal,
-        amountPerPersonDayDecimal,
-        costDecimal,
         standardHoursPerDay: standardHours.toNumber(),
-        currency: record.currency || DEFAULT_COST_CURRENCY,
         status: normalizeTimeEntryStatus(entry.status),
         reporter: entry.reporter || userLabel(users, entry.userId),
         note: entry.note || entry.description || "",
@@ -122,7 +117,7 @@ export function getCostRawData({
         updatedAt: entry.updatedAt || entry.createdAt || "",
       };
     })
-    .sort((a, b) => a.workDate.localeCompare(b.workDate) || b.costDecimal.comparedTo(a.costDecimal));
+    .sort((a, b) => a.workDate.localeCompare(b.workDate) || b.hoursDecimal.comparedTo(a.hoursDecimal));
 }
 
 export function isCostIncludedEntry(entry, projectId, filter = {}) {
@@ -138,28 +133,20 @@ export function isCostIncludedEntry(entry, projectId, filter = {}) {
   return true;
 }
 
-export function rateForWorkDate(rates, workDate) {
-  return [...rates]
-    .filter((rate) => rate.effectiveFrom <= workDate && (!rate.effectiveTo || workDate < rate.effectiveTo))
-    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] || null;
-}
-
-export function getCurrentRate(rates, today = new Date().toISOString().slice(0, 10)) {
-  return rateForWorkDate(rates, today) || [...rates].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] || null;
-}
-
 export function normalizeWeekFilter(weekStart) {
   if (!weekStart) return null;
-  const start = new Date(`${weekStart}T00:00:00`);
+  const [year, month, dayOfMonth] = String(weekStart).split("-").map(Number);
+  if (!year || !month || !dayOfMonth) return null;
+  const start = new Date(Date.UTC(year, month - 1, dayOfMonth));
   if (Number.isNaN(start.getTime())) return null;
-  const day = start.getDay();
+  const day = start.getUTCDay();
   const mondayOffset = day === 0 ? -6 : 1 - day;
-  start.setDate(start.getDate() + mondayOffset);
+  start.setUTCDate(start.getUTCDate() + mondayOffset);
   const end = new Date(start);
-  end.setDate(start.getDate() + 6);
+  end.setUTCDate(start.getUTCDate() + 6);
   return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
+    start: formatUtcDate(start),
+    end: formatUtcDate(end),
   };
 }
 
@@ -181,10 +168,6 @@ export function escapeExcelText(value) {
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 }
 
-export function formatMoney(value) {
-  return decimal(value).toDecimalPlaces(2).toFixed(2);
-}
-
 export function formatHours(value) {
   return decimal(value).toDecimalPlaces(1).toNumber();
 }
@@ -193,18 +176,24 @@ export function formatDays(value) {
   return decimal(value).toDecimalPlaces(2).toNumber();
 }
 
-function formatCostPerson(person) {
+export function formatPercent(value) {
+  return decimal(value).toDecimalPlaces(1).toNumber();
+}
+
+function formatCostPerson(person, totalHours) {
   return {
     userId: person.userId,
     name: person.name,
     email: person.email,
     hours: formatHours(person.hours),
     personDays: formatDays(person.days),
-    cost: decimal(person.cost).toDecimalPlaces(2),
+    share: decimal(totalHours).gt(0) ? decimal(person.hours).div(totalHours).mul(100).toDecimalPlaces(1).toString() : "0",
+    entryCount: person.entryCount,
+    lastWorkDate: person.lastWorkDate,
   };
 }
 
-function formatRawCostEntry(entry) {
+function formatRawCostEntry(entry, plannedPersonDays) {
   return {
     id: entry.id,
     userId: entry.userId,
@@ -212,16 +201,15 @@ function formatRawCostEntry(entry) {
     personEmail: entry.personEmail,
     projectCode: entry.projectCode,
     projectName: entry.projectName,
+    plannedPersonDays: formatDays(plannedPersonDays),
     issueId: entry.issueId,
     issueCode: entry.issueCode,
     issueTitle: entry.issueTitle,
     workDate: entry.workDate,
     isoWeek: entry.isoWeek,
     hours: formatHours(entry.hoursDecimal),
+    standardHoursPerDay: entry.standardHoursPerDay,
     personDays: formatDays(entry.personDaysDecimal),
-    amountPerPersonDay: formatMoney(entry.amountPerPersonDayDecimal),
-    cost: formatMoney(entry.costDecimal),
-    currency: entry.currency,
     status: entry.status,
     reporter: entry.reporter,
     note: entry.note,
@@ -244,4 +232,12 @@ function userLabel(users, userId, fallback = "未知成员") {
 
 function userEmail(users, userId) {
   return users.find((user) => user.id === userId)?.email || "";
+}
+
+function formatUtcDate(date) {
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
 }

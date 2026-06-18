@@ -1,6 +1,7 @@
 .issue-table,
 .timesheet-table,
 .cost-table,
+.user-table,
 .pm-project-table,
 .data-table {
   display: grid;
@@ -15,6 +16,8 @@
 .timesheet-row,
 .cost-table-head,
 .cost-table-row,
+.user-table-head,
+.user-table-row,
 .pm-project-head,
 .pm-project-row,
 .data-table-head,
@@ -38,13 +41,20 @@
 
 .cost-table-head,
 .cost-table-row {
-  grid-template-columns: minmax(220px, 1.5fr) minmax(84px, 0.7fr) minmax(116px, 0.8fr) minmax(76px, 0.6fr) minmax(72px, 0.55fr) minmax(128px, 0.9fr) minmax(64px, 0.45fr) minmax(98px, 0.7fr) minmax(92px, 0.6fr);
-  min-width: 980px;
+  grid-template-columns: minmax(210px, 1.5fr) minmax(82px, 0.55fr) minmax(104px, 0.7fr) minmax(104px, 0.7fr) minmax(92px, 0.65fr) minmax(92px, 0.65fr) minmax(74px, 0.5fr) minmax(74px, 0.5fr) minmax(96px, 0.65fr) minmax(86px, 0.55fr);
+  min-width: 1120px;
+}
+
+.user-table-head,
+.user-table-row {
+  grid-template-columns: minmax(100px, 0.8fr) minmax(140px, 0.9fr) minmax(62px, 0.4fr) minmax(76px, 0.5fr) minmax(48px, 0.32fr) minmax(48px, 0.32fr) minmax(90px, 0.55fr) minmax(90px, 0.55fr) minmax(190px, 1.1fr);
+  min-width: 940px;
 }
 
 .issue-table-head,
 .timesheet-head,
 .cost-table-head,
+.user-table-head,
 .pm-project-head,
 .data-table-head {
   position: sticky;
@@ -60,6 +70,7 @@
 .issue-table-row,
 .timesheet-row,
 .cost-table-row,
+.user-table-row,
 .data-table-row {
   min-height: 44px;
   border: 1px solid var(--line);
@@ -72,8 +83,27 @@
   cursor: pointer;
 }
 
+.user-table-row {
+  cursor: pointer;
+  text-align: left;
+}
+
+.user-table-head > *,
+.user-table-row > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cost-table-row.is-overrun {
+  border-color: color-mix(in srgb, var(--red) 44%, var(--line));
+}
+
 .cost-table-row:hover,
-.cost-table-row:focus-visible {
+.cost-table-row:focus-visible,
+.user-table-row:hover,
+.user-table-row:focus-visible {
   border-color: var(--line-strong);
   outline: 0;
   background: var(--surface-subtle);
@@ -141,9 +171,12 @@
 }
 
 .cost-toolbar,
+.user-toolbar,
 .cost-detail-stack,
 .cost-section,
-.cost-edit-panel {
+.cost-edit-panel,
+.user-detail-stack,
+.user-detail-section {
   display: grid;
   gap: var(--space-150);
   min-width: 0;
@@ -154,15 +187,23 @@
   margin-bottom: var(--space-150);
 }
 
-.cost-summary-grid {
+.user-toolbar {
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 190px));
+  margin-bottom: var(--space-150);
+}
+
+.cost-summary-grid,
+.user-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-100);
 }
 
 .cost-summary-grid article,
+.user-summary-grid article,
 .cost-edit-panel,
-.cost-week-filter {
+.cost-week-filter,
+.user-detail-section {
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--surface-subtle);
@@ -170,14 +211,46 @@
 }
 
 .cost-summary-grid span,
+.user-summary-grid span,
 .cost-card-metrics span {
   color: var(--muted);
   font-size: var(--text-caption);
 }
 
-.cost-summary-grid strong {
+.cost-summary-grid strong,
+.user-summary-grid strong {
   display: block;
   margin-top: var(--space-050);
+}
+
+.user-summary-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-050);
+  white-space: normal;
+}
+
+.user-project-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-075);
+}
+
+.user-project-list span {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--muted);
+  padding: var(--space-050) var(--space-100);
+}
+
+.form-error {
+  color: var(--red);
+  font-size: var(--text-control);
 }
 
 .cost-week-filter {
@@ -305,6 +378,7 @@
 .issue-table-row small,
 .timesheet-row small,
 .cost-table-row small,
+.user-table-row small,
 .cost-raw-row small,
 .gantt-title small {
   display: block;

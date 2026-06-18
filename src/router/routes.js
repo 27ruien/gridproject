@@ -3,5 +3,6 @@ export const ROUTES = [
   { key: "projects", label: "项目库", icon: "projects" },
   { key: "timesheets", label: "工时填报", icon: "timesheets" },
   { key: "costs", label: "成本管理", icon: "costs" },
+  { key: "users", label: "人员管理", icon: "users" },
   { key: "settings", label: "平台设置", icon: "settings" },
 ];

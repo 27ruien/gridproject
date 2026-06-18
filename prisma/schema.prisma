@@ -55,12 +55,18 @@ model User {
   organizationId String
   name           String
   email          String
+  passwordHash   String
   role           OrganizationRole @default(MEMBER)
   status         UserStatus       @default(ACTIVE)
+  lastLoginAt    DateTime?
+  deletedAt      DateTime?
+  deletedById    String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  deletedBy    User?        @relation("UserDeletedBy", fields: [deletedById], references: [id])
+  deletedUsers User[]       @relation("UserDeletedBy")
   ownedProjects Project[]   @relation("ProjectOwner")
   createdProjects Project[] @relation("ProjectCreator")
   projectMemberships ProjectMember[]
@@ -68,11 +74,12 @@ model User {
   createdCostRecords ProjectCostRecord[] @relation("CostRecordCreator")
   updatedCostRecords ProjectCostRecord[] @relation("CostRecordUpdater")
   deletedCostRecords ProjectCostRecord[] @relation("CostRecordDeleter")
-  createdCostRates ProjectCostRate[]
   auditLogs AuditLog[]
+  sessions Session[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
+  @@index([organizationId, role])
   @@map("users")
 }
 
@@ -189,7 +196,7 @@ model ProjectCostRecord {
   id                  String           @id @default(cuid())
   organizationId       String
   projectId            String           @unique
-  currency             String           @default("CNY")
+  plannedPersonDays    Decimal          @db.Decimal(10, 2)
   standardHoursPerDay  Decimal          @default(8) @db.Decimal(5, 2)
   status               CostRecordStatus @default(ACTIVE)
   notes                String?
@@ -205,26 +212,9 @@ model ProjectCostRecord {
   createdBy    User         @relation("CostRecordCreator", fields: [createdById], references: [id])
   updatedBy    User         @relation("CostRecordUpdater", fields: [updatedById], references: [id])
   deletedBy    User?        @relation("CostRecordDeleter", fields: [deletedById], references: [id])
-  rates        ProjectCostRate[]
 
   @@index([organizationId, status])
   @@map("project_cost_records")
-}
-
-model ProjectCostRate {
-  id                   String   @id @default(cuid())
-  projectCostRecordId   String
-  amountPerPersonDay    Decimal  @db.Decimal(18, 2)
-  effectiveFrom         DateTime
-  effectiveTo           DateTime?
-  createdById           String
-  createdAt             DateTime @default(now())
-
-  projectCostRecord ProjectCostRecord @relation(fields: [projectCostRecordId], references: [id])
-  createdBy         User              @relation(fields: [createdById], references: [id])
-
-  @@index([projectCostRecordId, effectiveFrom])
-  @@map("project_cost_rates")
 }
 
 model AuditLog {
@@ -246,3 +236,17 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model Session {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  tokenHash      String
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, userId, revokedAt])
+  @@map("sessions")
+}

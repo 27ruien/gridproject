@@ -60,6 +60,20 @@ deletedAt IS NULL
 
 普通 ProjectMember 不显示成本管理入口，直接请求成本 API 返回 `403`。
 
+## User Management Permissions
+
+| Permission | ADMIN | MEMBER |
+| --- | --- | --- |
+| `user.view` | Yes | No |
+| `user.create` | Yes | No |
+| `user.update` | Yes | No |
+| `user.delete` | Yes | No |
+| `user.reset_password` | Yes | No |
+
+普通 MEMBER 不显示人员管理入口，直接访问 `/users` 时返回工作台或无权限页面，直接请求人员管理 API 返回 `403`。
+
+后端必须拒绝会导致组织内没有 ACTIVE ADMIN 的操作，并禁止管理员停用或删除自己当前正在使用的账号。
+
 ## Frontend Permission Shape
 
 项目详情接口应返回：
@@ -82,4 +96,3 @@ deletedAt IS NULL
 ```
 
 前端只做体验隐藏，后端必须再次验证权限。
-

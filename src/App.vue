@@ -105,12 +105,24 @@
         :users="store.users.value"
         :time-entries="store.timeEntries.value"
         :cost-records="store.costRecords.value"
-        :cost-rates="store.costRates.value"
         :context="store.currentContext.value"
         @create="createCostRecord"
         @update="updateCostRecord"
         @delete="deleteCostRecord"
         @export="exportCostRecord"
+      />
+
+      <UserManagementView
+        v-else-if="currentView === 'users'"
+        :users="store.users.value"
+        :projects="projects"
+        :project-members="store.projectMembers.value"
+        :time-entries="store.timeEntries.value"
+        :context="store.currentContext.value"
+        @create="createUser"
+        @update="updateUser"
+        @delete="deleteUser"
+        @reset-password="resetUserPassword"
       />
 
       <TrashView
@@ -219,6 +231,7 @@ import ProjectWorkspaceView from "./views/ProjectWorkspaceView.vue";
 import ProjectCreateView from "./views/ProjectCreateView.vue";
 import TimesheetView from "./views/TimesheetView.vue";
 import CostManagementView from "./views/CostManagementView.vue";
+import UserManagementView from "./views/UserManagementView.vue";
 import TrashView from "./views/TrashView.vue";
 import PlatformSettingsView from "./views/PlatformSettingsView.vue";
 import ProjectTable from "./components/project/ProjectTable.vue";
@@ -251,10 +264,6 @@ const isRestoringUrl = ref(false);
 const lastUrl = ref("");
 const searchPanelId = `search-results-${Math.random().toString(36).slice(2)}`;
 let searchTimer = 0;
-const currentManager = {
-  name: "林夏",
-  role: "项目经理",
-};
 
 const {
   templates,
@@ -280,6 +289,10 @@ const pageTitle = computed(() => {
   const route = routes.find((item) => item.key === currentView.value);
   return route?.label || "工作台";
 });
+const currentManager = computed(() => ({
+  name: store.currentUser.value.name,
+  role: store.currentUser.value.role === "ADMIN" ? "组织管理员" : "项目成员",
+}));
 
 const selectedIssue = computed(() => store.getIssue(selectedIssueId.value));
 const selectedIssueProject = computed(() => selectedIssue.value ? store.getProject(selectedIssue.value.projectId) : project.value);
@@ -288,7 +301,8 @@ const selectedIssueTimeEntries = computed(() => selectedIssue.value ? store.getI
 const editingProject = computed(() => editingProjectId.value ? store.getProject(editingProjectId.value) : null);
 const projectPermissions = computed(() => store.getProjectPermissions(project.value.id));
 const routesForUser = computed(() => routes.filter((route) => (
-  route.key !== "costs" || projects.value.some((entry) => store.getProjectPermissions(entry.id).canViewCost)
+  (route.key !== "costs" || projects.value.some((entry) => store.getProjectPermissions(entry.id).canViewCost)) &&
+  (route.key !== "users" || store.currentContext.value.isAdmin)
 )));
 const confirmDialog = ref({
   open: false,
@@ -335,6 +349,11 @@ watch([currentView, currentProjectId, activeView, selectedIssueId], () => syncUr
 watch([debouncedSearchText, workspaceFilterParam, workspaceSort, workspacePage, workspaceViewMode], () => syncUrlState("replace"));
 
 function setView(view) {
+  if (view === "users" && !store.currentContext.value.isAdmin) {
+    currentView.value = "dashboard";
+    showToast("没有权限访问人员管理");
+    return;
+  }
   currentView.value = view;
   selectedIssueId.value = null;
   closeSearch();
@@ -534,7 +553,7 @@ function createCostRecord(input) {
 
 function updateCostRecord(recordId, patch) {
   const result = store.updateCostRecord(recordId, patch);
-  showToast(result.ok ? "成本设置已保存，费率历史已更新" : result.message || "成本设置保存失败");
+  showToast(result.ok ? "成本设置已保存" : result.message || "成本设置保存失败");
 }
 
 function deleteCostRecord(recordId) {
@@ -545,6 +564,27 @@ function deleteCostRecord(recordId) {
 function exportCostRecord(recordId, filter) {
   const result = store.recordCostExport(recordId, filter);
   showToast(result.ok ? "已记录导出请求；后端 /api/cost-records/:id/export 将生成 Excel" : "导出失败");
+}
+
+async function createUser(input) {
+  const result = await store.createUser(input);
+  showToast(result.ok ? "人员已创建" : result.message || "人员创建失败");
+}
+
+function updateUser(userId, patch) {
+  const result = store.updateUser(userId, patch);
+  showToast(result.ok ? "人员信息已保存" : result.message || "人员更新失败");
+}
+
+function deleteUser(userId) {
+  const result = store.deleteUser(userId);
+  const transferList = result.projects?.length ? `：${result.projects.map((item) => item.name).join("、")}` : "";
+  showToast(result.ok ? "人员已停用并软删除" : `${result.message || "人员删除失败"}${transferList}`);
+}
+
+async function resetUserPassword(userId, input) {
+  const result = await store.resetUserPassword(userId, input);
+  showToast(result.ok ? "密码已重置，现有 Session 已失效" : result.message || "密码重置失败");
 }
 
 function setIssueStatus(issueId, status) {
@@ -663,7 +703,10 @@ function applyUrlState(params) {
   workspacePage.value = params.get("page") || "";
   workspaceViewMode.value = params.get("viewMode") || "";
   if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
-  if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) currentView.value = view;
+  if (window.location.pathname === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
+  if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) {
+    currentView.value = view === "users" && !store.currentContext.value.isAdmin ? "dashboard" : view;
+  }
   if (tab) activeView.value = tab;
   selectedIssueId.value = issueId && store.getIssue(issueId) ? issueId : null;
   window.setTimeout(() => {
