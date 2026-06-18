@@ -23,6 +23,10 @@ const visualCases = [
   ["board", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF"],
   ["gantt", "/?view=project&project=crm&tab=%E7%94%98%E7%89%B9%E5%9B%BE"],
   ["timesheets", "/?view=timesheets"],
+  ["costs", "/?view=costs"],
+  ["cost-detail", "/?view=costs", async (page) => {
+    await page.getByRole("button", { name: "查看详情" }).first().click();
+  }],
   ["long-text", "/?qa=long&view=dashboard"],
   ["bulk-gantt", "/?qa=bulk&view=project&project=crm&tab=%E7%94%98%E7%89%B9%E5%9B%BE"],
   ["empty-dashboard", "/?qa=empty&view=dashboard"],
@@ -74,6 +78,7 @@ test.describe("visual baselines", () => {
     ["board-mobile", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", ".board-mobile-list"],
     ["gantt-mobile", "/?view=project&project=crm&tab=%E7%94%98%E7%89%B9%E5%9B%BE", ".gantt-mobile-list"],
     ["timesheets-mobile", "/?view=timesheets", ".timesheet-mobile-list"],
+    ["costs-mobile", "/?view=costs", ".cost-mobile-list"],
   ]) {
     test(`${name} 390 viewport and full page`, async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });
@@ -160,6 +165,8 @@ async function assertPageHealth(page) {
       ".data-table",
       ".issue-table",
       ".timesheet-table",
+      ".cost-table",
+      ".cost-raw-table",
       ".pm-project-table",
       ".segmented-control",
       ".project-tabs",

@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  ADMIN
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProjectMemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TimeEntryStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum CostRecordStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  projects         Project[]
+  projectMembers   ProjectMember[]
+  timeEntries      TimeEntry[]
+  projectCostRecords ProjectCostRecord[]
+  auditLogs        AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  email          String
+  role           OrganizationRole @default(MEMBER)
+  status         UserStatus       @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  ownedProjects Project[]   @relation("ProjectOwner")
+  createdProjects Project[] @relation("ProjectCreator")
+  projectMemberships ProjectMember[]
+  timeEntries TimeEntry[]
+  createdCostRecords ProjectCostRecord[] @relation("CostRecordCreator")
+  updatedCostRecords ProjectCostRecord[] @relation("CostRecordUpdater")
+  deletedCostRecords ProjectCostRecord[] @relation("CostRecordDeleter")
+  createdCostRates ProjectCostRate[]
+  auditLogs AuditLog[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@map("users")
+}
+
+model Project {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  code           String
+  description    String?
+  status         String
+  health         Int       @default(90)
+  startDate      DateTime?
+  dueDate        DateTime?
+  testDate       DateTime?
+  acceptanceDate DateTime?
+  releaseDate    DateTime?
+  config         Json?
+  ownerId        String
+  createdById    String
+  deletedAt      DateTime?
+  deletedById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  owner        User         @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdBy    User         @relation("ProjectCreator", fields: [createdById], references: [id])
+  members      ProjectMember[]
+  issues       Issue[]
+  timeEntries  TimeEntry[]
+  costRecord   ProjectCostRecord?
+
+  @@unique([organizationId, code])
+  @@index([organizationId, deletedAt])
+  @@index([ownerId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id             String              @id @default(cuid())
+  organizationId String
+  projectId      String
+  userId         String
+  status         ProjectMemberStatus @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@index([organizationId, status])
+  @@map("project_members")
+}
+
+model Issue {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  code           String
+  title          String
+  type           String
+  status         String
+  ownerId        String?
+  creatorId      String?
+  priority       String?
+  startDate      DateTime?
+  dueDate        DateTime?
+  estimatedHours Decimal? @db.Decimal(10, 2)
+  actualHours    Decimal? @db.Decimal(10, 2)
+  description    String?
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project     Project     @relation(fields: [projectId], references: [id])
+  timeEntries TimeEntry[]
+
+  @@unique([projectId, code])
+  @@index([organizationId, projectId])
+  @@map("issues")
+}
+
+model TimeEntry {
+  id             String          @id @default(cuid())
+  organizationId String
+  projectId      String
+  issueId        String?
+  userId         String
+  reporterId     String
+  workDate       DateTime
+  hours          Decimal         @db.Decimal(10, 2)
+  status         TimeEntryStatus @default(DRAFT)
+  description    String?
+  correctionReason String?
+  deletedAt      DateTime?
+  deletedById    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id])
+  issue        Issue?       @relation(fields: [issueId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([projectId, workDate, status])
+  @@index([projectId, userId, workDate])
+  @@index([organizationId, status])
+  @@map("time_entries")
+}
+
+model ProjectCostRecord {
+  id                  String           @id @default(cuid())
+  organizationId       String
+  projectId            String           @unique
+  currency             String           @default("CNY")
+  standardHoursPerDay  Decimal          @default(8) @db.Decimal(5, 2)
+  status               CostRecordStatus @default(ACTIVE)
+  notes                String?
+  createdById          String
+  updatedById          String
+  deletedAt            DateTime?
+  deletedById          String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id])
+  createdBy    User         @relation("CostRecordCreator", fields: [createdById], references: [id])
+  updatedBy    User         @relation("CostRecordUpdater", fields: [updatedById], references: [id])
+  deletedBy    User?        @relation("CostRecordDeleter", fields: [deletedById], references: [id])
+  rates        ProjectCostRate[]
+
+  @@index([organizationId, status])
+  @@map("project_cost_records")
+}
+
+model ProjectCostRate {
+  id                   String   @id @default(cuid())
+  projectCostRecordId   String
+  amountPerPersonDay    Decimal  @db.Decimal(18, 2)
+  effectiveFrom         DateTime
+  effectiveTo           DateTime?
+  createdById           String
+  createdAt             DateTime @default(now())
+
+  projectCostRecord ProjectCostRecord @relation(fields: [projectCostRecordId], references: [id])
+  createdBy         User              @relation(fields: [createdById], references: [id])
+
+  @@index([projectCostRecordId, effectiveFrom])
+  @@map("project_cost_rates")
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String
+  action         String
+  entityType     String
+  entityId       String
+  data           Json?
+  requestId      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  actor        User         @relation(fields: [actorId], references: [id])
+
+  @@index([organizationId, entityType, entityId])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}
+

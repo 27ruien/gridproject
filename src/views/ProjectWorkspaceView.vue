@@ -36,14 +36,14 @@
       </div>
 
       <div class="project-hero-actions">
-        <label class="project-status-select">
+        <label v-if="permissions.canUpdate" class="project-status-select">
           <span>项目状态</span>
           <select :value="project.status" @change="$emit('update-project', project.id, { status: $event.target.value })">
             <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
           </select>
         </label>
-        <Button variant="ghost" size="small" @click="$emit('edit-project', project.id)">编辑项目</Button>
-        <OverflowMenu>
+        <Button v-if="permissions.canUpdate" variant="ghost" size="small" @click="$emit('edit-project', project.id)">编辑项目</Button>
+        <OverflowMenu v-if="permissions.canDelete">
           <template #default="{ close }">
             <Button variant="danger" size="small" @click="close(); $emit('delete-project', project.id)">删除项目</Button>
           </template>
@@ -52,7 +52,7 @@
     </header>
 
     <div class="project-toolbar">
-      <Tabs v-model="activeView" :items="template.views" id-base="project-workspace-tabs" />
+      <Tabs v-model="activeView" :items="availableViews" id-base="project-workspace-tabs" />
       <div class="project-toolbar-actions">
         <Button variant="ghost" size="small" @click="$emit('import-schedule')">导入排期</Button>
         <Button variant="primary" size="small" @click="$emit('create-issue')">新建事项</Button>
@@ -226,6 +226,7 @@ const props = defineProps({
   summary: { type: Object, required: true },
   visibleIssues: { type: Array, required: true },
   people: { type: Array, required: true },
+  permissions: { type: Object, required: true },
   urlFilters: { type: Object, default: () => ({}) },
   sort: { type: String, default: "" },
   page: { type: String, default: "" },
@@ -255,6 +256,7 @@ const issueViewMode = ref(props.viewMode || "");
 
 const filteredIssues = computed(() => sortIssues(filterIssues(props.issues, filters)));
 const filteredVisibleIssues = computed(() => sortIssues(filterIssues(props.visibleIssues, filters)));
+const availableViews = computed(() => props.template.views.filter((view) => props.permissions.canViewBoard || !["看板", "阶段计划"].includes(view)));
 const normalizedViewMode = computed(() => issueViewMode.value === "compact" ? "compact" : "comfortable");
 const pageSize = computed(() => pageSizes[normalizedViewMode.value]);
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredVisibleIssues.value.length / pageSize.value)));
@@ -265,6 +267,10 @@ const paginatedVisibleIssues = computed(() => {
 });
 const projectAlerts = computed(() => getProjectAlerts(filteredIssues.value));
 const recentActivities = computed(() => getProjectActivities(props.issues));
+
+watch(availableViews, (views) => {
+  if (!views.includes(activeView.value)) activeView.value = views[0] || "概览";
+}, { immediate: true });
 
 watch(() => props.urlFilters, (nextFilters) => {
   applyingUrlState = true;

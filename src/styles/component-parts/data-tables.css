@@ -1,5 +1,6 @@
 .issue-table,
 .timesheet-table,
+.cost-table,
 .pm-project-table,
 .data-table {
   display: grid;
@@ -12,6 +13,8 @@
 .issue-table-row,
 .timesheet-head,
 .timesheet-row,
+.cost-table-head,
+.cost-table-row,
 .pm-project-head,
 .pm-project-row,
 .data-table-head,
@@ -33,8 +36,15 @@
   min-width: 920px;
 }
 
+.cost-table-head,
+.cost-table-row {
+  grid-template-columns: minmax(220px, 1.5fr) minmax(84px, 0.7fr) minmax(116px, 0.8fr) minmax(76px, 0.6fr) minmax(72px, 0.55fr) minmax(128px, 0.9fr) minmax(64px, 0.45fr) minmax(98px, 0.7fr) minmax(92px, 0.6fr);
+  min-width: 980px;
+}
+
 .issue-table-head,
 .timesheet-head,
+.cost-table-head,
 .pm-project-head,
 .data-table-head {
   position: sticky;
@@ -49,12 +59,29 @@
 
 .issue-table-row,
 .timesheet-row,
+.cost-table-row,
 .data-table-row {
   min-height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   background: var(--surface);
   padding: var(--space-100) var(--space-150);
+}
+
+.cost-table-row {
+  cursor: pointer;
+}
+
+.cost-table-row:hover,
+.cost-table-row:focus-visible {
+  border-color: var(--line-strong);
+  outline: 0;
+  background: var(--surface-subtle);
+}
+
+.table-action-text {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .issue-table.density-compact .issue-table-head,
@@ -94,6 +121,7 @@
 
 .issue-mobile-list,
 .timesheet-mobile-list,
+.cost-mobile-list,
 .project-mobile-list,
 .board-mobile-list {
   display: none;
@@ -101,6 +129,7 @@
 
 .issue-mobile-card,
 .timesheet-mobile-card,
+.cost-mobile-card,
 .project-mobile-card,
 .board-mobile-group {
   border: 1px solid var(--line);
@@ -108,6 +137,124 @@
   background: var(--surface);
   padding: var(--space-150);
   display: grid;
+  gap: var(--space-100);
+}
+
+.cost-toolbar,
+.cost-detail-stack,
+.cost-section,
+.cost-edit-panel {
+  display: grid;
+  gap: var(--space-150);
+  min-width: 0;
+}
+
+.cost-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  margin-bottom: var(--space-150);
+}
+
+.cost-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-100);
+}
+
+.cost-summary-grid article,
+.cost-edit-panel,
+.cost-week-filter {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+  padding: var(--space-150);
+}
+
+.cost-summary-grid span,
+.cost-card-metrics span {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.cost-summary-grid strong {
+  display: block;
+  margin-top: var(--space-050);
+}
+
+.cost-week-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-150);
+}
+
+.cost-people-list,
+.top-cost-list,
+.cost-raw-table {
+  display: grid;
+  gap: var(--space-075);
+  min-width: 0;
+}
+
+.cost-person-row,
+.top-cost-row,
+.cost-raw-head,
+.cost-raw-row {
+  display: grid;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+
+.cost-person-row {
+  grid-template-columns: minmax(160px, 1.4fr) minmax(72px, 0.5fr) minmax(92px, 0.7fr) minmax(120px, 0.9fr) minmax(56px, 0.4fr);
+}
+
+.top-cost-row {
+  position: relative;
+  grid-template-columns: 28px minmax(90px, 0.8fr) minmax(120px, 1fr) minmax(110px, 0.8fr);
+  overflow: hidden;
+}
+
+.top-cost-row i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.cost-raw-head,
+.cost-raw-row {
+  grid-template-columns: minmax(92px, 0.7fr) minmax(76px, 0.55fr) minmax(180px, 1.5fr) minmax(56px, 0.45fr) minmax(116px, 0.8fr) minmax(108px, 0.8fr) minmax(78px, 0.55fr);
+  min-width: 760px;
+}
+
+.cost-person-row,
+.top-cost-row,
+.cost-raw-row {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  padding: var(--space-100) var(--space-150);
+}
+
+.cost-raw-head {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  padding: var(--space-100) var(--space-150);
+}
+
+.cost-mobile-card {
+  gap: var(--space-125);
+}
+
+.cost-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-100);
 }
 
@@ -157,6 +304,8 @@
 
 .issue-table-row small,
 .timesheet-row small,
+.cost-table-row small,
+.cost-raw-row small,
 .gantt-title small {
   display: block;
   overflow: hidden;

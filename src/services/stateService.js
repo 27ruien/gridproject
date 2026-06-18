@@ -5,11 +5,17 @@ import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 import { normalizeTrashItem } from "../domain/trash.js";
 import { getTemplateById } from "../domain/template.js";
 import { normalizeMilestones } from "../domain/milestone.js";
+import { DEMO_USERS, ORGANIZATION_ID, PROJECT_MEMBER_STATUS, ensureProjectOwnerMembership, userIdForName, userNameForId } from "../domain/access.js";
 
 export const STORAGE_KEY = "kiviflow-platform-state-v1";
 const LEGACY_STORAGE_KEY = "kiviflow-vue-mvp-state";
 
 const seedState = {
+  organization: {
+    id: ORGANIZATION_ID,
+    name: "GridProject Dev Organization",
+  },
+  users: DEMO_USERS,
   settings: {
     platformName: "KiviFlow",
     logoText: "K",
@@ -17,8 +23,11 @@ const seedState = {
   projects: [
     {
       id: "crm",
+      organizationId: ORGANIZATION_ID,
       name: "CRM 线索协同",
+      code: "CRM",
       templateId: "agile",
+      ownerId: "user-linxia",
       owner: "林夏",
       status: "开发阶段",
       startDate: "2026-05-01",
@@ -33,8 +42,11 @@ const seedState = {
     },
     {
       id: "mall",
+      organizationId: ORGANIZATION_ID,
       name: "商场 AR 交付",
+      code: "MALL",
       templateId: "waterfall",
+      ownerId: "user-hanyue",
       owner: "韩越",
       status: "验收阶段",
       startDate: "2026-04-28",
@@ -49,8 +61,11 @@ const seedState = {
     },
     {
       id: "ai",
+      organizationId: ORGANIZATION_ID,
       name: "AI 试衣平台",
+      code: "AI",
       templateId: "agile",
+      ownerId: "user-zhoucheng",
       owner: "周程",
       status: "测试阶段",
       startDate: "2026-05-06",
@@ -152,10 +167,41 @@ const seedState = {
     },
   ],
   timeEntries: [
-    { id: "t1", projectId: "crm", issueId: "i1", reporter: "林夏", spentDate: "2026-05-12", hours: 4, note: "补充批量分配业务规则" },
-    { id: "t2", projectId: "crm", issueId: "i2", reporter: "周程", spentDate: "2026-05-13", hours: 6, note: "燃尽图接口联调" },
-    { id: "t3", projectId: "mall", issueId: "i4", reporter: "韩越", spentDate: "2026-05-11", hours: 3, note: "整理客户需求确认材料" },
+    { id: "t1", organizationId: ORGANIZATION_ID, projectId: "crm", issueId: "i1", userId: "user-linxia", reporter: "林夏", workDate: "2026-05-12", spentDate: "2026-05-12", hours: 4, status: "APPROVED", note: "补充批量分配业务规则" },
+    { id: "t2", organizationId: ORGANIZATION_ID, projectId: "crm", issueId: "i2", userId: "user-zhoucheng", reporter: "周程", workDate: "2026-05-13", spentDate: "2026-05-13", hours: 6, status: "SUBMITTED", note: "燃尽图接口联调" },
+    { id: "t3", organizationId: ORGANIZATION_ID, projectId: "mall", issueId: "i4", userId: "user-hanyue", reporter: "韩越", workDate: "2026-05-11", spentDate: "2026-05-11", hours: 3, status: "APPROVED", note: "整理客户需求确认材料" },
+    { id: "t4", organizationId: ORGANIZATION_ID, projectId: "crm", issueId: "i3", userId: "user-hanyue", reporter: "韩越", workDate: "2026-05-14", spentDate: "2026-05-14", hours: 2, status: "DRAFT", note: "草稿不计入成本" },
   ],
+  projectMembers: [
+    { id: "pm-crm-linxia", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-linxia", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-05-01T00:00:00.000Z" },
+    { id: "pm-crm-zhoucheng", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-zhoucheng", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-05-01T00:00:00.000Z" },
+    { id: "pm-crm-hanyue", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-hanyue", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-05-01T00:00:00.000Z" },
+    { id: "pm-mall-hanyue", organizationId: ORGANIZATION_ID, projectId: "mall", userId: "user-hanyue", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-04-28T00:00:00.000Z" },
+    { id: "pm-mall-chenche", organizationId: ORGANIZATION_ID, projectId: "mall", userId: "user-chenche", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-04-28T00:00:00.000Z" },
+    { id: "pm-ai-zhoucheng", organizationId: ORGANIZATION_ID, projectId: "ai", userId: "user-zhoucheng", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-05-06T00:00:00.000Z" },
+    { id: "pm-ai-linxia", organizationId: ORGANIZATION_ID, projectId: "ai", userId: "user-linxia", status: PROJECT_MEMBER_STATUS.ACTIVE, createdAt: "2026-05-06T00:00:00.000Z" },
+  ],
+  costRecords: [
+    {
+      id: "cost-crm",
+      organizationId: ORGANIZATION_ID,
+      projectId: "crm",
+      currency: "CNY",
+      standardHoursPerDay: 8,
+      status: "ACTIVE",
+      notes: "CRM 项目固定人天成本，默认纳入已提交和已审批工时。",
+      createdById: "user-linxia",
+      updatedById: "user-linxia",
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-15T00:00:00.000Z",
+      deletedAt: null,
+      deletedById: null,
+    },
+  ],
+  costRates: [
+    { id: "rate-crm-1", projectCostRecordId: "cost-crm", amountPerPersonDay: 1200, effectiveFrom: "2026-05-01", effectiveTo: null, createdById: "user-linxia", createdAt: "2026-05-01T00:00:00.000Z" },
+  ],
+  auditLogs: [],
   trash: [],
 };
 
@@ -175,6 +221,12 @@ export const stateService = {
       projects: state.projects,
       issues: state.issues,
       timeEntries: state.timeEntries,
+      projectMembers: state.projectMembers,
+      costRecords: state.costRecords,
+      costRates: state.costRates,
+      auditLogs: state.auditLogs,
+      users: state.users,
+      organization: state.organization,
       trash: state.trash,
       settings: state.settings,
     }));
@@ -184,10 +236,16 @@ export const stateService = {
 function normalizeState(rawState) {
   const issues = rawState.issues || rawState.items || seedState.issues;
   return {
+    organization: rawState.organization || seedState.organization,
+    users: normalizeUsers(rawState.users || seedState.users),
     settings: normalizeSettings(rawState.settings || seedState.settings),
     projects: (rawState.projects || seedState.projects).map(normalizeProject),
     issues: issues.map(normalizeIssue),
     timeEntries: (rawState.timeEntries || seedState.timeEntries).map(normalizeTimeEntry),
+    projectMembers: normalizeProjectMembers(rawState.projectMembers, rawState.projects || seedState.projects),
+    costRecords: normalizeCostRecords(rawState.costRecords || seedState.costRecords),
+    costRates: normalizeCostRates(rawState.costRates || seedState.costRates),
+    auditLogs: rawState.auditLogs || seedState.auditLogs,
     trash: (rawState.trash || seedState.trash).map(normalizeTrashItem),
   };
 }
@@ -203,11 +261,15 @@ function normalizeProject(project) {
   const today = new Date().toISOString().slice(0, 10);
   const template = getTemplateById(project.templateId || "agile");
   const startDate = project.startDate || today;
+  const ownerId = project.ownerId || userIdForName(seedState.users, project.owner) || "user-linxia";
   return {
     id: project.id,
+    organizationId: project.organizationId || ORGANIZATION_ID,
     name: project.name || "未命名项目",
+    code: project.code || project.id?.toUpperCase() || "PROJECT",
     templateId: template.id,
-    owner: project.owner || "未分配",
+    ownerId,
+    owner: project.owner || userNameForId(seedState.users, ownerId),
     status: normalizeProjectStatus(project.status),
     startDate,
     dueDate: project.dueDate || today,
@@ -217,9 +279,66 @@ function normalizeProject(project) {
     milestones: normalizeMilestones(project.milestones, template, startDate),
     health: Number.isFinite(project.health) ? project.health : 90,
     description: project.description || "暂无项目说明。",
+    createdById: project.createdById || ownerId,
+    deletedAt: project.deletedAt || null,
+    deletedById: project.deletedById || null,
     createdAt: project.createdAt || new Date().toISOString(),
     updatedAt: project.updatedAt || new Date().toISOString(),
   };
+}
+
+function normalizeUsers(users) {
+  return users.map((user) => ({
+    id: user.id,
+    organizationId: user.organizationId || ORGANIZATION_ID,
+    name: user.name || "未命名成员",
+    email: user.email || `${user.id || "user"}@gridproject.local`,
+    role: user.role === "ADMIN" ? "ADMIN" : "MEMBER",
+    status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+  }));
+}
+
+function normalizeProjectMembers(projectMembers, rawProjects) {
+  const normalizedProjects = rawProjects.map(normalizeProject);
+  const baseMembers = (projectMembers || seedState.projectMembers).map((member) => ({
+    id: member.id || `pm-${member.projectId}-${member.userId}`,
+    organizationId: member.organizationId || ORGANIZATION_ID,
+    projectId: member.projectId,
+    userId: member.userId,
+    status: member.status || PROJECT_MEMBER_STATUS.ACTIVE,
+    createdAt: member.createdAt || new Date().toISOString(),
+  }));
+  return normalizedProjects.reduce((members, project) => ensureProjectOwnerMembership(project, members), baseMembers);
+}
+
+function normalizeCostRecords(records) {
+  return records.map((record) => ({
+    id: record.id,
+    organizationId: record.organizationId || ORGANIZATION_ID,
+    projectId: record.projectId,
+    currency: record.currency || "CNY",
+    standardHoursPerDay: Number(record.standardHoursPerDay) || 8,
+    status: record.status || "ACTIVE",
+    notes: record.notes || "",
+    createdById: record.createdById || "user-linxia",
+    updatedById: record.updatedById || record.createdById || "user-linxia",
+    createdAt: record.createdAt || new Date().toISOString(),
+    updatedAt: record.updatedAt || record.createdAt || new Date().toISOString(),
+    deletedAt: record.deletedAt || null,
+    deletedById: record.deletedById || null,
+  }));
+}
+
+function normalizeCostRates(rates) {
+  return rates.map((rate) => ({
+    id: rate.id,
+    projectCostRecordId: rate.projectCostRecordId,
+    amountPerPersonDay: Number(rate.amountPerPersonDay) || 0,
+    effectiveFrom: rate.effectiveFrom || new Date().toISOString().slice(0, 10),
+    effectiveTo: rate.effectiveTo || null,
+    createdById: rate.createdById || "user-linxia",
+    createdAt: rate.createdAt || new Date().toISOString(),
+  }));
 }
 
 function normalizeProjectStatus(status) {

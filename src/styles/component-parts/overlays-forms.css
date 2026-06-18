@@ -151,6 +151,10 @@
   transform: translateX(0);
 }
 
+.detail-panel.cost-detail-panel {
+  width: min(max(50vw, 720px), 960px);
+}
+
 .drawer-head {
   min-height: 64px;
   display: flex;

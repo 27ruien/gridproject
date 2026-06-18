@@ -1,6 +1,6 @@
 <template>
   <AppShell
-    :routes="routes"
+    :routes="routesForUser"
     :current-view="currentView"
     :settings="settings"
     :manager="currentManager"
@@ -98,6 +98,21 @@
         @update="updateTimeEntry"
       />
 
+      <CostManagementView
+        v-else-if="currentView === 'costs'"
+        :projects="projects"
+        :issues="store.issues.value"
+        :users="store.users.value"
+        :time-entries="store.timeEntries.value"
+        :cost-records="store.costRecords.value"
+        :cost-rates="store.costRates.value"
+        :context="store.currentContext.value"
+        @create="createCostRecord"
+        @update="updateCostRecord"
+        @delete="deleteCostRecord"
+        @export="exportCostRecord"
+      />
+
       <TrashView
         v-else-if="currentView === 'trash'"
         :trash="store.trash.value"
@@ -119,6 +134,7 @@
         :summary="summary"
         :visible-issues="visibleIssues"
         :people="people"
+        :permissions="projectPermissions"
         :url-filters="workspaceUrlFilters"
         :sort="workspaceSort"
         :page="workspacePage"
@@ -202,6 +218,7 @@ import DashboardView from "./views/DashboardView.vue";
 import ProjectWorkspaceView from "./views/ProjectWorkspaceView.vue";
 import ProjectCreateView from "./views/ProjectCreateView.vue";
 import TimesheetView from "./views/TimesheetView.vue";
+import CostManagementView from "./views/CostManagementView.vue";
 import TrashView from "./views/TrashView.vue";
 import PlatformSettingsView from "./views/PlatformSettingsView.vue";
 import ProjectTable from "./components/project/ProjectTable.vue";
@@ -269,6 +286,10 @@ const selectedIssueProject = computed(() => selectedIssue.value ? store.getProje
 const selectedIssueTemplate = computed(() => selectedIssueProject.value ? store.getTemplate(selectedIssueProject.value.templateId) : templates.value[0]);
 const selectedIssueTimeEntries = computed(() => selectedIssue.value ? store.getIssueTimeEntries(selectedIssue.value.id) : []);
 const editingProject = computed(() => editingProjectId.value ? store.getProject(editingProjectId.value) : null);
+const projectPermissions = computed(() => store.getProjectPermissions(project.value.id));
+const routesForUser = computed(() => routes.filter((route) => (
+  route.key !== "costs" || projects.value.some((entry) => store.getProjectPermissions(entry.id).canViewCost)
+)));
 const confirmDialog = ref({
   open: false,
   title: "",
@@ -504,6 +525,26 @@ function updateTimeEntry(entryId, patch) {
     return;
   }
   showToast("工时已更新");
+}
+
+function createCostRecord(input) {
+  const result = store.createCostRecord(input);
+  showToast(result.ok ? "成本管理记录已创建" : result.message || "成本管理记录创建失败");
+}
+
+function updateCostRecord(recordId, patch) {
+  const result = store.updateCostRecord(recordId, patch);
+  showToast(result.ok ? "成本设置已保存，费率历史已更新" : result.message || "成本设置保存失败");
+}
+
+function deleteCostRecord(recordId) {
+  const result = store.deleteCostRecord(recordId);
+  showToast(result.ok ? "成本记录已归档" : result.message || "成本记录归档失败");
+}
+
+function exportCostRecord(recordId, filter) {
+  const result = store.recordCostExport(recordId, filter);
+  showToast(result.ok ? "已记录导出请求；后端 /api/cost-records/:id/export 将生成 Excel" : "导出失败");
 }
 
 function setIssueStatus(issueId, status) {

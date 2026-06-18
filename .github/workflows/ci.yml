@@ -24,6 +24,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Prisma schema validate
+        run: npm run db:validate
+
       - name: Build
         run: npm run build
 

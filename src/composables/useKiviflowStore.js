@@ -4,8 +4,12 @@ import { issueService } from "../services/issueService.js";
 import { templateService } from "../services/templateService.js";
 import { stateService } from "../services/stateService.js";
 import { timeEntryService } from "../services/timeEntryService.js";
+import { costService } from "../services/costService.js";
 import { isClosedStatus } from "../domain/workflow.js";
 import { createTrashItem, isTrashRestorable } from "../domain/trash.js";
+import { buildAccessContext, userIdForName, userNameForId } from "../domain/access.js";
+import { calculateProjectCost } from "../domain/cost.js";
+import { ProjectAccessPolicy } from "../server/policies/projectAccessPolicy.js";
 
 const state = reactive(stateService.load());
 
@@ -16,9 +20,16 @@ export function useKiviflowStore() {
   const projects = computed(() => state.projects);
   const issues = computed(() => state.issues);
   const timeEntries = computed(() => state.timeEntries);
+  const users = computed(() => state.users);
+  const projectMembers = computed(() => state.projectMembers);
+  const costRecords = computed(() => state.costRecords);
+  const costRates = computed(() => state.costRates);
+  const auditLogs = computed(() => state.auditLogs);
   const trash = computed(() => state.trash);
   const settings = computed(() => state.settings);
   const people = computed(() => projectService.people());
+  const currentUser = computed(() => users.value.find((user) => user.id === "user-linxia") || users.value[0]);
+  const currentContext = computed(() => buildAccessContext(currentUser.value, state.organization.id));
 
   const openIssues = computed(() => issues.value.filter((issue) => !isClosedStatus(issue.status)));
   const agileProjects = computed(() => projects.value.filter((project) => project.templateId === "agile"));
@@ -35,6 +46,10 @@ export function useKiviflowStore() {
 
   function getProject(projectId) {
     return projects.value.find((project) => project.id === projectId) || projects.value[0];
+  }
+
+  function getProjectPermissions(projectId) {
+    return ProjectAccessPolicy.permissionsForProject(currentContext.value, getProject(projectId), projectMembers.value);
   }
 
   function getIssue(issueId) {
@@ -59,9 +74,27 @@ export function useKiviflowStore() {
   }
 
   function createProject(input) {
-    const project = projectService.createProject(input);
+    const ownerId = input.ownerId || userIdForName(users.value, input.owner) || currentUser.value.id;
+    const project = {
+      ...projectService.createProject({ ...input, owner: userNameForId(users.value, ownerId) }),
+      organizationId: state.organization.id,
+      code: input.code || `P${Date.now().toString().slice(-5)}`,
+      ownerId,
+      createdById: currentUser.value.id,
+      deletedAt: null,
+      deletedById: null,
+    };
     const seedIssues = issueService.createSeedIssues(project);
     state.projects.unshift(project);
+    state.projectMembers.unshift({
+      id: `pm-${project.id}-${ownerId}`,
+      organizationId: state.organization.id,
+      projectId: project.id,
+      userId: ownerId,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+    });
+    state.auditLogs.unshift(createAuditLog("project.create", "Project", project.id, { ownerId }));
     state.issues.unshift(...seedIssues);
     return project;
   }
@@ -70,8 +103,12 @@ export function useKiviflowStore() {
     const index = state.projects.findIndex((project) => project.id === projectId);
     if (index < 0) return null;
 
-    const project = projectService.updateProject(state.projects[index], patch);
+    const nextPatch = { ...patch };
+    if (patch.owner) nextPatch.ownerId = userIdForName(users.value, patch.owner) || state.projects[index].ownerId;
+    const project = projectService.updateProject(state.projects[index], nextPatch);
     state.projects.splice(index, 1, project);
+    if (nextPatch.ownerId) ensureProjectMember(project.id, nextPatch.ownerId);
+    state.auditLogs.unshift(createAuditLog("project.update", "Project", project.id, patch));
     return project;
   }
 
@@ -183,6 +220,9 @@ export function useKiviflowStore() {
     const project = getProject(issue.projectId);
     const entry = timeEntryService.create(input, issue, project);
     if (!entry.hours) return null;
+    entry.organizationId = state.organization.id;
+    entry.userId = userIdForName(users.value, entry.reporter) || currentUser.value.id;
+    entry.workDate = entry.spentDate;
 
     state.timeEntries.unshift(entry);
     updateIssue(issueId, {
@@ -230,6 +270,96 @@ export function useKiviflowStore() {
     return updated;
   }
 
+  function listCostRecords(options = {}) {
+    return costService.listCostRecords({
+      context: currentContext.value,
+      projects: projects.value,
+      users: users.value,
+      records: costRecords.value,
+      rates: costRates.value,
+      timeEntries: timeEntries.value,
+      issues: issues.value,
+      ...options,
+    });
+  }
+
+  function getCostRecord(recordId) {
+    return costRecords.value.find((record) => record.id === recordId && !record.deletedAt) || null;
+  }
+
+  function getProjectCostRecord(projectId) {
+    return costRecords.value.find((record) => record.projectId === projectId && record.status === "ACTIVE" && !record.deletedAt) || null;
+  }
+
+  function getCostSummary(recordId, filter = {}) {
+    const record = getCostRecord(recordId);
+    if (!record) return null;
+    const project = getProject(record.projectId);
+    return calculateProjectCost({
+      project,
+      record,
+      rates: costRates.value.filter((rate) => rate.projectCostRecordId === record.id),
+      timeEntries: timeEntries.value,
+      issues: issues.value,
+      users: users.value,
+      filter,
+    });
+  }
+
+  function createCostRecord(input) {
+    const project = getProject(input.projectId);
+    const result = costService.createCostRecord({
+      context: currentContext.value,
+      input,
+      project,
+      records: costRecords.value,
+    });
+    if (!result.ok) return result;
+    state.costRecords.unshift(result.record);
+    state.costRates.unshift(result.rate);
+    state.auditLogs.unshift(result.auditLog);
+    return result;
+  }
+
+  function updateCostRecord(recordId, patch) {
+    const index = state.costRecords.findIndex((record) => record.id === recordId);
+    if (index < 0) return { ok: false, reason: "not-found" };
+    const record = state.costRecords[index];
+    const project = getProject(record.projectId);
+    const recordRates = state.costRates.filter((rate) => rate.projectCostRecordId === record.id);
+    const result = costService.updateCostRecord({
+      context: currentContext.value,
+      record,
+      project,
+      rates: recordRates,
+      patch,
+    });
+    if (!result.ok) return result;
+    state.costRecords.splice(index, 1, result.record);
+    state.costRates = state.costRates.filter((rate) => rate.projectCostRecordId !== record.id).concat(result.rates);
+    state.auditLogs.unshift(...result.auditLogs);
+    return result;
+  }
+
+  function deleteCostRecord(recordId) {
+    const index = state.costRecords.findIndex((record) => record.id === recordId);
+    if (index < 0) return { ok: false, reason: "not-found" };
+    const record = state.costRecords[index];
+    const project = getProject(record.projectId);
+    const result = costService.deleteCostRecord({ context: currentContext.value, record, project });
+    if (!result.ok) return result;
+    state.costRecords.splice(index, 1, result.record);
+    state.auditLogs.unshift(result.auditLog);
+    return result;
+  }
+
+  function recordCostExport(recordId, filter = {}) {
+    const summary = getCostSummary(recordId, filter);
+    if (!summary) return { ok: false, reason: "not-found" };
+    state.auditLogs.unshift(createAuditLog("cost_record.export", "ProjectCostRecord", recordId, filter));
+    return { ok: true, summary };
+  }
+
   function filterIssuesForView(projectId, viewName) {
     return issueService.filterForView(getProjectIssues(projectId), viewName);
   }
@@ -240,8 +370,15 @@ export function useKiviflowStore() {
     projects,
     issues,
     timeEntries,
+    users,
+    projectMembers,
+    costRecords,
+    costRates,
+    auditLogs,
     trash,
     settings,
+    currentUser,
+    currentContext,
     people,
     openIssues,
     agileProjects,
@@ -249,6 +386,7 @@ export function useKiviflowStore() {
     averageHealth,
     getTemplate,
     getProject,
+    getProjectPermissions,
     getIssue,
     getProjectIssues,
     getIssueTimeEntries,
@@ -268,6 +406,39 @@ export function useKiviflowStore() {
     addTimeEntry,
     createTimeEntry,
     updateTimeEntry,
+    listCostRecords,
+    getCostRecord,
+    getProjectCostRecord,
+    getCostSummary,
+    createCostRecord,
+    updateCostRecord,
+    deleteCostRecord,
+    recordCostExport,
     filterIssuesForView,
   };
+}
+
+function createAuditLog(action, entityType, entityId, data) {
+  return {
+    id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    organizationId: state.organization.id,
+    actorId: "user-linxia",
+    action,
+    entityType,
+    entityId,
+    data,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function ensureProjectMember(projectId, userId) {
+  if (state.projectMembers.some((member) => member.projectId === projectId && member.userId === userId && member.status === "ACTIVE")) return;
+  state.projectMembers.unshift({
+    id: `pm-${projectId}-${userId}`,
+    organizationId: state.organization.id,
+    projectId,
+    userId,
+    status: "ACTIVE",
+    createdAt: new Date().toISOString(),
+  });
 }

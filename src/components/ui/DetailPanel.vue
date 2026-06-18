@@ -4,6 +4,7 @@
       v-if="open"
       ref="panel"
       class="detail-panel open"
+      :class="panelClass"
       role="dialog"
       :aria-labelledby="titleId"
       tabindex="-1"
@@ -37,6 +38,8 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: "" },
   eyebrow: { type: String, default: "" },
+  panelClass: { type: String, default: "" },
+  trapFocus: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["close"]);
@@ -47,6 +50,6 @@ const isOpen = computed(() => props.open);
 
 useOverlay(isOpen, panel, () => emit("close"), {
   lockScroll: false,
-  trapFocus: false,
+  trapFocus: props.trapFocus,
 });
 </script>
