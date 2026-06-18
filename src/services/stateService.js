@@ -291,7 +291,7 @@ function normalizeUsers(users) {
     organizationId: user.organizationId || ORGANIZATION_ID,
     name: user.name || "未命名成员",
     email: user.email || `${user.id || "user"}@gridproject.local`,
-    passwordHash: user.passwordHash || "$argon2id$v=19$m=1024,t=2,p=1$Z3JpZHByb2plY3QtZGV2$2g8lN7Wssmdevplaceholderhash",
+    passwordHash: user.passwordHash || "",
     role: user.role === "ADMIN" ? "ADMIN" : "MEMBER",
     status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
     lastLoginAt: user.lastLoginAt || null,

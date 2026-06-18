@@ -6,15 +6,26 @@ import { stateService } from "../services/stateService.js";
 import { timeEntryService } from "../services/timeEntryService.js";
 import { costService } from "../services/costService.js";
 import { getUserStats, userService } from "../services/userService.js";
+import { isApiDataSource } from "../services/apiClient.js";
+import { apiStorageAdapter, hydrateStateFromApi } from "../storage/apiAdapter.js";
 import { isClosedStatus } from "../domain/workflow.js";
 import { createTrashItem, isTrashRestorable } from "../domain/trash.js";
 import { buildAccessContext, userIdForName, userNameForId } from "../domain/access.js";
 import { calculateProjectCost } from "../domain/cost.js";
 import { ProjectAccessPolicy } from "../server/policies/projectAccessPolicy.js";
 
-const state = reactive(stateService.load());
+const apiMode = isApiDataSource();
+const state = reactive(stateService.load(apiMode ? apiStorageAdapter : undefined));
 
-watch(state, () => stateService.save(state), { deep: true });
+if (apiMode && typeof window !== "undefined") {
+  hydrateStateFromApi(state).catch((error) => {
+    console.error("Failed to hydrate GridProject state from API", error);
+  });
+}
+
+watch(state, () => {
+  if (!apiMode) stateService.save(state);
+}, { deep: true });
 
 export function useKiviflowStore() {
   const templates = computed(() => templateService.listTemplates());

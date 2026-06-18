@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../server/generated/prisma"
 }
 
 datasource db {
@@ -37,15 +38,17 @@ enum CostRecordStatus {
 model Organization {
   id        String   @id @default(cuid())
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  users            User[]
-  projects         Project[]
-  projectMembers   ProjectMember[]
-  timeEntries      TimeEntry[]
+  users              User[]
+  projects           Project[]
+  projectMembers     ProjectMember[]
+  milestones         Milestone[]
+  timeEntries        TimeEntry[]
   projectCostRecords ProjectCostRecord[]
-  auditLogs        AuditLog[]
+  sessions           Session[]
+  auditLogs          AuditLog[]
 
   @@map("organizations")
 }
@@ -58,24 +61,24 @@ model User {
   passwordHash   String
   role           OrganizationRole @default(MEMBER)
   status         UserStatus       @default(ACTIVE)
-  lastLoginAt    DateTime?
-  deletedAt      DateTime?
+  lastLoginAt    DateTime?        @db.Timestamptz(3)
+  deletedAt      DateTime?        @db.Timestamptz(3)
   deletedById    String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  deletedBy    User?        @relation("UserDeletedBy", fields: [deletedById], references: [id])
-  deletedUsers User[]       @relation("UserDeletedBy")
-  ownedProjects Project[]   @relation("ProjectOwner")
-  createdProjects Project[] @relation("ProjectCreator")
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  deletedBy          User?               @relation("UserDeletedBy", fields: [deletedById], references: [id])
+  deletedUsers       User[]              @relation("UserDeletedBy")
+  ownedProjects      Project[]           @relation("ProjectOwner")
+  createdProjects    Project[]           @relation("ProjectCreator")
   projectMemberships ProjectMember[]
-  timeEntries TimeEntry[]
+  timeEntries        TimeEntry[]
   createdCostRecords ProjectCostRecord[] @relation("CostRecordCreator")
   updatedCostRecords ProjectCostRecord[] @relation("CostRecordUpdater")
   deletedCostRecords ProjectCostRecord[] @relation("CostRecordDeleter")
-  auditLogs AuditLog[]
-  sessions Session[]
+  auditLogs          AuditLog[]
+  sessions           Session[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -91,23 +94,24 @@ model Project {
   description    String?
   status         String
   health         Int       @default(90)
-  startDate      DateTime?
-  dueDate        DateTime?
-  testDate       DateTime?
-  acceptanceDate DateTime?
-  releaseDate    DateTime?
+  startDate      DateTime? @db.Date
+  dueDate        DateTime? @db.Date
+  testDate       DateTime? @db.Date
+  acceptanceDate DateTime? @db.Date
+  releaseDate    DateTime? @db.Date
   config         Json?
   ownerId        String
   createdById    String
-  deletedAt      DateTime?
+  deletedAt      DateTime? @db.Timestamptz(3)
   deletedById    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  owner        User         @relation("ProjectOwner", fields: [ownerId], references: [id])
-  createdBy    User         @relation("ProjectCreator", fields: [createdById], references: [id])
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  owner        User                @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdBy    User                @relation("ProjectCreator", fields: [createdById], references: [id])
   members      ProjectMember[]
+  milestones   Milestone[]
   issues       Issue[]
   timeEntries  TimeEntry[]
   costRecord   ProjectCostRecord?
@@ -124,8 +128,9 @@ model ProjectMember {
   projectId      String
   userId         String
   status         ProjectMemberStatus @default(ACTIVE)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  joinedAt       DateTime            @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   project      Project      @relation(fields: [projectId], references: [id])
@@ -136,8 +141,26 @@ model ProjectMember {
   @@map("project_members")
 }
 
+model Milestone {
+  id             String    @id @default(cuid())
+  organizationId String
+  projectId      String
+  title          String
+  status         String
+  dueDate        DateTime? @db.Date
+  completedAt    DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId, projectId])
+  @@map("milestones")
+}
+
 model Issue {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   projectId      String
   code           String
@@ -147,14 +170,14 @@ model Issue {
   ownerId        String?
   creatorId      String?
   priority       String?
-  startDate      DateTime?
-  dueDate        DateTime?
-  estimatedHours Decimal? @db.Decimal(10, 2)
-  actualHours    Decimal? @db.Decimal(10, 2)
+  startDate      DateTime? @db.Date
+  dueDate        DateTime? @db.Date
+  estimatedHours Decimal?  @db.Decimal(10, 2)
+  actualHours    Decimal?  @db.Decimal(10, 2)
   description    String?
-  deletedAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
   project     Project     @relation(fields: [projectId], references: [id])
   timeEntries TimeEntry[]
@@ -165,21 +188,23 @@ model Issue {
 }
 
 model TimeEntry {
-  id             String          @id @default(cuid())
-  organizationId String
-  projectId      String
-  issueId        String?
-  userId         String
-  reporterId     String
-  workDate       DateTime
-  hours          Decimal         @db.Decimal(10, 2)
-  status         TimeEntryStatus @default(DRAFT)
-  description    String?
+  id               String          @id @default(cuid())
+  organizationId   String
+  projectId        String
+  issueId          String?
+  userId           String
+  reporterId       String
+  workDate         DateTime        @db.Date
+  hours            Decimal         @db.Decimal(10, 2)
+  status           TimeEntryStatus @default(DRAFT)
+  description      String?
   correctionReason String?
-  deletedAt      DateTime?
-  deletedById    String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  approvedAt       DateTime?       @db.Timestamptz(3)
+  approvedById     String?
+  deletedAt        DateTime?       @db.Timestamptz(3)
+  deletedById      String?
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   project      Project      @relation(fields: [projectId], references: [id])
@@ -202,10 +227,10 @@ model ProjectCostRecord {
   notes                String?
   createdById          String
   updatedById          String
-  deletedAt            DateTime?
+  deletedAt            DateTime?        @db.Timestamptz(3)
   deletedById          String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  createdAt            DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime         @updatedAt @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   project      Project      @relation(fields: [projectId], references: [id])
@@ -217,6 +242,23 @@ model ProjectCostRecord {
   @@map("project_cost_records")
 }
 
+model Session {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  tokenHash      String
+  expiresAt      DateTime  @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([tokenHash])
+  @@index([organizationId, userId, revokedAt])
+  @@map("sessions")
+}
+
 model AuditLog {
   id             String   @id @default(cuid())
   organizationId String
@@ -226,7 +268,7 @@ model AuditLog {
   entityId       String
   data           Json?
   requestId      String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   actor        User         @relation(fields: [actorId], references: [id])
@@ -234,19 +276,4 @@ model AuditLog {
   @@index([organizationId, entityType, entityId])
   @@index([actorId, createdAt])
   @@map("audit_logs")
-}
-
-model Session {
-  id             String    @id @default(cuid())
-  organizationId String
-  userId         String
-  tokenHash      String
-  expiresAt      DateTime
-  revokedAt      DateTime?
-  createdAt      DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([organizationId, userId, revokedAt])
-  @@map("sessions")
 }

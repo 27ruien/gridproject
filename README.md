@@ -1,19 +1,51 @@
-# Kiviflow
+# GridProject
 
-Kiviflow 是一个 Vue 3 + Vite 的项目管理平台前端雏形，当前聚焦敏捷研发与瀑布交付两类模板化项目空间。
+GridProject 是一个项目管理平台，前端使用 Vue 3 + Vite，后端使用 Fastify + Prisma + PostgreSQL。当前聚焦项目、事项、工时、人员管理，以及不含金额/币种/费率的人天投入管理。
 
 ## 本地运行
+
+前端本地演示模式：
 
 ```bash
 npm install
 npm run dev
 ```
 
+后端真实 API 模式：
+
+```bash
+npm install
+corepack enable
+corepack prepare pnpm@11.0.7 --activate
+npm run server:install
+
+cp server/.env.example server/.env
+# 编辑 server/.env，使用 127.0.0.1:5432/gridproject_dev
+
+npm run server:prisma:generate
+npm run server:prisma:migrate:dev
+npm run server:prisma:seed
+npm run server:dev
+```
+
+前端切到真实 API：
+
+```bash
+VITE_DATA_SOURCE=api VITE_API_BASE_URL=/api npm run dev
+```
+
+后端只读取 `process.env.DATABASE_URL`。开发和测试环境会拒绝 `127.0.0.1:5433/gridproject_prod`，避免误连生产库。
+
 ## 验证
 
 ```bash
 npm run test
 npm run build
+npm run db:validate
+npm run server:prisma:generate
+npm run server:lint
+npm run server:build
+npm run server:test
 ```
 
 ## 当前能力
@@ -50,12 +82,17 @@ npm run build
 - 平台设置支持维护左上角 Logo 和平台名称；顶部不再显示写死的组织工作区文案。
 - 人员选择使用可搜索弹层，替代长列表 select。
 - UI 层使用统一 Design Tokens、App Shell、SVG 图标和基础组件，普通页面不产生页面级横向滚动。
-- localStorage 持久化，已通过 storage adapter 隔离。
+- localStorage 持久化，已通过 storage adapter 隔离；`VITE_DATA_SOURCE=api` 时通过 `/api/bootstrap` 从后端 hydrate。
+- Fastify 后端提供 `/api/auth`、`/api/users`、`/api/projects`、`/api/time-entries`、`/api/cost-records`。
+- 登录使用 HttpOnly Cookie，SameSite=Lax，生产环境 Secure；数据库只保存 session token hash。
+- 人员创建和 seed 通过 Argon2id 生成 `passwordHash`，代码和迁移不包含固定密码 hash。
+- 成本管理只保留 `plannedPersonDays`、`standardHoursPerDay`、工时折算和 Excel Raw Data 导出。
 
 ## 架构
 
 - `src/domain/`：领域模型和工作流规则。
 - `src/storage/`：存储适配器。
+- `src/services/apiClient.js`：真实后端 API client。
 - `src/services/`：项目、事项、模板、状态服务。
 - `src/composables/`：Vue 组合式状态。
 - `src/components/`：通用、模板、项目和事项组件。
@@ -64,3 +101,12 @@ npm run build
 - `src/qa/` 与 `scripts/capture-visuals.mjs`：本地视觉验收场景和截图矩阵。
 - `src/views/`：核心产品视图。
 - `docs/`：产品 PRD、体验设计规范、审计和验收报告。
+- `server/`：Fastify API、Prisma client 生成入口、seed、后端测试。
+- `prisma/`：Prisma schema 和正式 migrations。禁止使用 `prisma db push` 或 `prisma migrate reset`。
+
+更多文档：
+
+- [Backend Setup](docs/backend-setup.md)
+- [Database Model](docs/database-model.md)
+- [Permissions Matrix](docs/permissions-matrix.md)
+- [Deployment](docs/deployment.md)

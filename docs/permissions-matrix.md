@@ -74,6 +74,14 @@ deletedAt IS NULL
 
 后端必须拒绝会导致组织内没有 ACTIVE ADMIN 的操作，并禁止管理员停用或删除自己当前正在使用的账号。
 
+## Auth And Session
+
+- `POST /api/auth/login` 校验 Argon2id 密码，成功后写入 `sessions.tokenHash`，返回 HttpOnly Cookie。
+- Cookie 策略：`HttpOnly`、`SameSite=Lax`、生产环境 `Secure`。
+- `POST /api/auth/logout` 撤销当前 session。
+- 重置用户密码会撤销该用户所有未撤销 session。
+- 后端只使用 request session 判断当前用户；前端权限隐藏只用于体验。
+
 ## Frontend Permission Shape
 
 项目详情接口应返回：
