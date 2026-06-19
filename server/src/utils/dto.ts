@@ -38,9 +38,10 @@ export function sanitizeUserDto(user: any) {
 }
 
 export function projectDto(project: any) {
+  const { owner, createdBy, ...safeProject } = project;
   const config = toJsonObject(project.config);
   return {
-    ...project,
+    ...safeProject,
     templateId: String(config.templateId || "agile"),
     startDate: toDateOnly(project.startDate),
     dueDate: toDateOnly(project.dueDate),
@@ -50,7 +51,7 @@ export function projectDto(project: any) {
     deletedAt: toIsoDateTime(project.deletedAt),
     createdAt: toIsoDateTime(project.createdAt),
     updatedAt: toIsoDateTime(project.updatedAt),
-    owner: project.owner?.name || project.owner || "",
+    owner: owner?.name || project.owner || "",
   };
 }
 
@@ -68,9 +69,10 @@ export function issueDto(issue: any) {
 }
 
 export function projectMemberDto(member: any) {
+  const { user, ...safeMember } = member;
   return {
-    ...member,
-    user: member.user ? sanitizeUserDto(member.user) : undefined,
+    ...safeMember,
+    user: user ? minimalUserDto(user) : undefined,
     joinedAt: toIsoDateTime(member.joinedAt),
     createdAt: toIsoDateTime(member.createdAt),
     updatedAt: toIsoDateTime(member.updatedAt),
@@ -88,12 +90,14 @@ export function milestoneDto(milestone: any) {
 }
 
 export function timeEntryDto(entry: any) {
+  const { user, project, issue, ...safeEntry } = entry;
   return {
-    ...entry,
-    reporter: entry.user?.name || entry.reporter?.name || entry.reporter || "",
+    ...safeEntry,
+    reporter: user?.name || entry.reporter?.name || entry.reporter || "",
     workDate: toDateOnly(entry.workDate),
     spentDate: toDateOnly(entry.workDate),
     hours: toNumber(entry.hours),
+    note: entry.description || "",
     approvedAt: toIsoDateTime(entry.approvedAt),
     deletedAt: toIsoDateTime(entry.deletedAt),
     createdAt: toIsoDateTime(entry.createdAt),
@@ -102,14 +106,26 @@ export function timeEntryDto(entry: any) {
 }
 
 export function costRecordDto(record: any) {
+  const { project, createdBy, updatedBy, deletedBy, ...safeRecord } = record;
   return {
-    ...record,
+    ...safeRecord,
     plannedPersonDays: toNumber(record.plannedPersonDays),
     standardHoursPerDay: toNumber(record.standardHoursPerDay),
-    project: record.project ? projectDto(record.project) : undefined,
+    project: project ? projectDto(project) : undefined,
     deletedAt: toIsoDateTime(record.deletedAt),
     createdAt: toIsoDateTime(record.createdAt),
     updatedAt: toIsoDateTime(record.updatedAt),
+  };
+}
+
+export function minimalUserDto(user: any) {
+  return {
+    id: user.id,
+    organizationId: user.organizationId,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
   };
 }
 

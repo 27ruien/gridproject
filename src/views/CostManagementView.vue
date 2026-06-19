@@ -337,7 +337,7 @@ const recordRows = computed(() => props.costRecords
   .filter((record) => CostAccessPolicy.canViewCost(props.context, projectMap.value.get(record.projectId)))
   .map((record) => {
     const project = projectMap.value.get(record.projectId);
-    const summary = calculateProjectCost({
+    const summary = record.summary || calculateProjectCost({
       project,
       record,
       timeEntries: props.timeEntries,
@@ -356,6 +356,7 @@ const pagedRows = computed(() => filteredRows.value.slice((page.value - 1) * pag
 const selectedRow = computed(() => recordRows.value.find((row) => row.id === selectedRecordId.value) || null);
 const selectedSummary = computed(() => {
   if (!selectedRow.value) return null;
+  if (!weekStart.value && selectedRow.value.summary) return selectedRow.value.summary;
   return calculateProjectCost({
     project: selectedRow.value.project,
     record: selectedRow.value,

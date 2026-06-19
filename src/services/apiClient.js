@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = "/api";
+const unauthorizedHandlers = new Set();
 
 export function isApiDataSource() {
   return String(import.meta.env.VITE_DATA_SOURCE || "local").toLowerCase() === "api";
@@ -24,6 +25,7 @@ async function request(path, options = {}) {
     const error = new Error(payload.error?.message || "API 请求失败。");
     error.status = response.status;
     error.payload = payload;
+    if (response.status === 401) unauthorizedHandlers.forEach((handler) => handler(error));
     throw error;
   }
 
@@ -33,6 +35,10 @@ async function request(path, options = {}) {
 }
 
 export const apiClient = {
+  onUnauthorized(handler) {
+    unauthorizedHandlers.add(handler);
+    return () => unauthorizedHandlers.delete(handler);
+  },
   bootstrap() {
     return request("/bootstrap");
   },
@@ -92,8 +98,8 @@ export const apiClient = {
     update(entryId, patch) {
       return request(`/time-entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: patch });
     },
-    delete(entryId) {
-      return request(`/time-entries/${encodeURIComponent(entryId)}`, { method: "DELETE" });
+    delete(entryId, input) {
+      return request(`/time-entries/${encodeURIComponent(entryId)}`, { method: "DELETE", ...(input ? { body: input } : {}) });
     },
     submit(entryId) {
       return request(`/time-entries/${encodeURIComponent(entryId)}/submit`, { method: "POST" });

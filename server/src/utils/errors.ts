@@ -31,6 +31,10 @@ export function conflict(message: string, details?: unknown) {
   return new ApiError(409, "CONFLICT", message, details);
 }
 
+export function tooManyRequests(message: string, details?: unknown) {
+  return new ApiError(429, "TOO_MANY_REQUESTS", message, details);
+}
+
 export function validationError(message: string, details?: unknown) {
   return new ApiError(422, "VALIDATION_ERROR", message, details);
 }

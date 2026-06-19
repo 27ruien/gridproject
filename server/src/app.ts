@@ -30,7 +30,13 @@ export async function buildApp(config: ServerConfig = getConfig()) {
   });
 
   await app.register(cors, {
-    origin: true,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      callback(null, config.frontendOrigins.includes(origin));
+    },
     credentials: true,
   });
   await app.register(cookie);

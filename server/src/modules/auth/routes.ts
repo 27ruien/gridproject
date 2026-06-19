@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { ServerConfig } from "../../config/env.js";
 import { clearSessionCookie, requireAuth, setSessionCookie } from "../../middleware/auth.js";
 import { sanitizeUserDto } from "../../utils/dto.js";
-import { badRequest, unauthorized } from "../../utils/errors.js";
+import { badRequest, tooManyRequests, unauthorized } from "../../utils/errors.js";
 import { verifyPassword } from "../../utils/password.js";
 import { SESSION_COOKIE, createSessionToken, hashSessionToken, sessionExpiry } from "../../utils/session.js";
 
@@ -11,6 +11,11 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+const failureBuckets = new Map<string, { count: number; firstFailedAt: number; blockedUntil?: number }>();
+const FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const BLOCK_MS = 15 * 60 * 1000;
+const MAX_FAILURES = 5;
 
 type AuthRouteOptions = {
   config: ServerConfig;
@@ -22,6 +27,8 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
     if (!parsed.success) throw badRequest("登录参数不正确。", parsed.error.flatten());
 
     const email = parsed.data.email.trim().toLowerCase();
+    const bucketKey = loginBucketKey(request.ip, email);
+    assertLoginAllowed(bucketKey);
     const user = await app.prisma.user.findFirst({
       where: {
         email,
@@ -31,8 +38,10 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
       include: { organization: true },
     });
     if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      recordLoginFailure(bucketKey);
       throw unauthorized("邮箱或密码不正确。");
     }
+    clearLoginFailures(bucketKey);
 
     const token = createSessionToken();
     const expiresAt = sessionExpiry(options.config.sessionTtlHours);
@@ -86,4 +95,33 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
       organization,
     };
   });
+}
+
+function loginBucketKey(ip: string, email: string) {
+  return `${ip || "unknown"}:${email}`;
+}
+
+function assertLoginAllowed(key: string) {
+  const bucket = failureBuckets.get(key);
+  if (!bucket?.blockedUntil) return;
+  if (bucket.blockedUntil <= Date.now()) {
+    failureBuckets.delete(key);
+    return;
+  }
+  throw tooManyRequests("登录尝试过多，请稍后再试。");
+}
+
+function recordLoginFailure(key: string) {
+  const now = Date.now();
+  const current = failureBuckets.get(key);
+  const bucket = current && now - current.firstFailedAt <= FAILURE_WINDOW_MS
+    ? current
+    : { count: 0, firstFailedAt: now };
+  bucket.count += 1;
+  if (bucket.count >= MAX_FAILURES) bucket.blockedUntil = now + BLOCK_MS;
+  failureBuckets.set(key, bucket);
+}
+
+function clearLoginFailures(key: string) {
+  failureBuckets.delete(key);
 }

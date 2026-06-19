@@ -24,13 +24,34 @@ export function canViewCost(context: AuthContext, project: { organizationId: str
   return canManageProject(context, project);
 }
 
-export function canManageTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
+export function canViewTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
   if (context.isAdmin || isProjectOwner(context, project)) return true;
+  return entry.userId === context.userId;
+}
+
+export function canEditTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }, _project: { ownerId?: string | null } | null | undefined) {
+  if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
+  if (context.isAdmin) return true;
+  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
+}
+
+export function canDeleteTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }, _project: { ownerId?: string | null } | null | undefined) {
+  if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
+  if (context.isAdmin) return true;
+  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
+}
+
+export function canSubmitTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }) {
+  if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
   return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
 }
 
 export function canApproveTimeEntry(context: AuthContext, entry: { organizationId: string; status: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
   return entry.status === "SUBMITTED" && (context.isAdmin || isProjectOwner(context, project));
+}
+
+export function canRejectTimeEntry(context: AuthContext, entry: { organizationId: string; status: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
+  return canApproveTimeEntry(context, entry, project);
 }

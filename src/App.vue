@@ -1,11 +1,26 @@
 <template>
+  <LoginView
+    v-if="showLogin"
+    :saving="store.auth.saving"
+    :error="store.auth.error"
+    @login="login"
+  />
+  <main v-else-if="showAuthLoading" class="login-page">
+    <section class="login-panel">
+      <p class="eyebrow">GridProject</p>
+      <h1>正在恢复登录状态</h1>
+    </section>
+  </main>
   <AppShell
+    v-else
     :routes="routesForUser"
     :current-view="currentView"
     :settings="settings"
     :manager="currentManager"
     :project-count="projects.length"
+    :show-logout="store.apiMode"
     @navigate="setView"
+    @logout="logout"
   >
       <header class="topbar">
         <div>
@@ -94,8 +109,13 @@
         :time-entries="store.timeEntries.value"
         :people="people"
         :manager-name="currentManager.name"
+        :context="store.currentContext.value"
         @create="createTimeEntry"
         @update="updateTimeEntry"
+        @delete="deleteTimeEntry"
+        @submit="submitTimeEntry"
+        @approve="approveTimeEntry"
+        @reject="rejectTimeEntry"
       />
 
       <CostManagementView
@@ -234,6 +254,7 @@ import CostManagementView from "./views/CostManagementView.vue";
 import UserManagementView from "./views/UserManagementView.vue";
 import TrashView from "./views/TrashView.vue";
 import PlatformSettingsView from "./views/PlatformSettingsView.vue";
+import LoginView from "./views/LoginView.vue";
 import ProjectTable from "./components/project/ProjectTable.vue";
 import ScheduleImportModal from "./components/project/ScheduleImportModal.vue";
 import IssueDrawer from "./components/issue/IssueDrawer.vue";
@@ -290,8 +311,8 @@ const pageTitle = computed(() => {
   return route?.label || "工作台";
 });
 const currentManager = computed(() => ({
-  name: store.currentUser.value.name,
-  role: store.currentUser.value.role === "ADMIN" ? "组织管理员" : "项目成员",
+  name: store.currentUser.value?.name || "未登录",
+  role: store.currentUser.value?.role === "ADMIN" ? "组织管理员" : "项目成员",
 }));
 
 const selectedIssue = computed(() => store.getIssue(selectedIssueId.value));
@@ -328,6 +349,8 @@ const flatSearchResults = computed(() => [...searchResults.value.projects, ...se
 const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
 const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
 const workspaceFilterParam = computed(() => encodeFilters(workspaceUrlFilters.value));
+const showAuthLoading = computed(() => store.apiMode && !store.auth.initialized && store.auth.loading);
+const showLogin = computed(() => store.apiMode && store.auth.initialized && !store.auth.authenticated);
 
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
@@ -337,6 +360,26 @@ onMounted(() => {
   syncUrlState("replace");
   document.addEventListener("pointerdown", handleOutsideSearch);
   window.addEventListener("popstate", handlePopState);
+});
+
+watch(() => store.auth.authenticated, (authenticated) => {
+  if (!store.apiMode) return;
+  if (!authenticated && window.location.pathname !== "/login") {
+    window.history.replaceState({}, "", "/login");
+  }
+  if (authenticated && window.location.pathname === "/login") {
+    window.history.replaceState({}, "", "/");
+  }
+}, { immediate: true });
+
+watch(projects, (rows) => {
+  if (!rows.length) {
+    currentProjectId.value = "";
+    return;
+  }
+  if (!rows.some((entry) => entry.id === currentProjectId.value)) {
+    currentProjectId.value = rows[0].id;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -364,6 +407,9 @@ function openProject(projectId) {
   currentView.value = "project";
   selectedIssueId.value = null;
   closeSearch();
+  if (store.apiMode) {
+    store.loadProjectBoard(projectId).catch((error) => showToast(error.message || "项目看板加载失败"));
+  }
 }
 
 function openProjectModal(templateId = "agile") {
@@ -401,25 +447,47 @@ function openIssueFromSearch(issueId) {
   selectedIssueId.value = issueId;
 }
 
-function createProject(input) {
+async function login(input) {
+  const result = await store.login(input);
+  if (!result.ok) showToast(result.message || "登录失败");
+}
+
+async function logout() {
+  await store.logout();
+  showToast("已退出登录");
+}
+
+async function createProject(input) {
   if (!input.name?.trim()) {
     showToast("请填写项目名称");
     return;
   }
 
-  const created = store.createProject(input);
+  const created = await store.createProject(input);
+  if (!created?.id) {
+    showToast(created?.message || store.operation.error || "项目创建失败");
+    return;
+  }
   closeProjectModal();
   openProject(created.id);
   showToast("项目已创建，并按模板初始化事项");
 }
 
-function updateProject(projectId, patch) {
-  store.updateProject(projectId, patch);
+async function updateProject(projectId, patch) {
+  const result = await store.updateProject(projectId, patch);
+  if (!result?.id) {
+    showToast(result?.message || store.operation.error || "项目更新失败");
+    return;
+  }
   showToast("项目已更新");
 }
 
-function saveProject(projectId, patch) {
-  store.updateProject(projectId, patch);
+async function saveProject(projectId, patch) {
+  const result = await store.updateProject(projectId, patch);
+  if (!result?.id) {
+    showToast(result?.message || store.operation.error || "项目信息保存失败");
+    return;
+  }
   closeProjectModal();
   showToast("项目信息已保存");
 }
@@ -435,8 +503,8 @@ function requestDeleteProject(projectId) {
   };
 }
 
-function deleteProject(projectId) {
-  const result = store.deleteProject(projectId);
+async function deleteProject(projectId) {
+  const result = await store.deleteProject(projectId);
   if (result?.reason === "has-issues") {
     showToast(`项目下还有 ${result.count} 个任务。请先删除或迁移任务，再删除项目。`);
     return;
@@ -509,18 +577,26 @@ function addIssueComment(issueId, text) {
   showToast("评论已添加");
 }
 
-function addTimeEntry(issueId, input) {
-  const entry = store.addTimeEntry(issueId, input);
-  if (!entry) {
+async function addTimeEntry(issueId, input) {
+  const entry = await store.addTimeEntry(issueId, input);
+  if (!entry?.id) {
     showToast("请填写有效工时");
     return;
   }
   showToast("工时已提交并关联任务");
 }
 
-function createTimeEntry(input) {
+async function createTimeEntry(input) {
   if (Array.isArray(input)) {
-    const entries = input.map((item) => store.createTimeEntry(item)).filter(Boolean);
+    const entries = [];
+    for (const item of input) {
+      const entry = await store.createTimeEntry(item);
+      if (entry?.id) entries.push(entry);
+      else if (entry?.ok === false) {
+        showToast(entry.message || "工时创建失败");
+        return;
+      }
+    }
     if (!entries.length) {
       showToast("请选择任务并填写有效工时");
       return;
@@ -529,40 +605,60 @@ function createTimeEntry(input) {
     return;
   }
 
-  const entry = store.createTimeEntry(input);
-  if (!entry) {
+  const entry = await store.createTimeEntry(input);
+  if (!entry?.id) {
     showToast("请选择任务并填写有效工时");
     return;
   }
   showToast("工时已创建");
 }
 
-function updateTimeEntry(entryId, patch) {
-  const entry = store.updateTimeEntry(entryId, patch);
-  if (!entry) {
-    showToast("工时更新失败");
+async function updateTimeEntry(entryId, patch) {
+  const entry = await store.updateTimeEntry(entryId, patch);
+  if (!entry?.id) {
+    showToast(entry?.message || store.operation.error || "工时更新失败");
     return;
   }
   showToast("工时已更新");
 }
 
-function createCostRecord(input) {
-  const result = store.createCostRecord(input);
+async function deleteTimeEntry(entryId) {
+  const result = await store.deleteTimeEntry(entryId, "前端请求删除工时");
+  showToast(result.ok ? "工时已删除" : result.message || "工时删除失败");
+}
+
+async function submitTimeEntry(entryId) {
+  const result = await store.submitTimeEntry(entryId);
+  showToast(result.ok ? "工时已提交审批" : result.message || "工时提交失败");
+}
+
+async function approveTimeEntry(entryId) {
+  const result = await store.approveTimeEntry(entryId);
+  showToast(result.ok ? "工时已审批" : result.message || "工时审批失败");
+}
+
+async function rejectTimeEntry(entryId) {
+  const result = await store.rejectTimeEntry(entryId, "审批驳回");
+  showToast(result.ok ? "工时已驳回" : result.message || "工时驳回失败");
+}
+
+async function createCostRecord(input) {
+  const result = await store.createCostRecord(input);
   showToast(result.ok ? "成本管理记录已创建" : result.message || "成本管理记录创建失败");
 }
 
-function updateCostRecord(recordId, patch) {
-  const result = store.updateCostRecord(recordId, patch);
+async function updateCostRecord(recordId, patch) {
+  const result = await store.updateCostRecord(recordId, patch);
   showToast(result.ok ? "成本设置已保存" : result.message || "成本设置保存失败");
 }
 
-function deleteCostRecord(recordId) {
-  const result = store.deleteCostRecord(recordId);
+async function deleteCostRecord(recordId) {
+  const result = await store.deleteCostRecord(recordId);
   showToast(result.ok ? "成本记录已归档" : result.message || "成本记录归档失败");
 }
 
-function exportCostRecord(recordId, filter) {
-  const result = store.recordCostExport(recordId, filter);
+async function exportCostRecord(recordId, filter) {
+  const result = await store.recordCostExport(recordId, filter);
   showToast(result.ok ? "已记录导出请求；后端 /api/cost-records/:id/export 将生成 Excel" : "导出失败");
 }
 
@@ -571,13 +667,13 @@ async function createUser(input) {
   showToast(result.ok ? "人员已创建" : result.message || "人员创建失败");
 }
 
-function updateUser(userId, patch) {
-  const result = store.updateUser(userId, patch);
+async function updateUser(userId, patch) {
+  const result = await store.updateUser(userId, patch);
   showToast(result.ok ? "人员信息已保存" : result.message || "人员更新失败");
 }
 
-function deleteUser(userId) {
-  const result = store.deleteUser(userId);
+async function deleteUser(userId) {
+  const result = await store.deleteUser(userId);
   const transferList = result.projects?.length ? `：${result.projects.map((item) => item.name).join("、")}` : "";
   showToast(result.ok ? "人员已停用并软删除" : `${result.message || "人员删除失败"}${transferList}`);
 }

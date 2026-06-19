@@ -8,7 +8,7 @@
 
 当前仓库仍采用简化的单组织用户模型：`User` 直接保存 `organizationId`、`role` 和 `status`，本次没有新增 `OrganizationMember` 表，避免同时维护两套角色来源。
 
-`localStorageAdapter` 和 service 接口仍保留，新增 `apiAdapter` 可在 `VITE_DATA_SOURCE=api` 时从后端 hydrate：`organizationId`、`ownerId`、`userId`、`workDate`、`projectMembers`、`costRecords`、`sessions`。
+`localStorageAdapter` 和 service 接口仍保留，新增 `apiAdapter` 可在 `VITE_DATA_SOURCE=api` 时从后端 hydrate页面启动所需的安全数据：`organizationId`、`ownerId`、`userId`、`workDate`、`projectMembers`、`costRecords`。API bootstrap 不返回 `sessions` 或 `auditLogs`。
 
 ## Core Entities
 

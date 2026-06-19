@@ -1,13 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { UserRepository } from "../../repositories/users.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { auditLogDto, costRecordDto, issueDto, projectDto, projectMemberDto, sanitizeUserDto, timeEntryDto } from "../../utils/dto.js";
+import { costRecordDto, issueDto, projectDto, projectMemberDto, sanitizeUserDto, timeEntryDto } from "../../utils/dto.js";
 
 export async function bootstrapRoutes(app: FastifyInstance) {
   app.get("/", async (request) => {
     const context = requireAuth(request);
     const repository = new UserRepository(app.prisma);
-    const [organization, users, projects, issues, timeEntries, projectMembers, costRecords, auditLogs] = await Promise.all([
+    const [organization, users, projects, issues, timeEntries, projectMembers, costRecords] = await Promise.all([
       app.prisma.organization.findUniqueOrThrow({ where: { id: context.organizationId } }),
       app.prisma.user.findMany({
         where: { organizationId: context.organizationId },
@@ -45,18 +45,11 @@ export async function bootstrapRoutes(app: FastifyInstance) {
         include: { project: { include: { owner: true } } },
         orderBy: { updatedAt: "desc" },
       }),
-      context.isAdmin
-        ? app.prisma.auditLog.findMany({
-          where: { organizationId: context.organizationId },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        })
-        : Promise.resolve([]),
     ]);
 
     const usersWithStats = await Promise.all(users.map(async (user) => ({
-      ...sanitizeUserDto(user),
-      stats: await repository.stats(user.id, context.organizationId),
+      ...bootstrapUserDto(user, context.isAdmin),
+      ...(context.isAdmin ? { stats: await repository.stats(user.id, context.organizationId) } : {}),
     })));
 
     return {
@@ -73,9 +66,30 @@ export async function bootstrapRoutes(app: FastifyInstance) {
       timeEntries: timeEntries.map(timeEntryDto),
       projectMembers: projectMembers.map(projectMemberDto),
       costRecords: costRecords.map(costRecordDto),
-      sessions: [],
-      auditLogs: auditLogs.map(auditLogDto),
       trash: [],
     };
   });
+}
+
+function bootstrapUserDto(user: any, isAdmin: boolean) {
+  const safe = sanitizeUserDto(user);
+  const base = {
+    id: safe.id,
+    organizationId: safe.organizationId,
+    name: safe.name,
+    email: safe.email,
+    role: safe.role,
+    status: safe.status,
+    createdAt: safe.createdAt,
+    updatedAt: safe.updatedAt,
+  };
+  if (isAdmin) {
+    return {
+      ...base,
+      lastLoginAt: safe.lastLoginAt,
+      deletedAt: safe.deletedAt,
+      deletedById: safe.deletedById,
+    };
+  }
+  return base;
 }

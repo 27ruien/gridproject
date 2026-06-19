@@ -32,6 +32,7 @@ Set these values in `server/.env`:
 ```bash
 DATABASE_URL="postgresql://gridproject_app:REPLACE_ME@127.0.0.1:5432/gridproject_dev?schema=public"
 SESSION_SECRET="REPLACE_WITH_A_LONG_RANDOM_STRING"
+FRONTEND_ORIGIN="http://127.0.0.1:5173"
 ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="REPLACE_WITH_A_STRONG_INITIAL_PASSWORD"
 ADMIN_DISPLAY_NAME="管理员"

@@ -25,6 +25,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gridproject_ci?schema=public
       SESSION_SECRET: ci-session-secret-not-for-production
+      FRONTEND_ORIGIN: http://127.0.0.1:5173
       NODE_ENV: test
     steps:
       - name: Checkout
@@ -58,6 +59,14 @@ jobs:
 
       - name: Apply server migrations
         run: npm run server:prisma:migrate:deploy
+
+      - name: Seed CI database
+        run: npm run server:prisma:seed
+        env:
+          ADMIN_EMAIL: admin-ci@example.com
+          ADMIN_PASSWORD: CIAdminPassword123
+          ADMIN_DISPLAY_NAME: CI Admin
+          INITIAL_ORGANIZATION_NAME: GridProject CI
 
       - name: Server lint
         run: npm run server:lint

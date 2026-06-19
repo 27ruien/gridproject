@@ -9,6 +9,7 @@ export type ServerConfig = {
   sessionSecret: string;
   sessionTtlHours: number;
   cookieSecure: boolean;
+  frontendOrigins: string[];
 };
 
 loadDotEnv();
@@ -34,7 +35,23 @@ export function getConfig(): ServerConfig {
     sessionSecret: process.env.SESSION_SECRET || (nodeEnv === "production" ? "" : "dev-only-session-secret-change-me"),
     sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 168),
     cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : nodeEnv === "production",
+    frontendOrigins: parseFrontendOrigins(nodeEnv),
   };
+}
+
+function parseFrontendOrigins(nodeEnv: string) {
+  const configured = (process.env.FRONTEND_ORIGIN || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  if (configured.length) return configured;
+  if (nodeEnv === "production") return [];
+  return [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:4173",
+    "http://localhost:4173",
+  ];
 }
 
 function loadDotEnv() {

@@ -44,6 +44,7 @@
           <strong>{{ manager.name }}</strong>
           <small>{{ manager.role }} · 管理 {{ projectCount }} 个项目</small>
         </div>
+        <button v-if="showLogout" class="logout-button" type="button" @click="$emit('logout')">退出</button>
       </section>
     </aside>
 
@@ -64,9 +65,10 @@ const props = defineProps({
   settings: { type: Object, required: true },
   manager: { type: Object, required: true },
   projectCount: { type: Number, required: true },
+  showLogout: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["navigate"]);
+const emit = defineEmits(["navigate", "logout"]);
 const mobileNavOpen = ref(false);
 const navCollapsed = ref(false);
 const navPreference = "kiviflow.navCollapsed";

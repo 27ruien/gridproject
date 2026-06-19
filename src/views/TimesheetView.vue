@@ -107,7 +107,13 @@
           <strong>{{ entry.hours }}h</strong>
           <span>{{ entry.status }}</span>
           <span>{{ entry.note || "未填写" }}</span>
-          <Button variant="ghost" size="tiny" @click="openEdit(entry)">编辑</Button>
+          <span class="user-actions">
+            <Button v-if="canEdit(entry)" variant="ghost" size="tiny" @click="openEdit(entry)">编辑</Button>
+            <Button v-if="canDelete(entry)" variant="ghost" size="tiny" @click="emit('delete', entry.id)">删除</Button>
+            <Button v-if="canSubmitEntry(entry)" variant="ghost" size="tiny" @click="emit('submit', entry.id)">提交</Button>
+            <Button v-if="canApprove(entry)" variant="ghost" size="tiny" @click="emit('approve', entry.id)">审批</Button>
+            <Button v-if="canApprove(entry)" variant="ghost" size="tiny" @click="emit('reject', entry.id)">驳回</Button>
+          </span>
         </div>
         <div class="timesheet-mobile-list">
           <article v-for="entry in filteredEntries" :key="`mobile-${entry.id}`" class="timesheet-mobile-card">
@@ -232,9 +238,10 @@ const props = defineProps({
   timeEntries: { type: Array, required: true },
   people: { type: Array, required: true },
   managerName: { type: String, required: true },
+  context: { type: Object, required: true },
 });
 
-const emit = defineEmits(["create", "update"]);
+const emit = defineEmits(["create", "update", "delete", "submit", "approve", "reject"]);
 
 const roleView = ref("owned");
 const selectedMonth = ref(currentMonthValue());
@@ -393,5 +400,23 @@ function projectName(projectId) {
 
 function issueName(issueId) {
   return props.issues.find((issue) => issue.id === issueId)?.title || "未知任务";
+}
+
+function canEdit(entry) {
+  if (props.context.isAdmin) return true;
+  return entry.userId === props.context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
+}
+
+function canDelete(entry) {
+  return canEdit(entry);
+}
+
+function canSubmitEntry(entry) {
+  return entry.userId === props.context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
+}
+
+function canApprove(entry) {
+  const project = props.projects.find((item) => item.id === entry.projectId);
+  return entry.status === "SUBMITTED" && (props.context.isAdmin || project?.ownerId === props.context.userId);
 }
 </script>

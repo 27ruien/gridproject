@@ -6,7 +6,7 @@ import { stateService } from "../services/stateService.js";
 import { timeEntryService } from "../services/timeEntryService.js";
 import { costService } from "../services/costService.js";
 import { getUserStats, userService } from "../services/userService.js";
-import { isApiDataSource } from "../services/apiClient.js";
+import { apiClient, isApiDataSource } from "../services/apiClient.js";
 import { apiStorageAdapter, hydrateStateFromApi } from "../storage/apiAdapter.js";
 import { isClosedStatus } from "../domain/workflow.js";
 import { createTrashItem, isTrashRestorable } from "../domain/trash.js";
@@ -16,16 +16,108 @@ import { ProjectAccessPolicy } from "../server/policies/projectAccessPolicy.js";
 
 const apiMode = isApiDataSource();
 const state = reactive(stateService.load(apiMode ? apiStorageAdapter : undefined));
+const authState = reactive({
+  initialized: !apiMode,
+  authenticated: !apiMode,
+  loading: apiMode,
+  saving: false,
+  error: "",
+  user: null,
+  organization: null,
+});
+const operationState = reactive({
+  loading: false,
+  saving: false,
+  error: "",
+});
 
 if (apiMode && typeof window !== "undefined") {
-  hydrateStateFromApi(state).catch((error) => {
-    console.error("Failed to hydrate GridProject state from API", error);
-  });
+  apiClient.onUnauthorized(() => markUnauthenticated());
+  restoreSession();
 }
 
 watch(state, () => {
   if (!apiMode) stateService.save(state);
 }, { deep: true });
+
+async function restoreSession() {
+  authState.loading = true;
+  authState.error = "";
+  try {
+    const me = await apiClient.me();
+    applyMe(me);
+    await refreshApiState();
+    authState.authenticated = true;
+  } catch (error) {
+    if (error.status === 401) markUnauthenticated();
+    else authState.error = apiErrorMessage(error);
+  } finally {
+    authState.initialized = true;
+    authState.loading = false;
+  }
+}
+
+async function refreshApiState() {
+  if (!apiMode || !authState.authenticated && !authState.user) return null;
+  operationState.loading = true;
+  try {
+    const payload = await hydrateStateFromApi(state);
+    if (payload?.currentUser) authState.user = payload.currentUser;
+    const costPayload = await apiClient.costRecords.list().catch(() => null);
+    if (costPayload?.rows) state.costRecords.splice(0, state.costRecords.length, ...costPayload.rows);
+    return payload;
+  } finally {
+    operationState.loading = false;
+  }
+}
+
+function applyMe(payload) {
+  authState.user = payload.user;
+  authState.organization = payload.organization;
+  if (payload.organization) Object.assign(state.organization, payload.organization);
+}
+
+function markUnauthenticated() {
+  authState.authenticated = false;
+  authState.user = null;
+  authState.organization = null;
+  authState.initialized = true;
+  authState.loading = false;
+}
+
+async function withApiSave(callback) {
+  if (operationState.saving) return { ok: false, reason: "saving", message: "正在保存，请勿重复提交。" };
+  operationState.saving = true;
+  operationState.error = "";
+  try {
+    return await callback();
+  } catch (error) {
+    const result = apiResult(error);
+    operationState.error = result.message;
+    return result;
+  } finally {
+    operationState.saving = false;
+  }
+}
+
+function apiResult(error) {
+  return {
+    ok: false,
+    status: error.status || 0,
+    reason: error.payload?.error?.code || "api-error",
+    message: apiErrorMessage(error),
+    details: error.payload?.error?.details,
+  };
+}
+
+function apiErrorMessage(error) {
+  if (error?.status === 401) return "登录已失效，请重新登录。";
+  if (error?.status === 403) return "没有权限执行该操作。";
+  if (error?.status === 404) return "资源不存在或不可见。";
+  if (error?.status === 409) return error.payload?.error?.message || "数据冲突，请刷新后重试。";
+  if (error?.status === 422) return error.payload?.error?.message || "提交数据未通过校验。";
+  return error?.payload?.error?.message || error?.message || "API 请求失败。";
+}
 
 export function useKiviflowStore() {
   const templates = computed(() => templateService.listTemplates());
@@ -39,9 +131,20 @@ export function useKiviflowStore() {
   const auditLogs = computed(() => state.auditLogs);
   const trash = computed(() => state.trash);
   const settings = computed(() => state.settings);
-  const people = computed(() => projectService.people());
-  const currentUser = computed(() => users.value.find((user) => user.id === "user-admin") || users.value[0]);
-  const currentContext = computed(() => buildAccessContext(currentUser.value, state.organization.id));
+  const people = computed(() => apiMode ? users.value.filter((user) => user.status !== "INACTIVE").map((user) => user.name) : projectService.people());
+  const currentUser = computed(() => apiMode ? authState.user : users.value.find((user) => user.id === "user-admin") || users.value[0]);
+  const currentContext = computed(() => {
+    if (!currentUser.value) {
+      return {
+        organizationId: state.organization.id,
+        user: null,
+        userId: "",
+        isAdmin: false,
+        isActiveUser: false,
+      };
+    }
+    return buildAccessContext(currentUser.value, state.organization.id);
+  });
 
   const openIssues = computed(() => issues.value.filter((issue) => !isClosedStatus(issue.status)));
   const agileProjects = computed(() => projects.value.filter((project) => project.templateId === "agile"));
@@ -51,6 +154,34 @@ export function useKiviflowStore() {
     const total = projects.value.reduce((sum, project) => sum + summarizeProject(project.id).health, 0);
     return Math.round(total / projects.value.length);
   });
+
+  async function login(input) {
+    if (!apiMode) return { ok: true };
+    authState.saving = true;
+    authState.error = "";
+    try {
+      await apiClient.login(input);
+      const me = await apiClient.me();
+      applyMe(me);
+      authState.authenticated = true;
+      authState.initialized = true;
+      await refreshApiState();
+      return { ok: true, user: authState.user };
+    } catch (error) {
+      const result = apiResult(error);
+      authState.error = result.message;
+      return result;
+    } finally {
+      authState.saving = false;
+    }
+  }
+
+  async function logout() {
+    if (!apiMode) return { ok: true };
+    await apiClient.logout().catch(() => null);
+    markUnauthenticated();
+    return { ok: true };
+  }
 
   function getTemplate(templateId) {
     return templateService.getTemplate(templateId);
@@ -80,12 +211,31 @@ export function useKiviflowStore() {
     return timeEntries.value.filter((entry) => entry.projectId === projectId);
   }
 
+  async function loadProjectBoard(projectId) {
+    if (!apiMode) return null;
+    const payload = await apiClient.projects.board(projectId);
+    upsertById(state.projects, payload.project);
+    replaceProjectScoped(state.issues, projectId, payload.issues);
+    replaceProjectScoped(state.timeEntries, projectId, payload.timeEntries);
+    replaceProjectScoped(state.projectMembers, projectId, payload.members);
+    if (payload.costRecord) upsertById(state.costRecords, payload.costRecord);
+    return payload;
+  }
+
   function summarizeProject(projectId) {
     const project = getProject(projectId);
     return projectService.summarize(project, getProjectIssues(project.id));
   }
 
   function createProject(input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.projects.create(input);
+        upsertById(state.projects, payload.project, true);
+        await loadProjectBoard(payload.project.id).catch(() => null);
+        return payload.project;
+      });
+    }
     const ownerId = input.ownerId || userIdForName(users.value, input.owner) || currentUser.value.id;
     const project = {
       ...projectService.createProject({ ...input, owner: userNameForId(users.value, ownerId) }),
@@ -112,6 +262,13 @@ export function useKiviflowStore() {
   }
 
   function updateProject(projectId, patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.projects.update(projectId, patch);
+        upsertById(state.projects, payload.project);
+        return payload.project;
+      });
+    }
     const index = state.projects.findIndex((project) => project.id === projectId);
     if (index < 0) return null;
 
@@ -134,6 +291,13 @@ export function useKiviflowStore() {
   }
 
   function deleteProject(projectId) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        await apiClient.projects.delete(projectId);
+        removeById(state.projects, projectId);
+        return { ok: true };
+      });
+    }
     const index = state.projects.findIndex((project) => project.id === projectId);
     if (index < 0) return { ok: false, reason: "not-found" };
 
@@ -226,6 +390,9 @@ export function useKiviflowStore() {
   }
 
   function addTimeEntry(issueId, input) {
+    if (apiMode) {
+      return createTimeEntry({ ...input, issueId });
+    }
     const issue = getIssue(issueId);
     if (!issue) return null;
 
@@ -244,12 +411,26 @@ export function useKiviflowStore() {
   }
 
   function createTimeEntry(input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.timeEntries.create(timeEntryPayload(input, users.value, currentUser.value));
+        upsertById(state.timeEntries, payload.entry, true);
+        return payload.entry;
+      });
+    }
     const issue = getIssue(input.issueId);
     if (!issue) return null;
     return addTimeEntry(issue.id, input);
   }
 
   function updateTimeEntry(entryId, patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.timeEntries.update(entryId, timeEntryPatchPayload(patch));
+        upsertById(state.timeEntries, payload.entry);
+        return payload.entry;
+      });
+    }
     const index = state.timeEntries.findIndex((entry) => entry.id === entryId);
     if (index < 0) return null;
 
@@ -280,6 +461,42 @@ export function useKiviflowStore() {
     }
 
     return updated;
+  }
+
+  function deleteTimeEntry(entryId, correctionReason = "") {
+    if (!apiMode) return { ok: false, reason: "not-supported", message: "本地模式暂不支持删除工时。" };
+    return withApiSave(async () => {
+      await apiClient.timeEntries.delete(entryId, correctionReason ? { correctionReason } : undefined);
+      removeById(state.timeEntries, entryId);
+      return { ok: true };
+    });
+  }
+
+  function submitTimeEntry(entryId) {
+    if (!apiMode) return { ok: false, reason: "not-supported", message: "本地模式暂不支持提交审批。" };
+    return withApiSave(async () => {
+      const payload = await apiClient.timeEntries.submit(entryId);
+      upsertById(state.timeEntries, payload.entry);
+      return { ok: true, entry: payload.entry };
+    });
+  }
+
+  function approveTimeEntry(entryId) {
+    if (!apiMode) return { ok: false, reason: "not-supported", message: "本地模式暂不支持审批。" };
+    return withApiSave(async () => {
+      const payload = await apiClient.timeEntries.approve(entryId);
+      upsertById(state.timeEntries, payload.entry);
+      return { ok: true, entry: payload.entry };
+    });
+  }
+
+  function rejectTimeEntry(entryId, correctionReason = "") {
+    if (!apiMode) return { ok: false, reason: "not-supported", message: "本地模式暂不支持驳回。" };
+    return withApiSave(async () => {
+      const payload = await apiClient.timeEntries.reject(entryId, correctionReason);
+      upsertById(state.timeEntries, payload.entry);
+      return { ok: true, entry: payload.entry };
+    });
   }
 
   function listCostRecords(options = {}) {
@@ -317,6 +534,13 @@ export function useKiviflowStore() {
   }
 
   function createCostRecord(input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.costRecords.create(input);
+        upsertById(state.costRecords, payload.record, true);
+        return { ok: true, record: payload.record };
+      });
+    }
     const project = getProject(input.projectId);
     const result = costService.createCostRecord({
       context: currentContext.value,
@@ -331,6 +555,13 @@ export function useKiviflowStore() {
   }
 
   function updateCostRecord(recordId, patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.costRecords.update(recordId, patch);
+        upsertById(state.costRecords, payload.record);
+        return { ok: true, record: payload.record };
+      });
+    }
     const index = state.costRecords.findIndex((record) => record.id === recordId);
     if (index < 0) return { ok: false, reason: "not-found" };
     const record = state.costRecords[index];
@@ -348,6 +579,13 @@ export function useKiviflowStore() {
   }
 
   function deleteCostRecord(recordId) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.costRecords.delete(recordId);
+        upsertById(state.costRecords, payload.record);
+        return { ok: true, record: payload.record };
+      });
+    }
     const index = state.costRecords.findIndex((record) => record.id === recordId);
     if (index < 0) return { ok: false, reason: "not-found" };
     const record = state.costRecords[index];
@@ -360,6 +598,14 @@ export function useKiviflowStore() {
   }
 
   function recordCostExport(recordId, filter = {}) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const query = queryString(filter);
+        const response = await apiClient.costRecords.export(recordId, query);
+        await downloadResponse(response);
+        return { ok: true, response };
+      });
+    }
     const summary = getCostSummary(recordId, filter);
     if (!summary) return { ok: false, reason: "not-found" };
     state.auditLogs.unshift(createAuditLog("cost_record.export", "ProjectCostRecord", recordId, filter));
@@ -396,6 +642,13 @@ export function useKiviflowStore() {
   }
 
   async function createUser(input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.users.create(input);
+        upsertById(state.users, payload.user, true);
+        return { ok: true, user: payload.user };
+      });
+    }
     const result = await userService.createUser({
       context: currentContext.value,
       input,
@@ -408,6 +661,14 @@ export function useKiviflowStore() {
   }
 
   function updateUser(userId, patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.users.update(userId, patch);
+        upsertById(state.users, payload.user);
+        if (authState.user?.id === payload.user.id && payload.user.status !== "ACTIVE") markUnauthenticated();
+        return { ok: true, user: payload.user };
+      });
+    }
     const index = state.users.findIndex((user) => user.id === userId);
     if (index < 0) return { ok: false, reason: "not-found", message: "人员不存在。" };
     const result = userService.updateUser({
@@ -424,6 +685,14 @@ export function useKiviflowStore() {
   }
 
   function deleteUser(userId) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.users.delete(userId);
+        upsertById(state.users, payload.user);
+        if (authState.user?.id === payload.user.id) markUnauthenticated();
+        return { ok: true, user: payload.user };
+      });
+    }
     const index = state.users.findIndex((user) => user.id === userId);
     if (index < 0) return { ok: false, reason: "not-found", message: "人员不存在。" };
     const result = userService.deleteUser({
@@ -439,6 +708,14 @@ export function useKiviflowStore() {
   }
 
   async function resetUserPassword(userId, input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.users.resetPassword(userId, input);
+        upsertById(state.users, payload.user);
+        if (authState.user?.id === payload.user.id) markUnauthenticated();
+        return { ok: true, user: payload.user };
+      });
+    }
     const index = state.users.findIndex((user) => user.id === userId);
     if (index < 0) return { ok: false, reason: "not-found", message: "人员不存在。" };
     const result = await userService.resetPassword({
@@ -454,8 +731,11 @@ export function useKiviflowStore() {
     return result;
   }
 
-  return {
+ return {
     state,
+    auth: authState,
+    operation: operationState,
+    apiMode,
     templates,
     projects,
     issues,
@@ -481,7 +761,12 @@ export function useKiviflowStore() {
     getProjectIssues,
     getIssueTimeEntries,
     getProjectTimeEntries,
+    loadProjectBoard,
     summarizeProject,
+    login,
+    logout,
+    restoreSession,
+    refreshApiState,
     createProject,
     updateProject,
     updateSettings,
@@ -496,6 +781,10 @@ export function useKiviflowStore() {
     addTimeEntry,
     createTimeEntry,
     updateTimeEntry,
+    deleteTimeEntry,
+    submitTimeEntry,
+    approveTimeEntry,
+    rejectTimeEntry,
     listCostRecords,
     getCostRecord,
     getProjectCostRecord,
@@ -537,4 +826,72 @@ function ensureProjectMember(projectId, userId) {
     status: "ACTIVE",
     createdAt: new Date().toISOString(),
   });
+}
+
+function upsertById(list, item, prepend = false) {
+  if (!item?.id) return;
+  const index = list.findIndex((entry) => entry.id === item.id);
+  if (index >= 0) list.splice(index, 1, item);
+  else if (prepend) list.unshift(item);
+  else list.push(item);
+}
+
+function removeById(list, id) {
+  const index = list.findIndex((entry) => entry.id === id);
+  if (index >= 0) list.splice(index, 1);
+}
+
+function replaceProjectScoped(list, projectId, rows = []) {
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    if (list[index].projectId === projectId) list.splice(index, 1);
+  }
+  list.unshift(...rows);
+}
+
+function timeEntryPayload(input, users, currentUser) {
+  const reporterUserId = input.userId || userIdForName(users, input.reporter) || currentUser?.id;
+  return {
+    projectId: input.projectId,
+    issueId: input.issueId,
+    userId: reporterUserId,
+    workDate: input.workDate || input.spentDate,
+    hours: Number(input.hours),
+    description: input.note || input.description || "",
+  };
+}
+
+function timeEntryPatchPayload(patch) {
+  return {
+    ...(patch.projectId !== undefined ? { projectId: patch.projectId } : {}),
+    ...(patch.issueId !== undefined ? { issueId: patch.issueId } : {}),
+    ...(patch.workDate !== undefined || patch.spentDate !== undefined ? { workDate: patch.workDate || patch.spentDate } : {}),
+    ...(patch.hours !== undefined ? { hours: Number(patch.hours) } : {}),
+    ...(patch.note !== undefined || patch.description !== undefined ? { description: patch.note || patch.description || "" } : {}),
+    ...(patch.correctionReason !== undefined ? { correctionReason: patch.correctionReason } : {}),
+  };
+}
+
+function queryString(filter = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  });
+  const text = params.toString();
+  return text ? `?${text}` : "";
+}
+
+async function downloadResponse(response) {
+  if (typeof window === "undefined" || !response?.blob) return;
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") || "";
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+  const fileName = encoded ? decodeURIComponent(encoded) : "gridproject-export.xlsx";
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }

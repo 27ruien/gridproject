@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "db:validate": "DATABASE_URL=${DATABASE_URL:-postgresql://gridproject_app@127.0.0.1:5432/gridproject_dev?schema=public} prisma validate",
+    "lint": "npm run db:validate && npm run server:lint",
     "server:install": "pnpm --dir server install",
     "server:dev": "pnpm --dir server run dev",
     "server:build": "pnpm --dir server run build",
@@ -17,7 +18,7 @@
     "server:prisma:migrate:dev": "pnpm --dir server run prisma:migrate:dev",
     "server:prisma:migrate:deploy": "pnpm --dir server run prisma:migrate:deploy",
     "server:prisma:seed": "pnpm --dir server run prisma:seed",
-    "test": "node tests/domain.test.js && node tests/access-cost.test.js",
+    "test": "node tests/domain.test.js && node tests/access-cost.test.js && node tests/api-mode-source.test.js",
     "test:visual": "playwright test -c playwright.config.js",
     "test:visual:update": "playwright test -c playwright.config.js --update-snapshots",
     "preview": "vite preview --host 127.0.0.1"

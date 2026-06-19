@@ -20,8 +20,6 @@ export async function hydrateStateFromApi(state) {
   replaceArray(state.timeEntries, payload.timeEntries);
   replaceArray(state.projectMembers, payload.projectMembers);
   replaceArray(state.costRecords, payload.costRecords);
-  replaceArray(state.sessions, payload.sessions);
-  replaceArray(state.auditLogs, payload.auditLogs);
   replaceArray(state.trash, payload.trash);
   return payload;
 }
