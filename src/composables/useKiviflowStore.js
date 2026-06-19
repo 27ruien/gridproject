@@ -132,7 +132,7 @@ export function useKiviflowStore() {
   const trash = computed(() => state.trash);
   const settings = computed(() => state.settings);
   const people = computed(() => apiMode ? users.value.filter((user) => user.status !== "INACTIVE").map((user) => user.name) : projectService.people());
-  const currentUser = computed(() => apiMode ? authState.user : users.value.find((user) => user.id === "user-admin") || users.value[0]);
+  const currentUser = computed(() => apiMode ? authState.user : localDemoUser(users.value));
   const currentContext = computed(() => {
     if (!currentUser.value) {
       return {
@@ -814,6 +814,10 @@ function createAuditLog(action, entityType, entityId, data) {
     data,
     createdAt: new Date().toISOString(),
   };
+}
+
+function localDemoUser(users) {
+  return users.find((user) => user.id === "user-linxia") || users.find((user) => user.status === "ACTIVE" && user.role !== "ADMIN") || users[0] || null;
 }
 
 function ensureProjectMember(projectId, userId) {

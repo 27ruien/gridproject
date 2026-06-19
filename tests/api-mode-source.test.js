@@ -18,6 +18,8 @@ const app = readFileSync(new URL("../src/App.vue", import.meta.url), "utf8");
 ].forEach((needle) => assert(store.includes(needle), `store should call ${needle} in API mode`));
 
 assert(store.includes("apiMode ? authState.user"), "API mode current user must come from authState");
+assert(store.includes("localDemoUser(users.value)"), "local demo current user should be resolved separately from API auth");
+assert(store.includes('user.id === "user-linxia"'), "local demo should preserve the project-manager persona used by visual baselines");
 assert(store.includes("apiClient.me()"), "store should restore current user from /auth/me");
 assert(store.includes("apiClient.onUnauthorized"), "401 responses should be centrally handled");
 assert(apiClient.includes('credentials: "include"'), "API requests must include cookies");
