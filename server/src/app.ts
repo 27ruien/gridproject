@@ -10,8 +10,14 @@ import { authRoutes } from "./modules/auth/routes.js";
 import { bootstrapRoutes } from "./modules/bootstrap/routes.js";
 import { costRecordRoutes } from "./modules/cost-records/routes.js";
 import { healthRoutes } from "./modules/health/routes.js";
+import { issueCommentRoutes } from "./modules/issue-comments/routes.js";
+import { issueRoutes } from "./modules/issues/routes.js";
+import { milestoneRoutes } from "./modules/milestones/routes.js";
+import { projectMemberRoutes } from "./modules/project-members/routes.js";
 import { projectRoutes } from "./modules/projects/routes.js";
+import { settingsRoutes } from "./modules/settings/routes.js";
 import { timeEntryRoutes } from "./modules/time-entries/routes.js";
+import { trashRoutes } from "./modules/trash/routes.js";
 import { userRoutes } from "./modules/users/routes.js";
 
 export async function buildApp(config: ServerConfig = getConfig()) {
@@ -48,6 +54,12 @@ export async function buildApp(config: ServerConfig = getConfig()) {
   await app.register(bootstrapRoutes, { prefix: "/api/bootstrap" });
   await app.register(userRoutes, { prefix: "/api/users" });
   await app.register(projectRoutes, { prefix: "/api/projects" });
+  await app.register(projectMemberRoutes, { prefix: "/api/projects" });
+  await app.register(issueRoutes, { prefix: "/api" });
+  await app.register(issueCommentRoutes, { prefix: "/api" });
+  await app.register(milestoneRoutes, { prefix: "/api" });
+  await app.register(settingsRoutes, { prefix: "/api/settings" });
+  await app.register(trashRoutes, { prefix: "/api/trash" });
   await app.register(timeEntryRoutes, { prefix: "/api/time-entries" });
   await app.register(costRecordRoutes, { prefix: "/api/cost-records" });
 

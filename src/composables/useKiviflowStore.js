@@ -63,8 +63,12 @@ async function refreshApiState() {
   try {
     const payload = await hydrateStateFromApi(state);
     if (payload?.currentUser) authState.user = payload.currentUser;
-    const costPayload = await apiClient.costRecords.list().catch(() => null);
+    const [costPayload, trashPayload] = await Promise.all([
+      apiClient.costRecords.list().catch(() => null),
+      apiClient.trash.list().catch(() => null),
+    ]);
     if (costPayload?.rows) state.costRecords.splice(0, state.costRecords.length, ...costPayload.rows);
+    if (trashPayload?.rows) state.trash.splice(0, state.trash.length, ...trashPayload.rows);
     return payload;
   } finally {
     operationState.loading = false;
@@ -214,10 +218,15 @@ export function useKiviflowStore() {
   async function loadProjectBoard(projectId) {
     if (!apiMode) return null;
     const payload = await apiClient.projects.board(projectId);
-    upsertById(state.projects, payload.project);
+    const projectPayload = {
+      ...payload.project,
+      milestones: payload.milestones || payload.project?.milestones || [],
+    };
+    upsertById(state.projects, projectPayload);
     replaceProjectScoped(state.issues, projectId, payload.issues);
     replaceProjectScoped(state.timeEntries, projectId, payload.timeEntries);
     replaceProjectScoped(state.projectMembers, projectId, payload.members);
+    replaceProjectMilestones(projectId, projectPayload.milestones);
     if (payload.costRecord) upsertById(state.costRecords, payload.costRecord);
     return payload;
   }
@@ -264,9 +273,28 @@ export function useKiviflowStore() {
   function updateProject(projectId, patch) {
     if (apiMode) {
       return withApiSave(async () => {
-        const payload = await apiClient.projects.update(projectId, patch);
-        upsertById(state.projects, payload.project);
-        return payload.project;
+        const { milestones, ...projectPatch } = patch;
+        let projectPayload = null;
+        if (Object.keys(projectPatch).length) {
+          const payload = await apiClient.projects.update(projectId, projectPatch);
+          projectPayload = {
+            ...payload.project,
+            milestones: payload.project.milestones || getProject(projectId)?.milestones || [],
+          };
+          upsertById(state.projects, projectPayload);
+        }
+        if (Array.isArray(milestones)) {
+          const currentProject = getProject(projectId);
+          const currentMilestones = currentProject?.milestones || [];
+          for (const milestone of milestones) {
+            const previous = currentMilestones.find((item) => item.id === milestone.id);
+            if (!milestone.id || !previous || !milestoneChanged(previous, milestone)) continue;
+            const payload = await apiClient.milestones.update(milestone.id, milestonePatchPayload(milestone));
+            replaceMilestone(projectId, payload.milestone);
+          }
+          await loadProjectBoard(projectId).catch(() => null);
+        }
+        return projectPayload || getProject(projectId);
       });
     }
     const index = state.projects.findIndex((project) => project.id === projectId);
@@ -282,6 +310,16 @@ export function useKiviflowStore() {
   }
 
   function updateSettings(patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.settings.update({
+          ...patch,
+          logoText: (patch.logoText || state.settings.logoText || "G").slice(0, 2),
+        });
+        state.settings = payload.settings;
+        return payload.settings;
+      });
+    }
     state.settings = {
       ...state.settings,
       ...patch,
@@ -295,6 +333,7 @@ export function useKiviflowStore() {
       return withApiSave(async () => {
         await apiClient.projects.delete(projectId);
         removeById(state.projects, projectId);
+        await refreshTrash().catch(() => null);
         return { ok: true };
       });
     }
@@ -311,7 +350,51 @@ export function useKiviflowStore() {
     return { ok: true };
   }
 
+  function addProjectMember(projectId, input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.projectMembers.create(projectId, input);
+        upsertById(state.projectMembers, payload.member, true);
+        return { ok: true, member: payload.member };
+      });
+    }
+    ensureProjectMember(projectId, input.userId);
+    return { ok: true, member: state.projectMembers[0] };
+  }
+
+  function updateProjectMember(projectId, memberId, patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.projectMembers.update(projectId, memberId, patch);
+        upsertById(state.projectMembers, payload.member);
+        return { ok: true, member: payload.member };
+      });
+    }
+    const index = state.projectMembers.findIndex((member) => member.id === memberId && member.projectId === projectId);
+    if (index < 0) return { ok: false, reason: "not-found" };
+    state.projectMembers.splice(index, 1, { ...state.projectMembers[index], ...patch });
+    return { ok: true, member: state.projectMembers[index] };
+  }
+
+  function removeProjectMember(projectId, memberId) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.projectMembers.delete(projectId, memberId);
+        upsertById(state.projectMembers, payload.member);
+        return { ok: true, member: payload.member };
+      });
+    }
+    return updateProjectMember(projectId, memberId, { status: "INACTIVE" });
+  }
+
   function createIssue(input, projectId) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.issues.create(projectId, issuePayload(input, users.value, currentUser.value));
+        upsertById(state.issues, payload.issue, true);
+        return payload.issue;
+      });
+    }
     const project = getProject(projectId);
     const issue = issueService.createIssue(input, project);
     state.issues.unshift(issue);
@@ -321,6 +404,24 @@ export function useKiviflowStore() {
   function importProjectSchedule(projectId, text, options = {}) {
     const project = getProject(projectId);
     const result = issueService.importSchedule(text, project, getProjectIssues(project.id), options);
+
+    if (apiMode) {
+      return withApiSave(async () => {
+        const created = [];
+        const updated = [];
+        for (const issue of result.updated) {
+          const payload = await apiClient.issues.update(issue.id, issuePayload(issue, users.value, currentUser.value));
+          upsertById(state.issues, payload.issue);
+          updated.push(payload.issue);
+        }
+        for (const issue of result.created) {
+          const payload = await apiClient.issues.create(projectId, issuePayload(issue, users.value, currentUser.value));
+          upsertById(state.issues, payload.issue, true);
+          created.push(payload.issue);
+        }
+        return { ...result, created, updated };
+      });
+    }
 
     result.updated.forEach((issue) => {
       const index = state.issues.findIndex((item) => item.id === issue.id);
@@ -332,6 +433,13 @@ export function useKiviflowStore() {
   }
 
   function updateIssue(issueId, patch) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.issues.update(issueId, issuePayload(patch, users.value, currentUser.value));
+        upsertById(state.issues, payload.issue);
+        return payload.issue;
+      });
+    }
     const index = state.issues.findIndex((issue) => issue.id === issueId);
     if (index < 0) return null;
 
@@ -341,6 +449,14 @@ export function useKiviflowStore() {
   }
 
   function deleteIssue(issueId) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.issues.delete(issueId);
+        removeById(state.issues, issueId);
+        await refreshTrash().catch(() => null);
+        return payload.issue;
+      });
+    }
     const index = state.issues.findIndex((issue) => issue.id === issueId);
     if (index < 0) return null;
 
@@ -356,6 +472,15 @@ export function useKiviflowStore() {
     const item = state.trash[index];
     if (!isTrashRestorable(item)) return { ok: false, reason: "expired" };
 
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.trash.restore(item.type, item.entityId || item.entity?.id);
+        applyRestoredEntity(payload.type, payload.entity);
+        removeById(state.trash, item.id);
+        return { ok: true, type: payload.type, entity: payload.entity };
+      });
+    }
+
     if (item.type === "project") {
       if (state.projects.some((project) => project.id === item.entity.id)) return { ok: false, reason: "exists" };
       state.projects.unshift(projectService.updateProject(item.entity, {}));
@@ -370,6 +495,14 @@ export function useKiviflowStore() {
   }
 
   function advanceIssue(issueId) {
+    if (apiMode) {
+      const issue = getIssue(issueId);
+      if (!issue) return null;
+      const template = getTemplate(getProject(issue.projectId).templateId);
+      const nextStatus = issueService.advanceIssue(issue, template).status;
+      if (nextStatus === issue.status) return issue;
+      return updateIssue(issueId, { status: nextStatus });
+    }
     const index = state.issues.findIndex((issue) => issue.id === issueId);
     if (index < 0) return null;
 
@@ -381,6 +514,15 @@ export function useKiviflowStore() {
   }
 
   function addIssueComment(issueId, text) {
+    if (apiMode) {
+      if (!text?.trim()) return null;
+      return withApiSave(async () => {
+        const payload = await apiClient.issueComments.create(issueId, { text: text.trim() });
+        const detail = await apiClient.issues.detail(issueId).catch(() => null);
+        if (detail?.issue) upsertById(state.issues, detail.issue);
+        return payload.comment;
+      });
+    }
     const index = state.issues.findIndex((issue) => issue.id === issueId);
     if (index < 0 || !text?.trim()) return null;
 
@@ -583,6 +725,7 @@ export function useKiviflowStore() {
       return withApiSave(async () => {
         const payload = await apiClient.costRecords.delete(recordId);
         upsertById(state.costRecords, payload.record);
+        await refreshTrash().catch(() => null);
         return { ok: true, record: payload.record };
       });
     }
@@ -689,6 +832,7 @@ export function useKiviflowStore() {
       return withApiSave(async () => {
         const payload = await apiClient.users.delete(userId);
         upsertById(state.users, payload.user);
+        await refreshTrash().catch(() => null);
         if (authState.user?.id === payload.user.id) markUnauthenticated();
         return { ok: true, user: payload.user };
       });
@@ -771,6 +915,9 @@ export function useKiviflowStore() {
     updateProject,
     updateSettings,
     deleteProject,
+    addProjectMember,
+    updateProjectMember,
+    removeProjectMember,
     createIssue,
     importProjectSchedule,
     updateIssue,
@@ -852,6 +999,73 @@ function replaceProjectScoped(list, projectId, rows = []) {
   list.unshift(...rows);
 }
 
+async function refreshTrash() {
+  if (!apiMode) return null;
+  const payload = await apiClient.trash.list();
+  state.trash.splice(0, state.trash.length, ...(payload.rows || []));
+  return payload;
+}
+
+function replaceProjectMilestones(projectId, milestones = []) {
+  const project = state.projects.find((item) => item.id === projectId);
+  if (project) project.milestones = milestones;
+}
+
+function replaceMilestone(projectId, milestone) {
+  const project = state.projects.find((item) => item.id === projectId);
+  if (!project || !milestone?.id) return;
+  const milestones = Array.isArray(project.milestones) ? project.milestones : [];
+  const index = milestones.findIndex((item) => item.id === milestone.id);
+  if (index >= 0) milestones.splice(index, 1, milestone);
+  else milestones.push(milestone);
+  project.milestones = milestones;
+}
+
+function milestoneChanged(previous, next) {
+  return ["name", "title", "window", "focus", "status", "dueDate", "completedAt"].some((key) => String(previous?.[key] ?? "") !== String(next?.[key] ?? ""));
+}
+
+function milestonePatchPayload(milestone) {
+  return {
+    name: milestone.name || milestone.title,
+    window: milestone.window || "",
+    focus: milestone.focus || "",
+    status: milestone.status,
+    dueDate: milestone.dueDate || null,
+    ...(milestone.completedAt !== undefined ? { completedAt: milestone.completedAt } : {}),
+  };
+}
+
+function issuePayload(input = {}, users = [], currentUser = null) {
+  const payload = {};
+  const copyIfPresent = ["code", "title", "type", "status", "priority", "startDate", "dueDate", "description", "next"];
+  copyIfPresent.forEach((key) => {
+    if (input[key] !== undefined) payload[key] = input[key];
+  });
+
+  ["estimatedHours", "actualHours"].forEach((key) => {
+    if (input[key] === undefined) return;
+    payload[key] = input[key] === "" || input[key] === null ? null : Number(input[key]);
+  });
+
+  if (input.ownerId !== undefined) payload.ownerId = input.ownerId || null;
+  else if (input.owner !== undefined) payload.ownerId = userIdForName(users, input.owner) || currentUser?.id || null;
+
+  if (input.creatorId !== undefined) payload.creatorId = input.creatorId || null;
+  else if (input.creator !== undefined) payload.creatorId = userIdForName(users, input.creator) || currentUser?.id || null;
+
+  return payload;
+}
+
+function applyRestoredEntity(type, entity) {
+  if (!entity) return;
+  if (type === "project") upsertById(state.projects, entity, true);
+  else if (type === "issue") upsertById(state.issues, entity, true);
+  else if (type === "costRecord") upsertById(state.costRecords, entity, true);
+  else if (type === "user") upsertById(state.users, entity, true);
+  else if (type === "milestone") replaceMilestone(entity.projectId, entity);
+}
+
 function timeEntryPayload(input, users, currentUser) {
   const reporterUserId = input.userId || userIdForName(users, input.reporter) || currentUser?.id;
   return {
@@ -866,7 +1080,6 @@ function timeEntryPayload(input, users, currentUser) {
 
 function timeEntryPatchPayload(patch) {
   return {
-    ...(patch.projectId !== undefined ? { projectId: patch.projectId } : {}),
     ...(patch.issueId !== undefined ? { issueId: patch.issueId } : {}),
     ...(patch.workDate !== undefined || patch.spentDate !== undefined ? { workDate: patch.workDate || patch.spentDate } : {}),
     ...(patch.hours !== undefined ? { hours: Number(patch.hours) } : {}),

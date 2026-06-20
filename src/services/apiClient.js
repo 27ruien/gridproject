@@ -88,6 +88,87 @@ export const apiClient = {
       return request(`/projects/${encodeURIComponent(projectId)}/board`);
     },
   },
+  projectMembers: {
+    list(projectId) {
+      return request(`/projects/${encodeURIComponent(projectId)}/members`);
+    },
+    create(projectId, input) {
+      return request(`/projects/${encodeURIComponent(projectId)}/members`, { method: "POST", body: input });
+    },
+    update(projectId, memberId, patch) {
+      return request(`/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(memberId)}`, { method: "PATCH", body: patch });
+    },
+    delete(projectId, memberId) {
+      return request(`/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(memberId)}`, { method: "DELETE" });
+    },
+  },
+  issues: {
+    list(projectId, query = "") {
+      return request(`/projects/${encodeURIComponent(projectId)}/issues${query}`);
+    },
+    create(projectId, input) {
+      return request(`/projects/${encodeURIComponent(projectId)}/issues`, { method: "POST", body: input });
+    },
+    detail(issueId) {
+      return request(`/issues/${encodeURIComponent(issueId)}`);
+    },
+    update(issueId, patch) {
+      return request(`/issues/${encodeURIComponent(issueId)}`, { method: "PATCH", body: patch });
+    },
+    delete(issueId) {
+      return request(`/issues/${encodeURIComponent(issueId)}`, { method: "DELETE" });
+    },
+    restore(issueId) {
+      return request(`/issues/${encodeURIComponent(issueId)}/restore`, { method: "POST" });
+    },
+  },
+  issueComments: {
+    list(issueId) {
+      return request(`/issues/${encodeURIComponent(issueId)}/comments`);
+    },
+    create(issueId, input) {
+      return request(`/issues/${encodeURIComponent(issueId)}/comments`, { method: "POST", body: input });
+    },
+    update(commentId, patch) {
+      return request(`/comments/${encodeURIComponent(commentId)}`, { method: "PATCH", body: patch });
+    },
+    delete(commentId) {
+      return request(`/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" });
+    },
+  },
+  milestones: {
+    list(projectId) {
+      return request(`/projects/${encodeURIComponent(projectId)}/milestones`);
+    },
+    create(projectId, input) {
+      return request(`/projects/${encodeURIComponent(projectId)}/milestones`, { method: "POST", body: input });
+    },
+    update(milestoneId, patch) {
+      return request(`/milestones/${encodeURIComponent(milestoneId)}`, { method: "PATCH", body: patch });
+    },
+    delete(milestoneId) {
+      return request(`/milestones/${encodeURIComponent(milestoneId)}`, { method: "DELETE" });
+    },
+    restore(milestoneId) {
+      return request(`/milestones/${encodeURIComponent(milestoneId)}/restore`, { method: "POST" });
+    },
+  },
+  settings: {
+    get() {
+      return request("/settings");
+    },
+    update(patch) {
+      return request("/settings", { method: "PATCH", body: patch });
+    },
+  },
+  trash: {
+    list() {
+      return request("/trash");
+    },
+    restore(type, id) {
+      return request(`/trash/${encodeURIComponent(type)}/${encodeURIComponent(id)}/restore`, { method: "POST" });
+    },
+  },
   timeEntries: {
     list(query = "") {
       return request(`/time-entries${query}`);
@@ -97,6 +178,9 @@ export const apiClient = {
     },
     update(entryId, patch) {
       return request(`/time-entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: patch });
+    },
+    move(entryId, input) {
+      return request(`/time-entries/${encodeURIComponent(entryId)}/move`, { method: "POST", body: input });
     },
     delete(entryId, input) {
       return request(`/time-entries/${encodeURIComponent(entryId)}`, { method: "DELETE", ...(input ? { body: input } : {}) });

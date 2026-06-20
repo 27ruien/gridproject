@@ -519,20 +519,28 @@ async function deleteProject(projectId) {
   showToast("项目已移入回收站，可在 30 天内恢复");
 }
 
-function createIssue(input) {
+async function createIssue(input) {
   if (!input.title?.trim()) {
     showToast("请填写事项标题");
     return;
   }
 
-  const created = store.createIssue(input, project.value.id);
+  const created = await store.createIssue(input, project.value.id);
+  if (!created?.id) {
+    showToast(created?.message || store.operation.error || "事项创建失败");
+    return;
+  }
   issueModalOpen.value = false;
   openIssue(created.id);
   showToast("事项已创建");
 }
 
-function importProjectSchedule(input) {
-  const result = store.importProjectSchedule(project.value.id, input.text, { merge: input.merge });
+async function importProjectSchedule(input) {
+  const result = await store.importProjectSchedule(project.value.id, input.text, { merge: input.merge });
+  if (result?.ok === false) {
+    showToast(result.message || store.operation.error || "排期导入失败");
+    return;
+  }
   scheduleImportOpen.value = false;
   activeView.value = "概览";
 
@@ -545,8 +553,12 @@ function importProjectSchedule(input) {
   showToast(`已导入 ${result.created.length} 个、更新 ${result.updated.length} 个，排期风险 ${result.riskCount} 个${warningText}`);
 }
 
-function updateIssue(issueId, patch) {
-  store.updateIssue(issueId, patch);
+async function updateIssue(issueId, patch) {
+  const updated = await store.updateIssue(issueId, patch);
+  if (!updated?.id) {
+    showToast(updated?.message || store.operation.error || "事项保存失败");
+    return;
+  }
   showToast("事项已保存");
 }
 
@@ -561,10 +573,10 @@ function requestDeleteIssue(issueId) {
   };
 }
 
-function deleteIssue(issueId) {
-  const deleted = store.deleteIssue(issueId);
-  if (!deleted) {
-    showToast("任务删除失败");
+async function deleteIssue(issueId) {
+  const deleted = await store.deleteIssue(issueId);
+  if (!deleted || deleted.ok === false) {
+    showToast(deleted?.message || store.operation.error || "任务删除失败");
     return;
   }
   selectedIssueId.value = null;
@@ -572,8 +584,12 @@ function deleteIssue(issueId) {
   showToast("任务已移入回收站，可在 30 天内恢复");
 }
 
-function addIssueComment(issueId, text) {
-  store.addIssueComment(issueId, text);
+async function addIssueComment(issueId, text) {
+  const comment = await store.addIssueComment(issueId, text);
+  if (!comment?.id) {
+    showToast(comment?.message || store.operation.error || "评论添加失败");
+    return;
+  }
   showToast("评论已添加");
 }
 
@@ -683,14 +699,18 @@ async function resetUserPassword(userId, input) {
   showToast(result.ok ? "密码已重置，现有 Session 已失效" : result.message || "密码重置失败");
 }
 
-function setIssueStatus(issueId, status) {
-  store.updateIssue(issueId, { status });
+async function setIssueStatus(issueId, status) {
+  const updated = await store.updateIssue(issueId, { status });
+  if (!updated?.id) {
+    showToast(updated?.message || store.operation.error || "状态更新失败");
+    return;
+  }
   showToast(`状态已更新为：${status}`);
 }
 
-function advanceIssue(issueId) {
+async function advanceIssue(issueId) {
   const before = store.getIssue(issueId)?.status;
-  const advanced = store.advanceIssue(issueId);
+  const advanced = await store.advanceIssue(issueId);
   if (!advanced || advanced.status === before) {
     showToast("已经是最后一个状态");
     return;
@@ -698,8 +718,8 @@ function advanceIssue(issueId) {
   showToast(`已推进到：${advanced.status}`);
 }
 
-function restoreTrashItem(trashId) {
-  const result = store.restoreTrashItem(trashId);
+async function restoreTrashItem(trashId) {
+  const result = await store.restoreTrashItem(trashId);
   if (result?.reason === "missing-project") {
     showToast("该任务所属项目不存在，请先恢复项目");
     return;
@@ -712,11 +732,22 @@ function restoreTrashItem(trashId) {
     showToast("恢复失败");
     return;
   }
-  showToast(result.type === "project" ? "项目已恢复" : "任务已恢复");
+  const label = {
+    project: "项目",
+    issue: "任务",
+    milestone: "里程碑",
+    costRecord: "成本记录",
+    user: "人员",
+  }[result.type] || "记录";
+  showToast(`${label}已恢复`);
 }
 
-function saveSettings(patch) {
-  store.updateSettings(patch);
+async function saveSettings(patch) {
+  const result = await store.updateSettings(patch);
+  if (!result || result.ok === false) {
+    showToast(result?.message || store.operation.error || "平台设置保存失败");
+    return;
+  }
   showToast("平台设置已保存");
 }
 

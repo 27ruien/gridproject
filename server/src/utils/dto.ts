@@ -38,11 +38,12 @@ export function sanitizeUserDto(user: any) {
 }
 
 export function projectDto(project: any) {
-  const { owner, createdBy, ...safeProject } = project;
+  const { owner, createdBy, milestones, ...safeProject } = project;
   const config = toJsonObject(project.config);
   return {
     ...safeProject,
     templateId: String(config.templateId || "agile"),
+    milestones: Array.isArray(milestones) ? milestones.map(milestoneDto) : milestones,
     startDate: toDateOnly(project.startDate),
     dueDate: toDateOnly(project.dueDate),
     testDate: toDateOnly(project.testDate),
@@ -56,8 +57,11 @@ export function projectDto(project: any) {
 }
 
 export function issueDto(issue: any) {
+  const { comments, activities, ...safeIssue } = issue;
   return {
-    ...issue,
+    ...safeIssue,
+    comments: Array.isArray(comments) ? comments.map(issueCommentDto) : [],
+    activity: Array.isArray(activities) ? activities.map(issueActivityDto) : [],
     startDate: toDateOnly(issue.startDate),
     dueDate: toDateOnly(issue.dueDate),
     estimatedHours: issue.estimatedHours == null ? null : toNumber(issue.estimatedHours),
@@ -82,17 +86,56 @@ export function projectMemberDto(member: any) {
 export function milestoneDto(milestone: any) {
   return {
     ...milestone,
+    name: milestone.name || milestone.title,
+    window: milestone.window || "",
+    focus: milestone.focus || "",
     dueDate: toDateOnly(milestone.dueDate),
     completedAt: toIsoDateTime(milestone.completedAt),
+    deletedAt: toIsoDateTime(milestone.deletedAt),
     createdAt: toIsoDateTime(milestone.createdAt),
     updatedAt: toIsoDateTime(milestone.updatedAt),
   };
 }
 
+export function issueCommentDto(comment: any) {
+  return {
+    id: comment.id,
+    issueId: comment.issueId,
+    authorId: comment.authorId,
+    actor: comment.authorName || comment.actor || "",
+    text: comment.text,
+    at: toIsoDateTime(comment.createdAt),
+    deletedAt: toIsoDateTime(comment.deletedAt),
+    createdAt: toIsoDateTime(comment.createdAt),
+    updatedAt: toIsoDateTime(comment.updatedAt),
+  };
+}
+
+export function issueActivityDto(activity: any) {
+  return {
+    id: activity.id,
+    issueId: activity.issueId,
+    actorId: activity.actorId,
+    actor: activity.actorName || activity.actor || "",
+    type: activity.type,
+    text: activity.text,
+    data: activity.data || undefined,
+    at: toIsoDateTime(activity.createdAt),
+    createdAt: toIsoDateTime(activity.createdAt),
+  };
+}
+
 export function timeEntryDto(entry: any) {
   const { user, project, issue, ...safeEntry } = entry;
+  const issueWasIncluded = Object.prototype.hasOwnProperty.call(entry, "issue");
+  const issueIsConsistent = !issueWasIncluded || !issue || (
+    issue.organizationId === entry.organizationId &&
+    issue.projectId === entry.projectId &&
+    !issue.deletedAt
+  );
   return {
     ...safeEntry,
+    issueId: issueIsConsistent ? entry.issueId : null,
     reporter: user?.name || entry.reporter?.name || entry.reporter || "",
     workDate: toDateOnly(entry.workDate),
     spentDate: toDateOnly(entry.workDate),

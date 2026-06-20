@@ -16,9 +16,9 @@ export class ProjectRepository {
       include: {
         owner: true,
         issues: { where: { deletedAt: null }, orderBy: [{ status: "asc" }, { updatedAt: "desc" }] },
-        milestones: { orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }] },
+        milestones: { where: { deletedAt: null }, orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }] },
         members: { include: { user: true }, orderBy: { updatedAt: "desc" } },
-        timeEntries: { where: { deletedAt: null }, include: { user: true }, orderBy: { workDate: "desc" } },
+        timeEntries: { where: { deletedAt: null }, include: { user: true, issue: true }, orderBy: { workDate: "desc" } },
         costRecord: true,
       },
     });

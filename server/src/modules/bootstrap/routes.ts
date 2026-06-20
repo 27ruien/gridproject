@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { UserRepository } from "../../repositories/users.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { costRecordDto, issueDto, projectDto, projectMemberDto, sanitizeUserDto, timeEntryDto } from "../../utils/dto.js";
+import { normalizeSettings } from "../settings/routes.js";
 
 export async function bootstrapRoutes(app: FastifyInstance) {
   app.get("/", async (request) => {
@@ -15,7 +16,10 @@ export async function bootstrapRoutes(app: FastifyInstance) {
       }),
       app.prisma.project.findMany({
         where: { organizationId: context.organizationId, deletedAt: null },
-        include: { owner: true },
+        include: {
+          owner: true,
+          milestones: { where: { deletedAt: null }, orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }] },
+        },
         orderBy: { updatedAt: "desc" },
       }),
       app.prisma.issue.findMany({
@@ -28,7 +32,7 @@ export async function bootstrapRoutes(app: FastifyInstance) {
           deletedAt: null,
           ...(context.isAdmin ? {} : { OR: [{ userId: context.userId }, { project: { ownerId: context.userId } }] }),
         },
-        include: { user: true },
+        include: { user: true, issue: true },
         orderBy: { workDate: "desc" },
       }),
       app.prisma.projectMember.findMany({
@@ -56,10 +60,7 @@ export async function bootstrapRoutes(app: FastifyInstance) {
       requestId: request.id,
       organization,
       currentUser: context.user,
-      settings: {
-        platformName: "GridProject",
-        logoText: "G",
-      },
+      settings: normalizeSettings(organization.settings),
       users: usersWithStats,
       projects: projects.map(projectDto),
       issues: issues.map(issueDto),

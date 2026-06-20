@@ -38,6 +38,7 @@ enum CostRecordStatus {
 model Organization {
   id        String   @id @default(cuid())
   name      String
+  settings  Json?
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
@@ -146,16 +147,20 @@ model Milestone {
   organizationId String
   projectId      String
   title          String
+  window         String?
+  focus          String?
   status         String
   dueDate        DateTime? @db.Date
   completedAt    DateTime? @db.Timestamptz(3)
+  deletedAt      DateTime? @db.Timestamptz(3)
+  deletedById    String?
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   project      Project      @relation(fields: [projectId], references: [id])
 
-  @@index([organizationId, projectId])
+  @@index([organizationId, projectId, deletedAt])
   @@map("milestones")
 }
 
@@ -174,17 +179,56 @@ model Issue {
   dueDate        DateTime? @db.Date
   estimatedHours Decimal?  @db.Decimal(10, 2)
   actualHours    Decimal?  @db.Decimal(10, 2)
+  next           String?
   description    String?
   deletedAt      DateTime? @db.Timestamptz(3)
+  deletedById    String?
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
-  project     Project     @relation(fields: [projectId], references: [id])
-  timeEntries TimeEntry[]
+  project      Project         @relation(fields: [projectId], references: [id])
+  timeEntries  TimeEntry[]
+  comments     IssueComment[]
+  activities   IssueActivity[]
 
   @@unique([projectId, code])
   @@index([organizationId, projectId])
   @@map("issues")
+}
+
+model IssueComment {
+  id             String    @id @default(cuid())
+  organizationId String
+  issueId        String
+  authorId       String
+  text           String
+  deletedAt      DateTime? @db.Timestamptz(3)
+  deletedById    String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  issue Issue @relation(fields: [issueId], references: [id])
+
+  @@index([organizationId, issueId, deletedAt])
+  @@index([authorId, createdAt])
+  @@map("issue_comments")
+}
+
+model IssueActivity {
+  id             String   @id @default(cuid())
+  organizationId String
+  issueId        String
+  actorId        String?
+  type           String
+  text           String
+  data           Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  issue Issue @relation(fields: [issueId], references: [id])
+
+  @@index([organizationId, issueId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("issue_activities")
 }
 
 model TimeEntry {

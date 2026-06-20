@@ -11,10 +11,16 @@ const app = readFileSync(new URL("../src/App.vue", import.meta.url), "utf8");
   "apiClient.users.create",
   "apiClient.timeEntries.create",
   "apiClient.costRecords.create",
+  "apiClient.projectMembers.create",
+  "apiClient.issues.create",
+  "apiClient.issueComments.create",
+  "apiClient.milestones.update",
   "apiClient.projects.update",
   "apiClient.users.update",
   "apiClient.timeEntries.update",
   "apiClient.costRecords.update",
+  "apiClient.settings.update",
+  "apiClient.trash.restore",
 ].forEach((needle) => assert(store.includes(needle), `store should call ${needle} in API mode`));
 
 assert(store.includes("apiMode ? authState.user"), "API mode current user must come from authState");
@@ -23,6 +29,14 @@ assert(store.includes('user.id === "user-linxia"'), "local demo should preserve 
 assert(store.includes("apiClient.me()"), "store should restore current user from /auth/me");
 assert(store.includes("apiClient.onUnauthorized"), "401 responses should be centrally handled");
 assert(apiClient.includes('credentials: "include"'), "API requests must include cookies");
+[
+  "projectMembers",
+  "issues",
+  "issueComments",
+  "milestones",
+  "settings",
+  "trash",
+].forEach((needle) => assert(apiClient.includes(`${needle}:`), `apiClient should expose ${needle} API`));
 assert(app.includes("LoginView"), "App should render a real login view");
 assert(app.includes("store.login"), "App should call the API login action");
 assert(!apiAdapter.includes("state.sessions"), "API bootstrap must not hydrate sessions");

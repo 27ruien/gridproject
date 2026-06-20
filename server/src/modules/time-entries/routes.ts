@@ -3,7 +3,8 @@ import { z } from "zod";
 import { TimeEntryRepository } from "../../repositories/timeEntries.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { canApproveTimeEntry, canDeleteTimeEntry, canEditTimeEntry, canRejectTimeEntry, canSubmitTimeEntry, canViewProject, canViewTimeEntry } from "../../policies/access.js";
-import { badRequest, forbidden, notFound } from "../../utils/errors.js";
+import { assertDailyHoursLimit, withDailyTimeEntryLock } from "../../services/timeEntryConsistency.js";
+import { badRequest, forbidden, notFound, validationError } from "../../utils/errors.js";
 import { pageEnvelope, pagination, parseDateOnly, timeEntryDto } from "../../utils/dto.js";
 
 const timeEntrySchema = z.object({
@@ -16,8 +17,18 @@ const timeEntrySchema = z.object({
   correctionReason: z.string().optional().nullable(),
 }).strict();
 
-const timeEntryPatchSchema = timeEntrySchema.omit({ userId: true }).partial().extend({
+const timeEntryPatchSchema = z.object({
+  issueId: z.string().optional().nullable(),
+  workDate: z.string().optional(),
+  hours: z.number().positive().max(24).optional(),
+  description: z.string().optional().nullable(),
   correctionReason: z.string().optional().nullable(),
+}).strict();
+
+const timeEntryMoveSchema = z.object({
+  targetProjectId: z.string().min(1),
+  targetIssueId: z.string().optional().nullable(),
+  correctionReason: z.string().min(1),
 }).strict();
 
 export async function timeEntryRoutes(app: FastifyInstance) {
@@ -64,7 +75,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
   app.post("/", async (request, reply) => {
     const context = requireAuth(request);
     const parsed = timeEntrySchema.safeParse(request.body);
-    if (!parsed.success) throw badRequest("工时参数不正确。", parsed.error.flatten());
+    if (!parsed.success) throw validationError("工时参数不正确。", parsed.error.flatten());
     const input = parsed.data;
     const userId = context.isAdmin && input.userId ? input.userId : context.userId;
     if (input.userId && input.userId !== context.userId && !context.isAdmin) throw forbidden("只能为自己创建工时。");
@@ -73,14 +84,12 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     }
     const project = await app.prisma.project.findFirst({ where: { id: input.projectId, organizationId: context.organizationId, deletedAt: null } });
     if (!canViewProject(context, project)) throw notFound("项目不存在。");
-    if (!context.isAdmin && !(await isActiveProjectMember(app, context.organizationId, project!.id, userId))) {
-      throw forbidden("只有项目成员可以填报该项目工时。");
-    }
+    await assertActiveProjectMember(app, context.organizationId, project!.id, userId);
     if (input.issueId) await assertIssueBelongsToProject(app, context.organizationId, project!.id, input.issueId);
     const workDate = parseRequiredWorkDate(input.workDate);
 
-    const entry = await app.prisma.$transaction(async (tx) => {
-      await assertDailyHoursLimit(tx, context.organizationId, userId, workDate, input.hours);
+    const entry = await withDailyTimeEntryLock(app.prisma, { organizationId: context.organizationId, userId, workDate }, async (tx) => {
+      await assertDailyHoursLimit(tx, { organizationId: context.organizationId, userId, workDate }, input.hours);
       return tx.timeEntry.create({
         data: {
           organizationId: context.organizationId,
@@ -107,26 +116,20 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
     if (!canEditTimeEntry(context, entry, entry.project)) throw forbidden("没有权限编辑该工时。");
     const parsed = timeEntryPatchSchema.safeParse(request.body);
-    if (!parsed.success) throw badRequest("工时参数不正确。", parsed.error.flatten());
+    if (!parsed.success) throw validationError("工时参数不正确。", parsed.error.flatten());
     const input = parsed.data;
     if (context.isAdmin && entry.userId !== context.userId && !input.correctionReason?.trim()) {
       throw badRequest("管理员修改他人工时必须填写修正原因。");
     }
-    const projectId = input.projectId || entry.projectId;
-    if (projectId !== entry.projectId) {
-      const project = await app.prisma.project.findFirst({ where: { id: projectId, organizationId: context.organizationId, deletedAt: null } });
-      if (!canViewProject(context, project)) throw notFound("项目不存在。");
-    }
-    if (input.issueId) await assertIssueBelongsToProject(app, context.organizationId, projectId, input.issueId);
+    if (input.issueId) await assertIssueBelongsToProject(app, context.organizationId, entry.projectId, input.issueId);
 
     const nextWorkDate = input.workDate !== undefined ? parseRequiredWorkDate(input.workDate) : entry.workDate;
     const nextHours = input.hours !== undefined ? input.hours : Number(entry.hours);
-    const updated = await app.prisma.$transaction(async (tx) => {
-      await assertDailyHoursLimit(tx, context.organizationId, entry.userId, nextWorkDate, nextHours, entry.id);
+    const updated = await withDailyTimeEntryLock(app.prisma, { organizationId: context.organizationId, userId: entry.userId, workDate: nextWorkDate }, async (tx) => {
+      await assertDailyHoursLimit(tx, { organizationId: context.organizationId, userId: entry.userId, workDate: nextWorkDate }, nextHours, entry.id);
       return tx.timeEntry.update({
         where: { id: entry.id },
         data: {
-          ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
           ...(input.issueId !== undefined ? { issueId: input.issueId || null } : {}),
           ...(input.workDate !== undefined ? { workDate: nextWorkDate } : {}),
           ...(input.hours !== undefined ? { hours: input.hours } : {}),
@@ -137,6 +140,53 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       });
     });
     await audit(app, context, "time_entry.update", "TimeEntry", entry.id, { before: auditSnapshot(entry), after: auditSnapshot(updated), correctionReason: input.correctionReason || "" }, request.id);
+    return { requestId: request.id, entry: timeEntryDto(updated) };
+  });
+
+  app.post("/:id/move", async (request) => {
+    const context = requireAuth(request);
+    if (!context.isAdmin) throw forbidden("只有 ADMIN 可以移动工时所属项目。");
+    const entry = await getEntry(app, context, (request.params as { id: string }).id);
+    const parsed = timeEntryMoveSchema.safeParse(request.body);
+    if (!parsed.success) throw validationError("移动工时参数不正确。", parsed.error.flatten());
+    const input = parsed.data;
+    const targetProject = await app.prisma.project.findFirst({
+      where: { id: input.targetProjectId, organizationId: context.organizationId, deletedAt: null },
+    });
+    if (!targetProject) throw notFound("目标项目不存在。");
+    await assertActiveProjectMember(app, context.organizationId, targetProject.id, entry.userId);
+
+    let targetIssueId: string | null = null;
+    if (input.targetIssueId) {
+      await assertIssueBelongsToProject(app, context.organizationId, targetProject.id, input.targetIssueId);
+      targetIssueId = input.targetIssueId;
+    } else if (input.targetIssueId === null) {
+      targetIssueId = null;
+    } else if (entry.issueId) {
+      const originalIssueStillMatches = await app.prisma.issue.findFirst({
+        where: { id: entry.issueId, organizationId: context.organizationId, projectId: targetProject.id, deletedAt: null },
+        select: { id: true },
+      });
+      targetIssueId = originalIssueStillMatches ? entry.issueId : null;
+    }
+
+    const updated = await withDailyTimeEntryLock(app.prisma, { organizationId: context.organizationId, userId: entry.userId, workDate: entry.workDate }, async (tx) => {
+      await assertDailyHoursLimit(tx, { organizationId: context.organizationId, userId: entry.userId, workDate: entry.workDate }, Number(entry.hours), entry.id);
+      return tx.timeEntry.update({
+        where: { id: entry.id },
+        data: {
+          projectId: targetProject.id,
+          issueId: targetIssueId,
+          correctionReason: input.correctionReason.trim(),
+        },
+        include: { user: true, project: true, issue: true },
+      });
+    });
+    await audit(app, context, "time_entry.move", "TimeEntry", entry.id, {
+      before: { projectId: entry.projectId, issueId: entry.issueId },
+      after: { projectId: updated.projectId, issueId: updated.issueId },
+      correctionReason: input.correctionReason.trim(),
+    }, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 
@@ -208,11 +258,11 @@ async function getEntry(app: FastifyInstance, context: any, id: string) {
   return entry;
 }
 
-async function isActiveProjectMember(app: FastifyInstance, organizationId: string, projectId: string, userId: string) {
+async function assertActiveProjectMember(app: FastifyInstance, organizationId: string, projectId: string, userId: string) {
   const member = await app.prisma.projectMember.findFirst({
     where: { organizationId, projectId, userId, status: "ACTIVE" },
   });
-  return Boolean(member);
+  if (!member) throw forbidden("工时所属用户必须是项目 ACTIVE 成员。");
 }
 
 async function assertIssueBelongsToProject(app: FastifyInstance, organizationId: string, projectId: string, issueId: string) {
@@ -226,22 +276,6 @@ function parseRequiredWorkDate(value: string) {
   const date = parseDateOnly(value);
   if (!date) throw badRequest("workDate 必须是合法日期。");
   return date;
-}
-
-async function assertDailyHoursLimit(tx: any, organizationId: string, userId: string, workDate: Date, nextHours: number, excludeId?: string) {
-  if (nextHours <= 0 || nextHours > 24) throw badRequest("hours 必须大于 0 且不超过 24。");
-  const aggregate = await tx.timeEntry.aggregate({
-    where: {
-      organizationId,
-      userId,
-      workDate,
-      deletedAt: null,
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-    _sum: { hours: true },
-  });
-  const currentHours = Number(aggregate._sum.hours || 0);
-  if (currentHours + nextHours > 24) throw badRequest("同一用户同一日期的有效工时合计不能超过 24 小时。");
 }
 
 function auditSnapshot(entry: any) {
