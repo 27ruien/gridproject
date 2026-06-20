@@ -19,8 +19,8 @@ export async function withDailyTimeEntryLock<T>(
 }
 
 export async function acquireDailyTimeEntryLock(tx: any, key: DailyTimeEntryKey) {
-  const [lockA, lockB] = advisoryLockKeys(key);
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${lockA}::integer, ${lockB}::integer)`;
+  const lockKey = advisoryLockKey(key);
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
 }
 
 export async function assertDailyHoursLimit(
@@ -44,11 +44,11 @@ export async function assertDailyHoursLimit(
   if (currentHours + nextHours > 24) throw badRequest("同一用户同一日期的有效工时合计不能超过 24 小时。");
 }
 
-function advisoryLockKeys(key: DailyTimeEntryKey) {
+function advisoryLockKey(key: DailyTimeEntryKey) {
   const digest = createHash("sha256")
     .update(`${key.organizationId}:${key.userId}:${normalizeDateKey(key.workDate)}`)
     .digest();
-  return [digest.readInt32BE(0), digest.readInt32BE(4)];
+  return digest.readBigInt64BE(0);
 }
 
 function normalizeDateOnly(value: Date | string) {
