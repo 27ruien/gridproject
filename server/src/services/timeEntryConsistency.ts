@@ -20,7 +20,7 @@ export async function withDailyTimeEntryLock<T>(
 
 export async function acquireDailyTimeEntryLock(tx: any, key: DailyTimeEntryKey) {
   const [lockA, lockB] = advisoryLockKeys(key);
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${lockA}, ${lockB})`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${lockA}::integer, ${lockB}::integer)`;
 }
 
 export async function assertDailyHoursLimit(
