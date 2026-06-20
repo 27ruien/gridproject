@@ -90,7 +90,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
 
     const entry = await withDailyTimeEntryLock(app.prisma, { organizationId: context.organizationId, userId, workDate }, async (tx) => {
       await assertDailyHoursLimit(tx, { organizationId: context.organizationId, userId, workDate }, input.hours);
-      return tx.timeEntry.create({
+      const created = await tx.timeEntry.create({
         data: {
           organizationId: context.organizationId,
           projectId: project!.id,
@@ -105,8 +105,19 @@ export async function timeEntryRoutes(app: FastifyInstance) {
         },
         include: { user: true, project: true, issue: true },
       });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.create",
+          entityType: "TimeEntry",
+          entityId: created.id,
+          data: { projectId: created.projectId, userId, correctionReason: input.correctionReason || "" },
+          requestId: request.id,
+        },
+      });
+      return created;
     });
-    await audit(app, context, "time_entry.create", "TimeEntry", entry.id, { projectId: entry.projectId, userId, correctionReason: input.correctionReason || "" }, request.id);
     reply.status(201);
     return { requestId: request.id, entry: timeEntryDto(entry) };
   });
@@ -127,7 +138,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const nextHours = input.hours !== undefined ? input.hours : Number(entry.hours);
     const updated = await withDailyTimeEntryLock(app.prisma, { organizationId: context.organizationId, userId: entry.userId, workDate: nextWorkDate }, async (tx) => {
       await assertDailyHoursLimit(tx, { organizationId: context.organizationId, userId: entry.userId, workDate: nextWorkDate }, nextHours, entry.id);
-      return tx.timeEntry.update({
+      const row = await tx.timeEntry.update({
         where: { id: entry.id },
         data: {
           ...(input.issueId !== undefined ? { issueId: input.issueId || null } : {}),
@@ -138,8 +149,19 @@ export async function timeEntryRoutes(app: FastifyInstance) {
         },
         include: { user: true, project: true, issue: true },
       });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.update",
+          entityType: "TimeEntry",
+          entityId: entry.id,
+          data: { before: auditSnapshot(entry), after: auditSnapshot(row), correctionReason: input.correctionReason || "" },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "time_entry.update", "TimeEntry", entry.id, { before: auditSnapshot(entry), after: auditSnapshot(updated), correctionReason: input.correctionReason || "" }, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 
@@ -172,7 +194,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
 
     const updated = await withDailyTimeEntryLock(app.prisma, { organizationId: context.organizationId, userId: entry.userId, workDate: entry.workDate }, async (tx) => {
       await assertDailyHoursLimit(tx, { organizationId: context.organizationId, userId: entry.userId, workDate: entry.workDate }, Number(entry.hours), entry.id);
-      return tx.timeEntry.update({
+      const row = await tx.timeEntry.update({
         where: { id: entry.id },
         data: {
           projectId: targetProject.id,
@@ -181,12 +203,23 @@ export async function timeEntryRoutes(app: FastifyInstance) {
         },
         include: { user: true, project: true, issue: true },
       });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.move",
+          entityType: "TimeEntry",
+          entityId: entry.id,
+          data: {
+            before: { projectId: entry.projectId, issueId: entry.issueId },
+            after: { projectId: row.projectId, issueId: row.issueId },
+            correctionReason: input.correctionReason.trim(),
+          },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "time_entry.move", "TimeEntry", entry.id, {
-      before: { projectId: entry.projectId, issueId: entry.issueId },
-      after: { projectId: updated.projectId, issueId: updated.issueId },
-      correctionReason: input.correctionReason.trim(),
-    }, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 
@@ -198,12 +231,25 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     if (context.isAdmin && entry.userId !== context.userId && !String(reason).trim()) {
       throw badRequest("管理员删除他人工时必须填写修正原因。");
     }
-    const updated = await app.prisma.timeEntry.update({
-      where: { id: entry.id },
-      data: { deletedAt: new Date(), deletedById: context.userId },
-      include: { user: true, project: true, issue: true },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.timeEntry.update({
+        where: { id: entry.id },
+        data: { deletedAt: new Date(), deletedById: context.userId },
+        include: { user: true, project: true, issue: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.delete",
+          entityType: "TimeEntry",
+          entityId: entry.id,
+          data: { before: auditSnapshot(entry), correctionReason: reason },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "time_entry.delete", "TimeEntry", entry.id, { before: auditSnapshot(entry), correctionReason: reason }, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 
@@ -211,12 +257,25 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
     if (!canSubmitTimeEntry(context, entry)) throw forbidden("只有自己的草稿或驳回工时可以提交。");
-    const updated = await app.prisma.timeEntry.update({
-      where: { id: entry.id },
-      data: { status: "SUBMITTED" },
-      include: { user: true, project: true, issue: true },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.timeEntry.update({
+        where: { id: entry.id },
+        data: { status: "SUBMITTED" },
+        include: { user: true, project: true, issue: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.submit",
+          entityType: "TimeEntry",
+          entityId: entry.id,
+          data: {},
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "time_entry.submit", "TimeEntry", entry.id, {}, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 
@@ -224,12 +283,25 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
     if (!canApproveTimeEntry(context, entry, entry.project)) throw forbidden("没有权限审批该工时。");
-    const updated = await app.prisma.timeEntry.update({
-      where: { id: entry.id },
-      data: { status: "APPROVED", approvedAt: new Date(), approvedById: context.userId },
-      include: { user: true, project: true, issue: true },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.timeEntry.update({
+        where: { id: entry.id },
+        data: { status: "APPROVED", approvedAt: new Date(), approvedById: context.userId },
+        include: { user: true, project: true, issue: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.approve",
+          entityType: "TimeEntry",
+          entityId: entry.id,
+          data: {},
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "time_entry.approve", "TimeEntry", entry.id, {}, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 
@@ -238,12 +310,25 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
     if (!canRejectTimeEntry(context, entry, entry.project)) throw forbidden("没有权限驳回该工时。");
     const reason = (request.body as any)?.correctionReason || "";
-    const updated = await app.prisma.timeEntry.update({
-      where: { id: entry.id },
-      data: { status: "REJECTED", correctionReason: reason, approvedAt: null, approvedById: null },
-      include: { user: true, project: true, issue: true },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.timeEntry.update({
+        where: { id: entry.id },
+        data: { status: "REJECTED", correctionReason: reason, approvedAt: null, approvedById: null },
+        include: { user: true, project: true, issue: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "time_entry.reject",
+          entityType: "TimeEntry",
+          entityId: entry.id,
+          data: { reason },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "time_entry.reject", "TimeEntry", entry.id, { reason }, request.id);
     return { requestId: request.id, entry: timeEntryDto(updated) };
   });
 }
@@ -290,18 +375,4 @@ function auditSnapshot(entry: any) {
     description: entry.description,
     correctionReason: entry.correctionReason,
   };
-}
-
-async function audit(app: FastifyInstance, context: any, action: string, entityType: string, entityId: string, data: unknown, requestId: string) {
-  await app.prisma.auditLog.create({
-    data: {
-      organizationId: context.organizationId,
-      actorId: context.userId,
-      action,
-      entityType,
-      entityId,
-      data: data as any,
-      requestId,
-    },
-  });
 }

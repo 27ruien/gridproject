@@ -71,17 +71,30 @@ export async function userRoutes(app: FastifyInstance) {
     await assertEmailAvailable(app, context.organizationId, email);
     const passwordHash = await hashPassword(parsed.data.initialPassword);
 
-    const user = await app.prisma.user.create({
-      data: {
-        organizationId: context.organizationId,
-        name: parsed.data.name.trim(),
-        email,
-        passwordHash,
-        role: parsed.data.role,
-        status: parsed.data.status,
-      },
+    const user = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.user.create({
+        data: {
+          organizationId: context.organizationId,
+          name: parsed.data.name.trim(),
+          email,
+          passwordHash,
+          role: parsed.data.role,
+          status: parsed.data.status,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.create",
+          entityType: "User",
+          entityId: row.id,
+          data: { name: row.name, email: row.email, role: row.role, status: row.status },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "user.create", "User", user.id, { name: user.name, email: user.email, role: user.role, status: user.status }, request.id);
     reply.status(201);
     return { requestId: request.id, user: sanitizeUserDto(user) };
   });
@@ -112,16 +125,29 @@ export async function userRoutes(app: FastifyInstance) {
     if (nextEmail && nextEmail !== user.email) await assertEmailAvailable(app, context.organizationId, nextEmail, user.id);
 
     await guardUserMutation(app, context.organizationId, context.userId, user, patch);
-    const updated = await app.prisma.user.update({
-      where: { id },
-      data: {
-        ...patch,
-        ...(patch.name ? { name: patch.name.trim() } : {}),
-        ...(nextEmail ? { email: nextEmail } : {}),
-        ...(patch.status === "ACTIVE" ? { deletedAt: null, deletedById: null } : {}),
-      },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.user.update({
+        where: { id },
+        data: {
+          ...patch,
+          ...(patch.name ? { name: patch.name.trim() } : {}),
+          ...(nextEmail ? { email: nextEmail } : {}),
+          ...(patch.status === "ACTIVE" ? { deletedAt: null, deletedById: null } : {}),
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.update",
+          entityType: "User",
+          entityId: row.id,
+          data: { before: userSnapshot(user), after: userSnapshot(row) },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "user.update", "User", updated.id, { before: userSnapshot(user), after: userSnapshot(updated) }, request.id);
     return { requestId: request.id, user: sanitizeUserDto(updated) };
   });
 
@@ -130,19 +156,33 @@ export async function userRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const user = await getScopedUser(app, context.organizationId, id);
     await guardUserMutation(app, context.organizationId, context.userId, user, { status: "INACTIVE" });
-    const updated = await app.prisma.user.update({
-      where: { id },
-      data: {
-        status: "INACTIVE",
-        deletedAt: new Date(),
-        deletedById: context.userId,
-      },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const row = await tx.user.update({
+        where: { id },
+        data: {
+          status: "INACTIVE",
+          deletedAt: now,
+          deletedById: context.userId,
+        },
+      });
+      await tx.session.updateMany({
+        where: { organizationId: context.organizationId, userId: id, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.delete",
+          entityType: "User",
+          entityId: id,
+          data: { deletedAt: row.deletedAt?.toISOString() },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await app.prisma.session.updateMany({
-      where: { organizationId: context.organizationId, userId: id, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-    await audit(app, context, "user.delete", "User", id, { deletedAt: updated.deletedAt }, request.id);
     return { requestId: request.id, user: sanitizeUserDto(updated) };
   });
 
@@ -150,11 +190,24 @@ export async function userRoutes(app: FastifyInstance) {
     const context = requireUserAdmin(request);
     const { id } = request.params as { id: string };
     await getScopedUser(app, context.organizationId, id);
-    const user = await app.prisma.user.update({
-      where: { id },
-      data: { status: "ACTIVE", deletedAt: null, deletedById: null },
+    const user = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.user.update({
+        where: { id },
+        data: { status: "ACTIVE", deletedAt: null, deletedById: null },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.restore",
+          entityType: "User",
+          entityId: id,
+          data: {},
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "user.restore", "User", id, {}, request.id);
     return { requestId: request.id, user: sanitizeUserDto(user) };
   });
 
@@ -176,9 +229,19 @@ export async function userRoutes(app: FastifyInstance) {
         where: { organizationId: context.organizationId, userId: user.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.reset_password",
+          entityType: "User",
+          entityId: id,
+          data: { resetAt: new Date().toISOString() },
+          requestId: request.id,
+        },
+      });
       return nextUser;
     });
-    await audit(app, context, "user.reset_password", "User", id, { resetAt: new Date().toISOString() }, request.id);
     return { requestId: request.id, user: sanitizeUserDto(updated) };
   });
 }
@@ -239,20 +302,6 @@ function sortUser(sort = "updatedAt:desc") {
   if (sort === "role:asc") return { role: "asc" as const };
   if (sort === "createdAt:desc") return { createdAt: "desc" as const };
   return { updatedAt: "desc" as const };
-}
-
-async function audit(app: FastifyInstance, context: any, action: string, entityType: string, entityId: string, data: unknown, requestId: string) {
-  await app.prisma.auditLog.create({
-    data: {
-      organizationId: context.organizationId,
-      actorId: context.userId,
-      action,
-      entityType,
-      entityId,
-      data: data as any,
-      requestId,
-    },
-  });
 }
 
 function userSnapshot(user: any) {

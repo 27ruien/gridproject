@@ -7,6 +7,7 @@
 - Development and test servers refuse production-looking URLs.
 - Production servers refuse development-looking URLs.
 - Do not run `prisma db push`.
+- Do not run `prisma migrate dev` for Dev deployment.
 - Do not run `prisma migrate reset`.
 - Do not ask for or commit database passwords, root passwords, session secrets, or GitHub tokens.
 
@@ -33,7 +34,7 @@ Set these values in `server/.env`:
 DATABASE_URL="postgresql://gridproject_app:REPLACE_ME@127.0.0.1:5432/gridproject_dev?schema=public"
 SESSION_SECRET="REPLACE_WITH_A_LONG_RANDOM_STRING"
 FRONTEND_ORIGIN="http://127.0.0.1:5173"
-ADMIN_EMAIL="admin@example.com"
+ADMIN_EMAIL="admin@example.test"
 ADMIN_PASSWORD="REPLACE_WITH_A_STRONG_INITIAL_PASSWORD"
 ADMIN_DISPLAY_NAME="管理员"
 INITIAL_ORGANIZATION_NAME="GridProject Dev Organization"
@@ -45,7 +46,7 @@ INITIAL_ORGANIZATION_NAME="GridProject Dev Organization"
 
 ```bash
 npm run server:prisma:generate
-npm run server:prisma:migrate:dev
+npm run db:migrate:deploy:dev
 npm run server:prisma:seed
 ```
 

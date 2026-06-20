@@ -20,51 +20,67 @@ const prisma = new PrismaClient();
 
 try {
   const passwordHash = await hashPassword(adminPassword);
-  const organization = await prisma.organization.upsert({
-    where: { id: process.env.INITIAL_ORGANIZATION_ID || "org-default" },
-    create: {
-      id: process.env.INITIAL_ORGANIZATION_ID || "org-default",
-      name: organizationName,
-    },
-    update: {
-      name: organizationName,
-    },
-  });
-
-  const user = await prisma.user.upsert({
-    where: {
-      organizationId_email: {
-        organizationId: organization.id,
-        email: adminEmail,
+  const { organization, user } = await prisma.$transaction(async (tx) => {
+    const organization = await tx.organization.upsert({
+      where: { id: process.env.INITIAL_ORGANIZATION_ID || "org-default" },
+      create: {
+        id: process.env.INITIAL_ORGANIZATION_ID || "org-default",
+        name: organizationName,
       },
-    },
-    create: {
-      organizationId: organization.id,
-      name: adminDisplayName,
-      email: adminEmail,
-      passwordHash,
-      role: "ADMIN",
-      status: "ACTIVE",
-    },
-    update: {
-      name: adminDisplayName,
-      passwordHash,
-      role: "ADMIN",
-      status: "ACTIVE",
-      deletedAt: null,
-      deletedById: null,
-    },
-  });
+      update: {
+        name: organizationName,
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      organizationId: organization.id,
-      actorId: user.id,
-      action: "system.seed_admin",
-      entityType: "User",
-      entityId: user.id,
-      data: { email: adminEmail, organizationName },
-    },
+    const user = await tx.user.upsert({
+      where: {
+        organizationId_email: {
+          organizationId: organization.id,
+          email: adminEmail,
+        },
+      },
+      create: {
+        organizationId: organization.id,
+        name: adminDisplayName,
+        email: adminEmail,
+        passwordHash,
+        role: "ADMIN",
+        status: "ACTIVE",
+      },
+      update: {
+        name: adminDisplayName,
+        passwordHash,
+        role: "ADMIN",
+        status: "ACTIVE",
+        deletedAt: null,
+        deletedById: null,
+      },
+    });
+
+    const existingAudit = await tx.auditLog.findFirst({
+      where: {
+        organizationId: organization.id,
+        actorId: user.id,
+        action: "system.seed_admin",
+        entityType: "User",
+        entityId: user.id,
+      },
+      select: { id: true },
+    });
+    if (!existingAudit) {
+      await tx.auditLog.create({
+        data: {
+          organizationId: organization.id,
+          actorId: user.id,
+          action: "system.seed_admin",
+          entityType: "User",
+          entityId: user.id,
+          data: { email: adminEmail, organizationName },
+        },
+      });
+    }
+
+    return { organization, user };
   });
 
   console.log(`Seed complete for organization ${organization.id} and admin ${adminEmail}`);

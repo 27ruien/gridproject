@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { audit, assertActiveUser, requireManagedProject } from "../shared.js";
+import { assertActiveUser, requireManagedProject } from "../shared.js";
 import { badRequest, conflict, notFound } from "../../utils/errors.js";
 import { projectMemberDto } from "../../utils/dto.js";
 
@@ -32,13 +32,26 @@ export async function projectMemberRoutes(app: FastifyInstance) {
       where: { organizationId: context.organizationId, projectId: project.id, userId: parsed.data.userId },
     });
     if (existing?.status === "ACTIVE") throw conflict("该用户已是项目成员。");
-    const member = existing
-      ? await app.prisma.projectMember.update({ where: { id: existing.id }, data: { status: "ACTIVE" }, include: { user: true } })
-      : await app.prisma.projectMember.create({
-        data: { organizationId: context.organizationId, projectId: project.id, userId: parsed.data.userId, status: parsed.data.status },
-        include: { user: true },
+    const member = await app.prisma.$transaction(async (tx) => {
+      const row = existing
+        ? await tx.projectMember.update({ where: { id: existing.id }, data: { status: "ACTIVE" }, include: { user: true } })
+        : await tx.projectMember.create({
+          data: { organizationId: context.organizationId, projectId: project.id, userId: parsed.data.userId, status: parsed.data.status },
+          include: { user: true },
+        });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "project_member.add",
+          entityType: "ProjectMember",
+          entityId: row.id,
+          data: { projectId: project.id, userId: row.userId },
+          requestId: request.id,
+        },
       });
-    await audit(app, context, "project_member.add", "ProjectMember", member.id, { projectId: project.id, userId: member.userId }, request.id);
+      return row;
+    });
     reply.status(201);
     return { requestId: request.id, member: projectMemberDto(member) };
   });
@@ -53,8 +66,21 @@ export async function projectMemberRoutes(app: FastifyInstance) {
     if (!member) throw notFound("成员不存在。");
     if (member.userId === project.ownerId && parsed.data.status !== "ACTIVE") throw badRequest("不能停用当前项目 Owner 的成员身份。");
     await guardMemberRemoval(app, context.organizationId, project.id, member.userId, parsed.data.status);
-    const updated = await app.prisma.projectMember.update({ where: { id: memberId }, data: { status: parsed.data.status }, include: { user: true } });
-    await audit(app, context, "project_member.update", "ProjectMember", memberId, parsed.data, request.id);
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.projectMember.update({ where: { id: memberId }, data: { status: parsed.data.status }, include: { user: true } });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "project_member.update",
+          entityType: "ProjectMember",
+          entityId: memberId,
+          data: parsed.data,
+          requestId: request.id,
+        },
+      });
+      return row;
+    });
     return { requestId: request.id, member: projectMemberDto(updated) };
   });
 
@@ -66,8 +92,21 @@ export async function projectMemberRoutes(app: FastifyInstance) {
     if (!member) throw notFound("成员不存在。");
     if (member.userId === project.ownerId) throw badRequest("不能移除当前项目 Owner。");
     await guardMemberRemoval(app, context.organizationId, project.id, member.userId, "INACTIVE");
-    const updated = await app.prisma.projectMember.update({ where: { id: memberId }, data: { status: "INACTIVE" }, include: { user: true } });
-    await audit(app, context, "project_member.delete", "ProjectMember", memberId, {}, request.id);
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.projectMember.update({ where: { id: memberId }, data: { status: "INACTIVE" }, include: { user: true } });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "project_member.delete",
+          entityType: "ProjectMember",
+          entityId: memberId,
+          data: {},
+          requestId: request.id,
+        },
+      });
+      return row;
+    });
     return { requestId: request.id, member: projectMemberDto(updated) };
   });
 }

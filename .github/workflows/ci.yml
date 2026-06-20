@@ -27,6 +27,12 @@ jobs:
       SESSION_SECRET: ci-session-secret-not-for-production
       FRONTEND_ORIGIN: http://127.0.0.1:5173
       NODE_ENV: test
+      APP_VERSION: 0.1.0-dev.1
+      ALLOW_CI_DATABASE_URL: "true"
+      ADMIN_EMAIL: admin-ci@example.test
+      ADMIN_PASSWORD: CIAdminPassword123
+      ADMIN_DISPLAY_NAME: CI Admin
+      INITIAL_ORGANIZATION_NAME: GridProject CI
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,26 +69,12 @@ jobs:
 
       - name: Seed CI database
         run: npm run server:prisma:seed
-        env:
-          ADMIN_EMAIL: admin-ci@example.com
-          ADMIN_PASSWORD: CIAdminPassword123
-          ADMIN_DISPLAY_NAME: CI Admin
-          INITIAL_ORGANIZATION_NAME: GridProject CI
 
-      - name: Server lint
-        run: npm run server:lint
+      - name: Seed CI database again
+        run: npm run server:prisma:seed
 
-      - name: Server build
-        run: npm run server:build
-
-      - name: Server tests
-        run: npm run server:test
-
-      - name: Build
-        run: npm run build
-
-      - name: Domain tests
-        run: npm run test
+      - name: Release check
+        run: npm run release:check
 
       - name: Visual and interaction tests
         run: npm run test:visual

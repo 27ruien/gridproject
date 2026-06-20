@@ -49,7 +49,7 @@ export async function buildApp(config: ServerConfig = getConfig()) {
   await app.register(prismaPlugin);
   await app.register(authContextPlugin, { config });
 
-  await app.register(healthRoutes, { prefix: "/api" });
+  await app.register(healthRoutes, { prefix: "/api", config });
   await app.register(authRoutes, { prefix: "/api/auth", config });
   await app.register(bootstrapRoutes, { prefix: "/api/bootstrap" });
   await app.register(userRoutes, { prefix: "/api/users" });

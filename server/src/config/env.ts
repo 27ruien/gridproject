@@ -10,6 +10,7 @@ export type ServerConfig = {
   sessionTtlHours: number;
   cookieSecure: boolean;
   frontendOrigins: string[];
+  appVersion: string;
 };
 
 loadDotEnv();
@@ -36,6 +37,7 @@ export function getConfig(): ServerConfig {
     sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 168),
     cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : nodeEnv === "production",
     frontendOrigins: parseFrontendOrigins(nodeEnv),
+    appVersion: process.env.APP_VERSION || "0.1.0-dev.1",
   };
 }
 

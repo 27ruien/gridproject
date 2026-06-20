@@ -17,6 +17,7 @@ function config() {
     sessionTtlHours: 8,
     cookieSecure: false,
     frontendOrigins: ["http://127.0.0.1:5173"],
+    appVersion: "0.1.0-dev.1",
   };
 }
 
@@ -220,6 +221,7 @@ test("business API modules persist project members, issues, comments, milestones
     const adminCookie = await login(app, data.admin.email, data.password);
     const ownerCookie = await login(app, data.owner.email, data.password);
     const memberCookie = await login(app, data.member.email, data.password);
+    const otherMemberCookie = await login(app, data.otherMember.email, data.password);
 
     const memberSettings = await app.inject({
       method: "PATCH",
@@ -258,6 +260,18 @@ test("business API modules persist project members, issues, comments, milestones
       payload: { userId: data.otherMember.id },
     });
     assert.equal(duplicateMember.statusCode, 409);
+
+    const forgedIssueCreate = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/issues`,
+      headers: { cookie: memberCookie },
+      payload: {
+        code: `FOR${data.suffix.slice(-5)}`,
+        title: "Creator spoof should fail",
+        creatorId: data.owner.id,
+      },
+    });
+    assert.equal(forgedIssueCreate.statusCode, 400);
 
     const memberMilestone = await app.inject({
       method: "POST",
@@ -306,6 +320,17 @@ test("business API modules persist project members, issues, comments, milestones
     const issue = issueCreate.json().issue;
     assert.equal(issue.next, "走接口保存下一步");
     assert.equal(issue.ownerId, data.otherMember.id);
+    assert.equal(issue.creatorId, data.member.id);
+
+    const forgedIssuePatch = await app.inject({
+      method: "PATCH",
+      url: `/api/issues/${issue.id}`,
+      headers: { cookie: otherMemberCookie },
+      payload: { creatorId: data.otherMember.id },
+    });
+    assert.equal(forgedIssuePatch.statusCode, 400);
+    const deleteAfterForgedPatch = await app.inject({ method: "DELETE", url: `/api/issues/${issue.id}`, headers: { cookie: otherMemberCookie } });
+    assert.equal(deleteAfterForgedPatch.statusCode, 403);
 
     const removeBusyMember = await app.inject({
       method: "DELETE",

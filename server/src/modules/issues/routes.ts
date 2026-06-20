@@ -2,17 +2,16 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
 import { canViewProject, isProjectOwner } from "../../policies/access.js";
-import { appendIssueActivity, assertActiveProjectMember, assertIssueCodeAvailable, audit, requireVisibleProject } from "../shared.js";
+import { assertActiveProjectMember, assertIssueCodeAvailable, requireVisibleProject } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, pageEnvelope, pagination, parseDateOnly } from "../../utils/dto.js";
 
-const issueSchema = z.object({
+const issueCreateSchema = z.object({
   code: z.string().min(1).optional(),
   title: z.string().min(1),
   type: z.string().default("任务"),
   status: z.string().default("未开始"),
   ownerId: z.string().optional().nullable(),
-  creatorId: z.string().optional().nullable(),
   priority: z.string().optional().nullable(),
   startDate: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
@@ -20,7 +19,9 @@ const issueSchema = z.object({
   actualHours: z.number().optional().nullable(),
   description: z.string().optional().nullable(),
   next: z.string().optional().nullable(),
-});
+}).strict();
+
+const issuePatchSchema = issueCreateSchema.partial();
 
 export async function issueRoutes(app: FastifyInstance) {
   app.get("/projects/:projectId/issues", async (request) => {
@@ -45,12 +46,11 @@ export async function issueRoutes(app: FastifyInstance) {
   app.post("/projects/:projectId/issues", async (request, reply) => {
     const context = requireAuth(request);
     const project = await requireVisibleProject(app, context, (request.params as { projectId: string }).projectId);
-    const parsed = issueSchema.safeParse(request.body);
+    const parsed = issueCreateSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
     const ownerId = input.ownerId || context.userId;
     await assertActiveProjectMember(app, context.organizationId, project.id, ownerId);
-    const creatorId = input.creatorId || context.userId;
     const code = (input.code || `ISS-${Date.now().toString().slice(-5)}`).trim().toUpperCase();
     await assertIssueCodeAvailable(app, project.id, code);
     const issue = await app.prisma.$transaction(async (tx) => {
@@ -63,7 +63,7 @@ export async function issueRoutes(app: FastifyInstance) {
           type: input.type,
           status: input.status,
           ownerId,
-          creatorId,
+          creatorId: context.userId,
           priority: input.priority || null,
           startDate: parseDateOnly(input.startDate),
           dueDate: parseDateOnly(input.dueDate),
@@ -96,7 +96,7 @@ export async function issueRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
     if (!issue || issue.deletedAt || !canViewProject(context, issue.project)) throw notFound("事项不存在。");
-    const parsed = issueSchema.partial().safeParse(request.body);
+    const parsed = issuePatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
     if (input.ownerId) await assertActiveProjectMember(app, context.organizationId, issue.projectId, input.ownerId);
@@ -112,7 +112,6 @@ export async function issueRoutes(app: FastifyInstance) {
           ...(input.type !== undefined ? { type: input.type } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.ownerId !== undefined ? { ownerId: input.ownerId || null } : {}),
-          ...(input.creatorId !== undefined ? { creatorId: input.creatorId || null } : {}),
           ...(input.priority !== undefined ? { priority: input.priority || null } : {}),
           ...(input.startDate !== undefined ? { startDate: parseDateOnly(input.startDate) ?? null } : {}),
           ...(input.dueDate !== undefined ? { dueDate: parseDateOnly(input.dueDate) ?? null } : {}),
@@ -138,12 +137,19 @@ export async function issueRoutes(app: FastifyInstance) {
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
     if (!issue || issue.deletedAt || !canViewProject(context, issue.project)) throw notFound("事项不存在。");
     if (!canDeleteIssue(context, issue)) throw forbidden("没有权限删除该事项。");
-    const updated = await app.prisma.issue.update({
-      where: { id: issue.id },
-      data: { deletedAt: new Date(), deletedById: context.userId },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.issue.update({
+        where: { id: issue.id },
+        data: { deletedAt: new Date(), deletedById: context.userId },
+      });
+      await tx.issueActivity.create({
+        data: { organizationId: context.organizationId, issueId: issue.id, actorId: context.userId, type: "deleted", text: "删除事项" },
+      });
+      await tx.auditLog.create({
+        data: { organizationId: context.organizationId, actorId: context.userId, action: "issue.delete", entityType: "Issue", entityId: issue.id, data: {}, requestId: request.id },
+      });
+      return row;
     });
-    await appendIssueActivity(app, context, issue.id, "deleted", "删除事项");
-    await audit(app, context, "issue.delete", "Issue", issue.id, {}, request.id);
     return { requestId: request.id, issue: issueDto(await enrichIssue(app, context.organizationId, updated)) };
   });
 
@@ -152,9 +158,16 @@ export async function issueRoutes(app: FastifyInstance) {
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId, true);
     if (!issue || !issue.deletedAt || issue.project.deletedAt || !canDeleteIssue(context, issue)) throw notFound("事项不存在。");
     await assertIssueCodeAvailable(app, issue.projectId, issue.code, issue.id);
-    const updated = await app.prisma.issue.update({ where: { id: issue.id }, data: { deletedAt: null, deletedById: null } });
-    await appendIssueActivity(app, context, issue.id, "restored", "恢复事项");
-    await audit(app, context, "issue.restore", "Issue", issue.id, {}, request.id);
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.issue.update({ where: { id: issue.id }, data: { deletedAt: null, deletedById: null } });
+      await tx.issueActivity.create({
+        data: { organizationId: context.organizationId, issueId: issue.id, actorId: context.userId, type: "restored", text: "恢复事项" },
+      });
+      await tx.auditLog.create({
+        data: { organizationId: context.organizationId, actorId: context.userId, action: "issue.restore", entityType: "Issue", entityId: issue.id, data: {}, requestId: request.id },
+      });
+      return row;
+    });
     return { requestId: request.id, issue: issueDto(await loadIssueDetail(app, context.organizationId, updated.id)) };
   });
 }

@@ -191,12 +191,25 @@ export async function projectRoutes(app: FastifyInstance) {
     if (!canManageProject(context, project)) throw forbidden("没有权限删除该项目。");
     const issueCount = await app.prisma.issue.count({ where: { projectId: id, deletedAt: null } });
     if (issueCount) throw conflict("该项目仍有事项，请先处理事项后再删除。", { issueCount });
-    const updated = await app.prisma.project.update({
-      where: { id },
-      data: { deletedAt: new Date(), deletedById: context.userId },
-      include: { owner: true },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.project.update({
+        where: { id },
+        data: { deletedAt: new Date(), deletedById: context.userId },
+        include: { owner: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "project.delete",
+          entityType: "Project",
+          entityId: id,
+          data: { deletedAt: row.deletedAt?.toISOString() },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "project.delete", "Project", id, { deletedAt: updated.deletedAt }, request.id);
     return { requestId: request.id, project: projectDto(updated) };
   });
 
@@ -252,18 +265,4 @@ function permissionsForProject(context: any, project: any) {
     canManageCost: manage,
     canExportCost: manage,
   };
-}
-
-async function audit(app: FastifyInstance, context: any, action: string, entityType: string, entityId: string, data: unknown, requestId: string) {
-  await app.prisma.auditLog.create({
-    data: {
-      organizationId: context.organizationId,
-      actorId: context.userId,
-      action,
-      entityType,
-      entityId,
-      data: data as any,
-      requestId,
-    },
-  });
 }

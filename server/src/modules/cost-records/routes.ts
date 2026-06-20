@@ -72,19 +72,32 @@ export async function costRecordRoutes(app: FastifyInstance) {
     });
     if (existing) throw conflict("该项目已有成本管理记录，请编辑或恢复现有记录。");
 
-    const record = await app.prisma.projectCostRecord.create({
-      data: {
-        organizationId: context.organizationId,
-        projectId: parsed.data.projectId,
-        plannedPersonDays: parsed.data.plannedPersonDays,
-        standardHoursPerDay: parsed.data.standardHoursPerDay,
-        notes: parsed.data.notes || "",
-        createdById: context.userId,
-        updatedById: context.userId,
-      },
-      include: { project: { include: { owner: true } } },
+    const record = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.projectCostRecord.create({
+        data: {
+          organizationId: context.organizationId,
+          projectId: parsed.data.projectId,
+          plannedPersonDays: parsed.data.plannedPersonDays,
+          standardHoursPerDay: parsed.data.standardHoursPerDay,
+          notes: parsed.data.notes || "",
+          createdById: context.userId,
+          updatedById: context.userId,
+        },
+        include: { project: { include: { owner: true } } },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "cost_record.create",
+          entityType: "ProjectCostRecord",
+          entityId: row.id,
+          data: { projectId: row.projectId, plannedPersonDays: parsed.data.plannedPersonDays },
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "cost_record.create", "ProjectCostRecord", record.id, { projectId: record.projectId, plannedPersonDays: parsed.data.plannedPersonDays }, request.id);
     reply.status(201);
     return { requestId: request.id, record: costRecordDto(record) };
   });
@@ -101,33 +114,59 @@ export async function costRecordRoutes(app: FastifyInstance) {
     const { context, record } = await requireRecord(app, request);
     const parsed = costRecordPatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("成本记录参数不正确。", parsed.error.flatten());
-    const updated = await app.prisma.projectCostRecord.update({
-      where: { id: record.id },
-      data: {
-        ...(parsed.data.plannedPersonDays !== undefined ? { plannedPersonDays: parsed.data.plannedPersonDays } : {}),
-        ...(parsed.data.standardHoursPerDay !== undefined ? { standardHoursPerDay: parsed.data.standardHoursPerDay } : {}),
-        ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes || "" } : {}),
-        updatedById: context.userId,
-      },
-      include: { project: { include: { owner: true } } },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.projectCostRecord.update({
+        where: { id: record.id },
+        data: {
+          ...(parsed.data.plannedPersonDays !== undefined ? { plannedPersonDays: parsed.data.plannedPersonDays } : {}),
+          ...(parsed.data.standardHoursPerDay !== undefined ? { standardHoursPerDay: parsed.data.standardHoursPerDay } : {}),
+          ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes || "" } : {}),
+          updatedById: context.userId,
+        },
+        include: { project: { include: { owner: true } } },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "cost_record.update",
+          entityType: "ProjectCostRecord",
+          entityId: row.id,
+          data: parsed.data,
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "cost_record.update", "ProjectCostRecord", updated.id, parsed.data, request.id);
     return { requestId: request.id, record: costRecordDto(updated) };
   });
 
   app.delete("/:id", async (request) => {
     const { context, record } = await requireRecord(app, request);
-    const updated = await app.prisma.projectCostRecord.update({
-      where: { id: record.id },
-      data: {
-        status: "ARCHIVED",
-        deletedAt: new Date(),
-        deletedById: context.userId,
-        updatedById: context.userId,
-      },
-      include: { project: { include: { owner: true } } },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.projectCostRecord.update({
+        where: { id: record.id },
+        data: {
+          status: "ARCHIVED",
+          deletedAt: new Date(),
+          deletedById: context.userId,
+          updatedById: context.userId,
+        },
+        include: { project: { include: { owner: true } } },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "cost_record.delete",
+          entityType: "ProjectCostRecord",
+          entityId: row.id,
+          data: {},
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "cost_record.delete", "ProjectCostRecord", updated.id, {}, request.id);
     return { requestId: request.id, record: costRecordDto(updated) };
   });
 
@@ -137,17 +176,30 @@ export async function costRecordRoutes(app: FastifyInstance) {
     const record = await repository.findScoped(context.organizationId, (request.params as { id: string }).id);
     if (!record) throw notFound("成本记录不存在。");
     if (!canViewCost(context, record.project)) throw forbidden("没有权限恢复该成本记录。");
-    const updated = await app.prisma.projectCostRecord.update({
-      where: { id: record.id },
-      data: {
-        status: "ACTIVE",
-        deletedAt: null,
-        deletedById: null,
-        updatedById: context.userId,
-      },
-      include: { project: { include: { owner: true } } },
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const row = await tx.projectCostRecord.update({
+        where: { id: record.id },
+        data: {
+          status: "ACTIVE",
+          deletedAt: null,
+          deletedById: null,
+          updatedById: context.userId,
+        },
+        include: { project: { include: { owner: true } } },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "cost_record.restore",
+          entityType: "ProjectCostRecord",
+          entityId: row.id,
+          data: {},
+          requestId: request.id,
+        },
+      });
+      return row;
     });
-    await audit(app, context, "cost_record.restore", "ProjectCostRecord", updated.id, {}, request.id);
     return { requestId: request.id, record: costRecordDto(updated) };
   });
 
