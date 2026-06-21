@@ -60,6 +60,7 @@ model User {
   name           String
   email          String
   passwordHash   String
+  preferences    Json?
   role           OrganizationRole @default(MEMBER)
   status         UserStatus       @default(ACTIVE)
   lastLoginAt    DateTime?        @db.Timestamptz(3)

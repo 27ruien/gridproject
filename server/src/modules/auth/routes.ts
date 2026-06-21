@@ -1,16 +1,37 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { Prisma } from "../../../generated/prisma/client.js";
 import type { ServerConfig } from "../../config/env.js";
 import { clearSessionCookie, requireAuth, setSessionCookie } from "../../middleware/auth.js";
 import { sanitizeUserDto } from "../../utils/dto.js";
 import { badRequest, tooManyRequests, unauthorized } from "../../utils/errors.js";
-import { verifyPassword } from "../../utils/password.js";
+import { hashPassword, validatePassword, verifyPassword } from "../../utils/password.js";
 import { SESSION_COOKIE, createSessionToken, hashSessionToken, sessionExpiry } from "../../utils/session.js";
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+const profileSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  avatarColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+}).strict();
+
+const preferenceSchema = z.object({
+  density: z.enum(["compact", "comfortable"]),
+  dateFormat: z.enum(["yyyy-mm-dd", "mm-dd-yyyy", "dd-mm-yyyy"]),
+  weekStart: z.enum(["monday", "sunday"]),
+  defaultNav: z.enum(["expanded", "collapsed", "auto"]),
+  homeDueRange: z.enum(["all", "mine", "others"]),
+  avatarColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+}).strict();
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(1),
+  confirmPassword: z.string().min(1),
+}).strict();
 
 const failureBuckets = new Map<string, { count: number; firstFailedAt: number; blockedUntil?: number }>();
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
@@ -95,6 +116,113 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
       organization,
     };
   });
+
+  app.patch("/profile", async (request) => {
+    const context = requireAuth(request);
+    const parsed = profileSchema.safeParse(request.body);
+    if (!parsed.success) throw badRequest("个人资料参数不正确。", parsed.error.flatten());
+    const currentPreferences = jsonObject(context.user.preferences);
+    const preferences = toJsonInput(parsed.data.avatarColor
+      ? { ...currentPreferences, avatarColor: parsed.data.avatarColor }
+      : currentPreferences);
+    const user = await app.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: context.userId },
+        data: { name: parsed.data.name, preferences },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.profile_update",
+          entityType: "User",
+          entityId: context.userId,
+          data: { name: parsed.data.name },
+          requestId: request.id,
+        },
+      });
+      return updated;
+    });
+    return { requestId: request.id, user: sanitizeUserDto(user) };
+  });
+
+  app.patch("/preferences", async (request) => {
+    const context = requireAuth(request);
+    const parsed = preferenceSchema.safeParse(request.body);
+    if (!parsed.success) throw badRequest("偏好设置参数不正确。", parsed.error.flatten());
+    const preferences = toJsonInput({ ...jsonObject(context.user.preferences), ...parsed.data });
+    const user = await app.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({ where: { id: context.userId }, data: { preferences } });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.preferences_update",
+          entityType: "User",
+          entityId: context.userId,
+          data: parsed.data,
+          requestId: request.id,
+        },
+      });
+      return updated;
+    });
+    return { requestId: request.id, user: sanitizeUserDto(user) };
+  });
+
+  app.patch("/password", async (request) => {
+    const context = requireAuth(request);
+    const parsed = passwordSchema.safeParse(request.body);
+    if (!parsed.success) throw badRequest("密码参数不正确。", parsed.error.flatten());
+    if (parsed.data.newPassword === parsed.data.currentPassword) throw badRequest("新密码不能与当前密码相同。");
+    if (parsed.data.newPassword !== parsed.data.confirmPassword) throw badRequest("两次输入的新密码不一致。");
+    const passwordErrors = validatePassword(parsed.data.newPassword);
+    if (passwordErrors.length) throw badRequest(passwordErrors.join(""));
+
+    const user = await app.prisma.user.findFirst({
+      where: { id: context.userId, organizationId: context.organizationId, status: "ACTIVE", deletedAt: null },
+    });
+    if (!user || !(await verifyPassword(parsed.data.currentPassword, user.passwordHash))) {
+      throw badRequest("当前密码不正确。");
+    }
+
+    const currentToken = request.cookies?.[SESSION_COOKIE];
+    const currentTokenHash = currentToken ? hashSessionToken(currentToken, options.config.sessionSecret) : "";
+    const passwordHash = await hashPassword(parsed.data.newPassword);
+    const now = new Date();
+    const updated = await app.prisma.$transaction(async (tx) => {
+      const nextUser = await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
+      await tx.session.updateMany({
+        where: {
+          organizationId: context.organizationId,
+          userId: context.userId,
+          revokedAt: null,
+          ...(currentTokenHash ? { tokenHash: { not: currentTokenHash } } : {}),
+        },
+        data: { revokedAt: now },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.password_update",
+          entityType: "User",
+          entityId: context.userId,
+          data: { updatedAt: now.toISOString(), otherSessionsRevoked: true },
+          requestId: request.id,
+        },
+      });
+      return nextUser;
+    });
+    return { requestId: request.id, user: sanitizeUserDto(updated), currentSessionKept: Boolean(currentTokenHash), otherSessionsRevoked: true };
+  });
+}
+
+function jsonObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function toJsonInput(value: Record<string, unknown>): Prisma.InputJsonObject {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
 }
 
 function loginBucketKey(ip: string, email: string) {

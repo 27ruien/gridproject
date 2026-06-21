@@ -51,6 +51,15 @@ export const apiClient = {
   logout() {
     return request("/auth/logout", { method: "POST" });
   },
+  updateProfile(input) {
+    return request("/auth/profile", { method: "PATCH", body: input });
+  },
+  updatePreferences(input) {
+    return request("/auth/preferences", { method: "PATCH", body: input });
+  },
+  updatePassword(input) {
+    return request("/auth/password", { method: "PATCH", body: input });
+  },
   users: {
     list(query = "") {
       return request(`/users${query}`);

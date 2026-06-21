@@ -6,6 +6,7 @@ import { normalizeTrashItem } from "../domain/trash.js";
 import { getTemplateById } from "../domain/template.js";
 import { normalizeMilestones } from "../domain/milestone.js";
 import { DEMO_USERS, ORGANIZATION_ID, PROJECT_MEMBER_STATUS, ensureProjectOwnerMembership, userIdForName, userNameForId } from "../domain/access.js";
+import { normalizePreferences } from "../domain/preferences.js";
 
 export const STORAGE_KEY = "kiviflow-platform-state-v1";
 const LEGACY_STORAGE_KEY = "kiviflow-vue-mvp-state";
@@ -291,6 +292,7 @@ function normalizeUsers(users) {
     organizationId: user.organizationId || ORGANIZATION_ID,
     name: user.name || "未命名成员",
     email: user.email || `${user.id || "user"}@gridproject.local`,
+    preferences: normalizePreferences(user.preferences),
     passwordHash: user.passwordHash || "",
     role: user.role === "ADMIN" ? "ADMIN" : "MEMBER",
     status: user.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",

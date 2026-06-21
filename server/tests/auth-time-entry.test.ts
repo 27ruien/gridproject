@@ -86,6 +86,114 @@ test("auth session, bootstrap safety, logout, reset, disabled login and rate lim
   }
 });
 
+test("personal profile, preferences and password updates are persisted safely", { skip: skipReason }, async () => {
+  const data = await fixture();
+  const app = await buildApp(testServerConfig());
+  try {
+    const firstCookie = await login(app, data.owner.email, data.password);
+    const secondCookie = await login(app, data.owner.email, data.password);
+
+    const unauthenticated = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      payload: { currentPassword: data.password, newPassword: "AnotherPass123", confirmPassword: "AnotherPass123" },
+    });
+    assert.equal(unauthenticated.statusCode, 401);
+
+    const invalidProfile = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/profile",
+      headers: { cookie: firstCookie },
+      payload: { name: "Owner QA", email: "cannot-change@grid.test" },
+    });
+    assert.equal(invalidProfile.statusCode, 400);
+
+    const profile = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/profile",
+      headers: { cookie: firstCookie },
+      payload: { name: "Owner QA", avatarColor: "#177565" },
+    });
+    assert.equal(profile.statusCode, 200, profile.body);
+    assert.equal(profile.json().user.name, "Owner QA");
+    assert.equal(profile.json().user.email, data.owner.email);
+    assert.equal(profile.json().user.passwordHash, undefined);
+
+    const preferences = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/preferences",
+      headers: { cookie: firstCookie },
+      payload: {
+        density: "compact",
+        dateFormat: "dd-mm-yyyy",
+        weekStart: "sunday",
+        defaultNav: "collapsed",
+        homeDueRange: "others",
+        avatarColor: "#177565",
+      },
+    });
+    assert.equal(preferences.statusCode, 200, preferences.body);
+    assert.equal(preferences.json().user.preferences.density, "compact");
+    assert.equal(preferences.json().user.preferences.homeDueRange, "others");
+    assert.equal(preferences.body.includes("passwordHash"), false);
+
+    const wrongCurrent = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      headers: { cookie: firstCookie },
+      payload: { currentPassword: "WrongPassword99", newPassword: "AnotherPass123", confirmPassword: "AnotherPass123" },
+    });
+    assert.equal(wrongCurrent.statusCode, 400);
+    assert.equal(wrongCurrent.json().error.message, "当前密码不正确。");
+
+    const samePassword = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      headers: { cookie: firstCookie },
+      payload: { currentPassword: data.password, newPassword: data.password, confirmPassword: data.password },
+    });
+    assert.equal(samePassword.statusCode, 400);
+
+    const mismatch = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      headers: { cookie: firstCookie },
+      payload: { currentPassword: data.password, newPassword: "AnotherPass123", confirmPassword: "AnotherPass456" },
+    });
+    assert.equal(mismatch.statusCode, 400);
+
+    const newPassword = `UpdatedPass${data.suffix}7`;
+    const updatePassword = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      headers: { cookie: firstCookie },
+      payload: { currentPassword: data.password, newPassword, confirmPassword: newPassword },
+    });
+    assert.equal(updatePassword.statusCode, 200, updatePassword.body);
+    assert.equal(updatePassword.json().currentSessionKept, true);
+    assert.equal(updatePassword.json().otherSessionsRevoked, true);
+    assert.equal(updatePassword.body.includes("passwordHash"), false);
+
+    const currentSession = await app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie: firstCookie } });
+    assert.equal(currentSession.statusCode, 200);
+    const otherSession = await app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie: secondCookie } });
+    assert.equal(otherSession.statusCode, 401);
+    const oldPasswordLogin = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: data.owner.email, password: data.password } });
+    assert.equal(oldPasswordLogin.statusCode, 401);
+    const newPasswordLogin = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: data.owner.email, password: newPassword } });
+    assert.equal(newPasswordLogin.statusCode, 200, newPasswordLogin.body);
+
+    const persisted = await data.prisma.user.findUniqueOrThrow({ where: { id: data.owner.id } });
+    assert.equal(persisted.name, "Owner QA");
+    assert.equal((persisted.preferences as any).dateFormat, "dd-mm-yyyy");
+    const auditActions = await data.prisma.auditLog.findMany({ where: { actorId: data.owner.id }, select: { action: true } });
+    assert.deepEqual(new Set(auditActions.map((entry) => entry.action)), new Set(["user.profile_update", "user.preferences_update", "user.password_update"]));
+  } finally {
+    await app.close();
+    await data.prisma.$disconnect();
+  }
+});
+
 test("time entry permissions, status transitions and validation", { skip: skipReason }, async () => {
   const data = await fixture();
   const app = await buildApp(testServerConfig());

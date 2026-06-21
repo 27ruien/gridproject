@@ -13,6 +13,7 @@ import { createTrashItem, isTrashRestorable } from "../domain/trash.js";
 import { buildAccessContext, userIdForName, userNameForId } from "../domain/access.js";
 import { calculateProjectCost } from "../domain/cost.js";
 import { ProjectAccessPolicy } from "../server/policies/projectAccessPolicy.js";
+import { normalizePreferences } from "../domain/preferences.js";
 
 const apiMode = isApiDataSource();
 const state = reactive(stateService.load(apiMode ? apiStorageAdapter : undefined));
@@ -137,6 +138,7 @@ export function useKiviflowStore() {
   const settings = computed(() => state.settings);
   const people = computed(() => apiMode ? users.value.filter((user) => user.status !== "INACTIVE").map((user) => user.name) : projectService.people());
   const currentUser = computed(() => apiMode ? authState.user : localDemoUser(users.value));
+  const preferences = computed(() => normalizePreferences(currentUser.value?.preferences));
   const currentContext = computed(() => {
     if (!currentUser.value) {
       return {
@@ -185,6 +187,54 @@ export function useKiviflowStore() {
     await apiClient.logout().catch(() => null);
     markUnauthenticated();
     return { ok: true };
+  }
+
+  function updateProfile(input) {
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.updateProfile(input);
+        authState.user = payload.user;
+        upsertById(state.users, payload.user);
+        return { ok: true, user: payload.user };
+      });
+    }
+    const index = state.users.findIndex((user) => user.id === currentUser.value?.id);
+    if (index < 0) return { ok: false, reason: "not-found", message: "当前用户不存在。" };
+    const nextUser = {
+      ...state.users[index],
+      name: String(input.name || "").trim(),
+      preferences: normalizePreferences({ ...state.users[index].preferences, avatarColor: input.avatarColor }),
+      updatedAt: new Date().toISOString(),
+    };
+    if (!nextUser.name) return { ok: false, reason: "invalid", message: "姓名必填。", details: { fieldErrors: { name: ["姓名必填。"] } } };
+    state.users.splice(index, 1, nextUser);
+    return { ok: true, user: nextUser };
+  }
+
+  function updatePreferences(input) {
+    const nextPreferences = normalizePreferences(input);
+    if (apiMode) {
+      return withApiSave(async () => {
+        const payload = await apiClient.updatePreferences(nextPreferences);
+        authState.user = payload.user;
+        upsertById(state.users, payload.user);
+        return { ok: true, user: payload.user, preferences: nextPreferences };
+      });
+    }
+    const index = state.users.findIndex((user) => user.id === currentUser.value?.id);
+    if (index < 0) return { ok: false, reason: "not-found", message: "当前用户不存在。" };
+    const nextUser = { ...state.users[index], preferences: nextPreferences, updatedAt: new Date().toISOString() };
+    state.users.splice(index, 1, nextUser);
+    return { ok: true, user: nextUser, preferences: nextPreferences };
+  }
+
+  async function updateCurrentPassword(input) {
+    if (!apiMode) return { ok: false, reason: "not-supported", message: "本地演示模式不保存登录密码，请切换到 API 模式验证。" };
+    return withApiSave(async () => {
+      const payload = await apiClient.updatePassword(input);
+      authState.user = payload.user;
+      return { ok: true, ...payload };
+    });
   }
 
   function getTemplate(templateId) {
@@ -896,6 +946,7 @@ export function useKiviflowStore() {
     auditLogs,
     trash,
     settings,
+    preferences,
     currentUser,
     currentContext,
     people,
@@ -914,6 +965,9 @@ export function useKiviflowStore() {
     summarizeProject,
     login,
     logout,
+    updateProfile,
+    updatePreferences,
+    updateCurrentPassword,
     restoreSession,
     refreshApiState,
     createProject,
