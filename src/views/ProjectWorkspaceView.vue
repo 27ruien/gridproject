@@ -18,11 +18,12 @@
       v-model:active-view="activeView"
       v-model:filters="filters"
       v-model:sort="issueSort"
-      v-model:view-mode="issueViewMode"
+      :view-mode="issueViewMode"
       :people="people"
       :views="availableViews"
       @create="$emit('create-issue')"
       @reset="resetFilters"
+      @update:view-mode="setIssueViewMode"
     />
 
     <section v-if="activeView === '概览'" :id="tabPanelId('概览')" class="workspace-grid" role="tabpanel" :aria-labelledby="tabId('概览')">
@@ -243,6 +244,11 @@ function resetFilters() {
 function setIssuePage(page) {
   const nextPage = clamp(page, 1, totalPages.value);
   issuePage.value = nextPage > 1 ? String(nextPage) : "";
+}
+
+function setIssueViewMode(mode) {
+  issueViewMode.value = mode === "compact" ? "compact" : "";
+  issuePage.value = "";
 }
 
 function updateMilestoneStatus(index, status) {

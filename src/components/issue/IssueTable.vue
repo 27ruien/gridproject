@@ -25,7 +25,7 @@
       <span class="issue-type-icon" :title="issue.type">{{ issue.type.slice(0, 1) }}</span>
       <span class="issue-code">{{ issue.code }}</span>
       <span class="issue-title-column">
-        <button class="issue-title-cell" type="button" @click="$emit('open', issue.id)">
+        <button class="issue-title-cell" type="button" @click="selectAndOpen(issue.id)">
           <strong>{{ issue.title }}</strong>
         </button>
       </span>

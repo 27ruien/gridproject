@@ -141,7 +141,6 @@
     padding-top: var(--space-200);
   }
 
-  .topbar,
   .page-header,
   .panel-head,
   .project-toolbar,
@@ -253,9 +252,16 @@
 
   .topbar {
     min-height: var(--topbar-height);
+    flex-direction: row;
+    align-items: center;
     margin: calc(var(--space-200) * -1) calc(var(--content-pad) * -1) var(--space-150);
     padding-top: 0;
     padding-bottom: 0;
+  }
+
+  .topbar-context {
+    min-width: 0;
+    flex: 1;
   }
 
   .project-library-search,
