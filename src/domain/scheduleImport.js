@@ -11,6 +11,21 @@ export const TIMELINE_IMPORT_FIELDS = [
   "颜色",
 ];
 
+export const TIMELINE_PHASES = [
+  { key: "requirements", label: "需求" },
+  { key: "design", label: "设计" },
+  { key: "content-assets", label: "内容物料" },
+  { key: "content-production", label: "内容制作" },
+  { key: "development", label: "开发" },
+  { key: "internal-test", label: "内部测试" },
+  { key: "test", label: "测试" },
+  { key: "uat", label: "UAT" },
+  { key: "acceptance", label: "验收" },
+  { key: "release", label: "上线" },
+];
+
+const UNKNOWN_PHASE = { key: "unrecognized", label: "未识别" };
+
 const FIELD_ALIASES = {
   model: ["model", "module", "工作内容", "模块", "阶段"],
   name: ["name", "task", "description", "事项", "事项名称", "任务", "任务名称"],
@@ -43,35 +58,110 @@ const CHINA_ADJUSTED_WORKDAYS_2026 = new Set([
 
 export function parseScheduleText(source) {
   const text = String(source || "").trim();
-  if (!text) return { tasks: [], warnings: ["排期内容为空"] };
+  if (!text) return importResult([], ["排期内容为空"], [importError("EMPTY_FILE", "文件或排期内容为空。")]);
 
   const jsonResult = parseJsonSchedule(text);
-  if (jsonResult) return jsonResult;
+  if (jsonResult) return analyzeScheduleImport(jsonResult);
 
-  const warnings = [];
   const rows = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
 
-  if (!rows.length) return { tasks: [], warnings: ["没有可解析的排期行"] };
+  if (!rows.length) return importResult([], ["没有可解析的排期行"], [importError("EMPTY_FILE", "未发现可解析的排期行。")]);
 
   const table = rows.map(splitDelimitedRow).filter((cells) => cells.some(Boolean));
-  const headerMap = buildHeaderMap(table[0] || []);
+  return parseScheduleRows(table);
+}
+
+export function parseScheduleRows(sourceRows, options = {}) {
+  const table = (sourceRows || [])
+    .map((row) => (Array.isArray(row) ? row.map(cleanCell) : splitDelimitedRow(String(row || ""))))
+    .filter((cells) => cells.some(Boolean));
+  if (!table.length) return importResult([], ["没有可解析的排期行"], [importError("EMPTY_FILE", "未发现可解析的排期行。")]);
+
+  const headerMap = buildHeaderMap(table[0]);
   const hasHeader = isImportHeader(headerMap);
+  if (options.requireHeader && !hasHeader) {
+    return importResult([], ["表头无法识别"], [importError("HEADER_UNRECOGNIZED", "表头无法识别，请确认包含事项名称、开始日期以及结束日期或工作日天数。")]);
+  }
+  if (!hasHeader && looksLikeHeaderRow(table[0])) {
+    return importResult([], ["表头无法识别"], [importError("HEADER_UNRECOGNIZED", "表头无法识别，请检查字段名称。")]);
+  }
   const bodyRows = hasHeader ? table.slice(1) : table;
+  const warnings = [];
 
   const tasks = bodyRows.flatMap((cells, index) => {
     try {
       const raw = hasHeader ? parseHeaderRow(cells, headerMap) : parsePositionalRow(cells);
       return [normalizeScheduleTask(raw, index + 1)];
     } catch (error) {
-      warnings.push(`第 ${index + 1} 行未导入：${error.message}`);
+      warnings.push(`第 ${index + (hasHeader ? 2 : 1)} 行未导入：${error.message}`);
       return [];
     }
   });
 
-  return { tasks, warnings };
+  const errors = tasks.length ? [] : [importError("NO_VALID_TASKS", "未发现有效任务，请检查表头、日期和任务名称。")];
+  return analyzeScheduleImport(importResult(tasks, warnings, errors));
+}
+
+export function hasRecognizableScheduleHeader(cells) {
+  return isImportHeader(buildHeaderMap((cells || []).map(cleanCell)));
+}
+
+export function analyzeScheduleImport(input) {
+  const base = Array.isArray(input) ? importResult(input) : importResult(input?.tasks, input?.warnings, input?.errors);
+  const tasks = base.tasks.map((task) => {
+    const phase = classifyTimelinePhase(task);
+    return { ...task, phaseKey: phase.key, phase: phase.label };
+  });
+  const phaseMap = new Map();
+  tasks.forEach((task) => {
+    const key = task.phaseKey;
+    if (!phaseMap.has(key)) phaseMap.set(key, { key, label: task.phase, tasks: [] });
+    phaseMap.get(key).tasks.push(task);
+  });
+  phaseMap.forEach((phase) => phase.tasks.sort(compareTaskDates));
+  const orderedKeys = [...TIMELINE_PHASES.map((phase) => phase.key), UNKNOWN_PHASE.key];
+  const phases = orderedKeys.filter((key) => phaseMap.has(key)).map((key) => phaseMap.get(key));
+
+  return {
+    ...base,
+    tasks,
+    phases,
+    recognizedPhaseCount: phases.filter((phase) => phase.key !== UNKNOWN_PHASE.key).length,
+    unrecognizedTaskCount: tasks.filter((task) => task.phaseKey === UNKNOWN_PHASE.key).length,
+    keyDates: extractTimelineKeyDates(tasks),
+  };
+}
+
+export function extractTimelineKeyDates(tasks = []) {
+  const valid = tasks.filter((task) => isIsoDate(task.startDate)).sort(compareTaskDates);
+  const requirement = valid.find((task) => task.phaseKey === "requirements");
+  const development = valid.find((task) => task.phaseKey === "development" || matches(taskText(task), /(开发|程序开发|development|frontend|backend|webdevelopment|engineering)/));
+  const internalTest = valid.find((task) => matches(normalizeMatchText(task.name), /^(内部测试|internaltest|internaltesting)$/))
+    || valid.find((task) => matches(taskText(task), /(内部测试|internaltest|internaltesting)/));
+  const genericTest = valid.find((task) => task.phaseKey === "test" || matches(taskText(task), /(测试|test|testing|qa)/));
+  const acceptance = firstMatch(valid, [
+    (task) => normalizeMatchText(task.name) === "uat",
+    (task) => normalizeMatchText(task.name).includes("uat"),
+    (task) => task.phaseKey === "uat",
+    (task) => task.phaseKey === "acceptance" || matches(taskText(task), /(验收|acceptance)/),
+  ]);
+  const release = firstMatch(valid, [
+    (task) => ["上线", "launch", "release", "golive"].includes(normalizeMatchText(task.name)),
+    (task) => matches(normalizeMatchText(task.name), /(上线|发布|launch|release|golive)/),
+    (task) => task.phaseKey === "release",
+    (task) => matches(taskText(task), /(上线|发布|launch|release|golive)/),
+  ]);
+
+  return {
+    startDate: keyDateResult(requirement, "需求阶段最早任务"),
+    developmentDate: keyDateResult(development, "开发阶段或任务"),
+    testDate: keyDateResult(internalTest || genericTest, internalTest ? "内部测试优先" : "测试阶段或任务"),
+    acceptanceDate: keyDateResult(acceptance, "UAT 或验收阶段/任务"),
+    releaseDate: keyDateResult(release, "上线或发布阶段/任务"),
+  };
 }
 
 export function createScheduleIssueInput(task, project, template) {
@@ -170,7 +260,8 @@ function parseJsonSchedule(text) {
         return [];
       }
     });
-    return { tasks, warnings };
+    const errors = tasks.length ? [] : [importError("NO_VALID_TASKS", "未发现有效任务，请检查日期和任务名称。")];
+    return importResult(tasks, warnings, errors);
   } catch {
     return null;
   }
@@ -235,7 +326,13 @@ function resolveFieldKey(label) {
 }
 
 function normalizeLabel(label) {
-  return String(label || "").trim().toLowerCase().replace(/[\s_/-]/g, "");
+  return normalizeMatchText(label);
+}
+
+function looksLikeHeaderRow(cells) {
+  const matchesCount = cells.filter((cell) => resolveFieldKey(cell)).length;
+  const containsDate = cells.some((cell) => Boolean(extractDate(cell)));
+  return matchesCount >= 1 && !containsDate;
 }
 
 function parseHeaderRow(cells, headerMap) {
@@ -336,7 +433,11 @@ function parseDateIso(value) {
   const dateText = extractDate(value);
   if (!dateText) throw new Error("日期格式不支持");
   const [year, month, day] = dateText.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    throw new Error(`日期无法识别：${dateText}`);
+  }
+  return date;
 }
 
 function extractDate(value) {
@@ -457,4 +558,85 @@ function formatDate(date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function importResult(tasks = [], warnings = [], errors = []) {
+  return {
+    tasks: Array.isArray(tasks) ? tasks : [],
+    warnings: Array.isArray(warnings) ? warnings : [],
+    errors: Array.isArray(errors) ? errors : [],
+  };
+}
+
+function importError(code, message) {
+  return { code, message };
+}
+
+function classifyTimelinePhase(task) {
+  const text = taskText(task);
+  const phaseRules = [
+    ["internal-test", /(内部测试|internaltest|internaltesting)/],
+    ["uat", /uat/],
+    ["acceptance", /(验收|acceptance)/],
+    ["content-assets", /(内容物料|物料|素材|contentassets|assets)/],
+    ["content-production", /(内容制作|内容生产|拍摄|production|contentproduction)/],
+    ["development", /(程序开发|前端开发|后端开发|web开发|开发|development|frontend|backend|engineering)/],
+    ["test", /(测试|test|testing|qa)/],
+    ["release", /(上线|发布|launch|release|golive)/],
+    ["requirements", /(需求|需求确认|brief|requirement|requirements|scope)/],
+    ["design", /(设计|创意|design|creative)/],
+  ];
+  const match = phaseRules.find(([, pattern]) => matches(text, pattern));
+  return TIMELINE_PHASES.find((phase) => phase.key === match?.[0]) || UNKNOWN_PHASE;
+}
+
+function extractTimelineKeyDateText(task) {
+  return `${task.model || ""} ${task.name || ""} ${task.category || ""}`;
+}
+
+function taskText(task) {
+  return normalizeMatchText(extractTimelineKeyDateText(task));
+}
+
+function normalizeMatchText(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_\-/.()（）【】\[\]:：]+/g, "");
+}
+
+function matches(value, pattern) {
+  return pattern.test(String(value || ""));
+}
+
+function compareTaskDates(left, right) {
+  return String(left.startDate || "9999-12-31").localeCompare(String(right.startDate || "9999-12-31"))
+    || Number(left.originalIndex || 0) - Number(right.originalIndex || 0);
+}
+
+function firstMatch(tasks, predicates) {
+  for (const predicate of predicates) {
+    const match = tasks.find(predicate);
+    if (match) return match;
+  }
+  return null;
+}
+
+function keyDateResult(task, match) {
+  if (!task) return { date: "", sourceLabel: "未识别", phase: "", taskName: "", match: "" };
+  return {
+    date: task.startDate,
+    sourceLabel: `${task.model || task.phase || "未分类"} / ${task.name}`,
+    phase: task.phase || task.model || "",
+    taskName: task.name,
+    match,
+  };
+}
+
+function isIsoDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }

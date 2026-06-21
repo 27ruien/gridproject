@@ -14,7 +14,7 @@ export function createProjectMilestones(template, startDate) {
     name: milestone.name,
     window: milestone.window,
     focus: milestone.focus,
-    dueDate: addDays(startDate, offsets[index] || (index + 1) * 7),
+    dueDate: startDate ? addDays(startDate, offsets[index] || (index + 1) * 7) : "",
     status: index === 0 ? "进行中" : "未开始",
   }));
 }
@@ -28,7 +28,7 @@ export function normalizeMilestones(milestones, template, startDate) {
       name: milestone.name || templateMilestone.name || `里程碑 ${index + 1}`,
       window: milestone.window || templateMilestone.window || "",
       focus: milestone.focus || templateMilestone.focus || "明确阶段目标和交付口径",
-      dueDate: milestone.dueDate || addDays(startDate, (index + 1) * 7),
+      dueDate: milestone.dueDate || (startDate ? addDays(startDate, (index + 1) * 7) : ""),
       status: milestone.status,
     });
   });

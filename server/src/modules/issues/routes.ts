@@ -4,7 +4,16 @@ import { requireAuth } from "../../middleware/auth.js";
 import { canViewProject, isProjectOwner } from "../../policies/access.js";
 import { assertActiveProjectMember, assertIssueCodeAvailable, requireVisibleProject } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
-import { issueDto, pageEnvelope, pagination, parseDateOnly } from "../../utils/dto.js";
+import { issueDto, pageEnvelope, pagination, parseDateOnly, toJsonObject } from "../../utils/dto.js";
+
+const scheduleFields = {
+  scheduleKey: z.string().optional(),
+  scheduleModel: z.string().optional(),
+  scheduleOwners: z.array(z.string()).optional(),
+  scheduleWorkdays: z.number().nonnegative().optional(),
+  scheduleImportedAt: z.string().datetime().optional(),
+  scheduleSource: z.literal("gridtimeline").optional(),
+};
 
 const issueCreateSchema = z.object({
   code: z.string().min(1).optional(),
@@ -19,6 +28,7 @@ const issueCreateSchema = z.object({
   actualHours: z.number().optional().nullable(),
   description: z.string().optional().nullable(),
   next: z.string().optional().nullable(),
+  ...scheduleFields,
 }).strict();
 
 const issuePatchSchema = issueCreateSchema.partial();
@@ -71,6 +81,7 @@ export async function issueRoutes(app: FastifyInstance) {
           actualHours: input.actualHours ?? null,
           next: input.next || "",
           description: input.description || "",
+          scheduleData: scheduleDataForInput(input),
         },
       });
       await tx.issueActivity.create({
@@ -99,6 +110,7 @@ export async function issueRoutes(app: FastifyInstance) {
     const parsed = issuePatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
+    const currentScheduleData = toJsonObject(issue.scheduleData);
     if (input.ownerId) await assertActiveProjectMember(app, context.organizationId, issue.projectId, input.ownerId);
     const nextCode = input.code?.trim().toUpperCase();
     if (nextCode && nextCode !== issue.code) await assertIssueCodeAvailable(app, issue.projectId, nextCode, issue.id);
@@ -119,6 +131,7 @@ export async function issueRoutes(app: FastifyInstance) {
           ...(input.actualHours !== undefined ? { actualHours: input.actualHours } : {}),
           ...(input.next !== undefined ? { next: input.next || "" } : {}),
           ...(input.description !== undefined ? { description: input.description || "" } : {}),
+          ...(hasSchedulePatch(input) ? { scheduleData: { ...currentScheduleData, ...scheduleDataForInput(input) } } : {}),
         },
       });
       for (const activity of activities) {
@@ -226,4 +239,19 @@ function issueActivitiesForPatch(issue: any, input: any) {
   if (input.startDate !== undefined || input.dueDate !== undefined) activities.push({ type: "schedule", text: "更新事项日期", data: { startDate: input.startDate, dueDate: input.dueDate } as any });
   if (!activities.length) activities.push({ type: "updated", text: "更新事项信息", data: input as any });
   return activities;
+}
+
+function hasSchedulePatch(input: any) {
+  return Object.keys(scheduleFields).some((key) => input[key] !== undefined);
+}
+
+function scheduleDataForInput(input: any) {
+  return {
+    ...(input.scheduleKey !== undefined ? { scheduleKey: input.scheduleKey } : {}),
+    ...(input.scheduleModel !== undefined ? { scheduleModel: input.scheduleModel } : {}),
+    ...(input.scheduleOwners !== undefined ? { scheduleOwners: input.scheduleOwners } : {}),
+    ...(input.scheduleWorkdays !== undefined ? { scheduleWorkdays: input.scheduleWorkdays } : {}),
+    ...(input.scheduleImportedAt !== undefined ? { scheduleImportedAt: input.scheduleImportedAt } : {}),
+    ...(input.scheduleSource !== undefined ? { scheduleSource: input.scheduleSource } : {}),
+  };
 }

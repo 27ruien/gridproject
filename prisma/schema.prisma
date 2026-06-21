@@ -181,6 +181,7 @@ model Issue {
   actualHours    Decimal?  @db.Decimal(10, 2)
   next           String?
   description    String?
+  scheduleData   Json?
   deletedAt      DateTime? @db.Timestamptz(3)
   deletedById    String?
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)

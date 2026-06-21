@@ -200,6 +200,7 @@
       :people="people"
       :selected-template-id="selectedTemplateId"
       :project="editingProject"
+      :busy="store.operation.saving"
       @close="closeProjectModal"
       @create="createProject"
       @save="saveProject"
@@ -305,7 +306,7 @@ const {
 } = useProjectWorkspace(currentProjectId);
 
 const pageTitle = computed(() => {
-  if (currentView.value === "project") return "项目空间";
+  if (currentView.value === "project") return project.value?.name || "项目空间";
   if (currentView.value === "trash") return "回收站";
   const route = routes.find((item) => item.key === currentView.value);
   return route?.label || "工作台";
@@ -336,7 +337,7 @@ const normalizedSearch = computed(() => debouncedSearchText.value.trim().toLower
 const searchResults = computed(() => {
   if (normalizedSearch.value.length < 2) return { projects: [], issues: [] };
   const projectsResult = projects.value
-    .filter((entry) => `${entry.name}${entry.owner}${entry.status}${entry.description}`.toLowerCase().includes(normalizedSearch.value))
+    .filter((entry) => `${entry.name}${entry.owner}${entry.status}${entry.description}${(entry.executionTeams || []).join("")}`.toLowerCase().includes(normalizedSearch.value))
     .slice(0, 5)
     .map((entry) => ({ ...entry, kind: "project" }));
   const issuesResult = store.issues.value
@@ -361,6 +362,10 @@ onMounted(() => {
   document.addEventListener("pointerdown", handleOutsideSearch);
   window.addEventListener("popstate", handlePopState);
 });
+
+watch(pageTitle, (title) => {
+  document.title = currentView.value === "project" && project.value?.name ? `${title} | GridProject` : "GridProject";
+}, { immediate: true });
 
 watch(() => store.auth.authenticated, (authenticated) => {
   if (!store.apiMode) return;
@@ -463,14 +468,25 @@ async function createProject(input) {
     return;
   }
 
-  const created = await store.createProject(input);
+  const { timeline, ...projectInput } = input;
+  const created = await store.createProject({
+    ...projectInput,
+    skipSeedIssues: Boolean(timeline?.valid && timeline.behavior !== "dates-only"),
+  });
   if (!created?.id) {
     showToast(created?.message || store.operation.error || "项目创建失败");
     return;
   }
+  if (timeline?.valid && timeline.behavior !== "dates-only") {
+    const imported = await store.importProjectSchedule(created.id, timeline, { behavior: timeline.behavior });
+    if (imported?.ok === false) {
+      showToast(`项目已创建，但 Timeline 写入失败：${imported.message || store.operation.error || "请稍后重试"}`);
+      return;
+    }
+  }
   closeProjectModal();
   openProject(created.id);
-  showToast("项目已创建，并按模板初始化事项");
+  showToast(timeline?.valid ? "项目与 Timeline 已保存" : "项目已创建");
 }
 
 async function updateProject(projectId, patch) {
@@ -482,14 +498,35 @@ async function updateProject(projectId, patch) {
   showToast("项目已更新");
 }
 
-async function saveProject(projectId, patch) {
-  const result = await store.updateProject(projectId, patch);
+async function saveProject(projectId, patch, confirmed = false) {
+  const { timeline, ...projectPatch } = patch;
+  if (timeline?.behavior === "replace" && !confirmed) {
+    confirmDialog.value = {
+      open: true,
+      title: "替换已导入的 Timeline",
+      message: "这会移除并重建此前由 Timeline 导入的任务。手工创建的任务会保留。",
+      confirmText: "确认替换",
+      onConfirm: () => {
+        closeConfirmDialog();
+        saveProject(projectId, patch, true);
+      },
+    };
+    return;
+  }
+  const result = await store.updateProject(projectId, projectPatch);
   if (!result?.id) {
     showToast(result?.message || store.operation.error || "项目信息保存失败");
     return;
   }
+  if (timeline?.valid && timeline.behavior !== "dates-only") {
+    const imported = await store.importProjectSchedule(projectId, timeline, { behavior: timeline.behavior });
+    if (imported?.ok === false) {
+      showToast(`项目信息已保存，但 Timeline 写入失败：${imported.message || store.operation.error || "请稍后重试"}`);
+      return;
+    }
+  }
   closeProjectModal();
-  showToast("项目信息已保存");
+  showToast(timeline?.valid ? "项目与 Timeline 已更新" : "项目信息已保存");
 }
 
 function requestDeleteProject(projectId) {
@@ -535,8 +572,29 @@ async function createIssue(input) {
   showToast("事项已创建");
 }
 
-async function importProjectSchedule(input) {
-  const result = await store.importProjectSchedule(project.value.id, input.text, { merge: input.merge });
+async function importProjectSchedule(input, confirmed = false) {
+  if (input.behavior === "replace" && !confirmed) {
+    confirmDialog.value = {
+      open: true,
+      title: "替换已导入的 Timeline",
+      message: "这会移除并重建此前由 Timeline 导入的任务。手工创建的任务会保留。",
+      confirmText: "确认替换",
+      onConfirm: () => {
+        closeConfirmDialog();
+        importProjectSchedule(input, true);
+      },
+    };
+    return;
+  }
+  const dates = input.dates || {};
+  const projectPatch = {
+    ...(dates.startDate ? { startDate: dates.startDate } : {}),
+    ...(dates.testDate ? { testDate: dates.testDate } : {}),
+    ...(dates.acceptanceDate ? { acceptanceDate: dates.acceptanceDate } : {}),
+    ...(dates.releaseDate ? { releaseDate: dates.releaseDate } : {}),
+  };
+  if (Object.keys(projectPatch).length) await store.updateProject(project.value.id, projectPatch);
+  const result = await store.importProjectSchedule(project.value.id, input, { behavior: input.behavior });
   if (result?.ok === false) {
     showToast(result.message || store.operation.error || "排期导入失败");
     return;
@@ -550,7 +608,10 @@ async function importProjectSchedule(input) {
   }
 
   const warningText = result.warnings.length ? `，${result.warnings.length} 行需检查` : "";
-  showToast(`已导入 ${result.created.length} 个、更新 ${result.updated.length} 个，排期风险 ${result.riskCount} 个${warningText}`);
+  const skippedText = result.skipped?.length ? `，保留 ${result.skipped.length} 个手改任务` : "";
+  showToast(input.behavior === "dates-only"
+    ? "关键日期已更新"
+    : `已导入 ${result.created.length} 个、更新 ${result.updated.length} 个，排期风险 ${result.riskCount} 个${skippedText}${warningText}`);
 }
 
 async function updateIssue(issueId, patch) {

@@ -4,12 +4,15 @@ import { ProjectRepository } from "../../repositories/projects.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { canCreateProject, canManageProject, canViewProject } from "../../policies/access.js";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/errors.js";
-import { issueDto, milestoneDto, pageEnvelope, pagination, parseDateOnly, projectDto, projectMemberDto, timeEntryDto, costRecordDto } from "../../utils/dto.js";
+import { issueDto, milestoneDto, pageEnvelope, pagination, parseDateOnly, projectDto, projectMemberDto, timeEntryDto, costRecordDto, toJsonObject } from "../../utils/dto.js";
+
+const executionTeamSchema = z.enum(["商务", "设计", "开发", "特效"]);
 
 const projectSchema = z.object({
   name: z.string().min(1),
   code: z.string().min(1).optional(),
   templateId: z.string().optional(),
+  executionTeams: z.array(executionTeamSchema).max(4).optional(),
   description: z.string().optional(),
   status: z.string().optional(),
   health: z.number().int().min(0).max(100).optional(),
@@ -19,7 +22,7 @@ const projectSchema = z.object({
   testDate: z.string().optional().nullable(),
   acceptanceDate: z.string().optional().nullable(),
   releaseDate: z.string().optional().nullable(),
-});
+}).strict();
 
 const projectPatchSchema = projectSchema.partial();
 
@@ -28,7 +31,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const query = request.query as Record<string, string | undefined>;
     const { page, pageSize, skip, take } = pagination(query);
-    const where = {
+    const where: any = {
       organizationId: context.organizationId,
       deletedAt: null,
       ...(query.search ? {
@@ -38,6 +41,7 @@ export async function projectRoutes(app: FastifyInstance) {
         ],
       } : {}),
       ...(query.status ? { status: query.status } : {}),
+      ...(query.team ? { config: { path: ["executionTeams"], array_contains: [query.team] } } : {}),
     };
     const [projects, totalCount] = await Promise.all([
       app.prisma.project.findMany({
@@ -80,7 +84,7 @@ export async function projectRoutes(app: FastifyInstance) {
           testDate: parseDateOnly(input.testDate),
           acceptanceDate: parseDateOnly(input.acceptanceDate),
           releaseDate: parseDateOnly(input.releaseDate),
-          config: { templateId: input.templateId || "agile" },
+          config: { templateId: input.templateId || "agile", executionTeams: input.executionTeams || [] },
           ownerId,
           createdById: context.userId,
         },
@@ -130,6 +134,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const parsed = projectPatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("项目参数不正确。", parsed.error.flatten());
     const input = parsed.data;
+    const currentConfig = toJsonObject(project.config);
 
     const nextCode = input.code?.trim().toUpperCase();
     if (nextCode && nextCode !== project.code) await assertProjectCodeAvailable(app, context.organizationId, nextCode, project.id);
@@ -155,7 +160,13 @@ export async function projectRoutes(app: FastifyInstance) {
           ...(input.testDate !== undefined ? { testDate: parseDateOnly(input.testDate) ?? null } : {}),
           ...(input.acceptanceDate !== undefined ? { acceptanceDate: parseDateOnly(input.acceptanceDate) ?? null } : {}),
           ...(input.releaseDate !== undefined ? { releaseDate: parseDateOnly(input.releaseDate) ?? null } : {}),
-          ...(input.templateId !== undefined ? { config: { templateId: input.templateId || "agile" } } : {}),
+          ...(input.templateId !== undefined || input.executionTeams !== undefined ? {
+            config: {
+              ...currentConfig,
+              ...(input.templateId !== undefined ? { templateId: input.templateId || "agile" } : {}),
+              ...(input.executionTeams !== undefined ? { executionTeams: input.executionTeams } : {}),
+            },
+          } : {}),
         },
         include: { owner: true },
       });

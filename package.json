@@ -27,7 +27,7 @@
     "server:prisma:generate": "bash scripts/run-pnpm.sh --dir server run prisma:generate",
     "server:prisma:migrate:deploy": "npm run db:migrate:deploy:dev",
     "server:prisma:seed": "bash scripts/run-pnpm.sh --dir server run prisma:seed",
-    "test": "node tests/domain.test.js && node tests/access-cost.test.js && node tests/api-mode-source.test.js",
+    "test": "node tests/domain.test.js && node tests/timeline-import.test.js && node tests/access-cost.test.js && node tests/api-mode-source.test.js",
     "test:visual": "playwright test -c playwright.config.js",
     "test:visual:update": "playwright test -c playwright.config.js --update-snapshots",
     "preview": "vite preview --host 127.0.0.1"

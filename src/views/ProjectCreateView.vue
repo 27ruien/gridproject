@@ -1,100 +1,128 @@
 <template>
   <Modal
     :open="open"
-    :title="isEditing ? '更新项目基础信息' : '选择模板并初始化项目空间'"
-    :eyebrow="isEditing ? '编辑项目' : '创建项目'"
-    :size="isEditing ? 'medium' : 'large'"
-    @close="$emit('close')"
+    :title="isEditing ? '编辑项目' : '创建项目'"
+    :eyebrow="isEditing ? project?.name : 'GridProject'"
+    size="large"
+    @close="requestClose"
   >
-      <div :class="isEditing ? 'project-edit-layout' : 'create-layout'">
-        <div class="form-panel">
-          <label class="full-field">
-            <span>项目名称</span>
-            <input v-model="form.name" placeholder="例如：新客户交付项目" />
+    <nav class="form-step-nav" aria-label="项目表单步骤">
+      <button type="button" :class="{ active: step === 'basic' }" @click="step = 'basic'">
+        <span>1</span>基本信息
+      </button>
+      <button type="button" :class="{ active: step === 'timeline' }" @click="step = 'timeline'">
+        <span>2</span>Timeline
+      </button>
+    </nav>
+
+    <div v-show="step === 'basic'" class="project-form-content">
+      <div class="form-panel project-form-main">
+        <label class="full-field">
+          <span>项目名称 <b aria-hidden="true">*</b></span>
+          <input v-model="form.name" :aria-invalid="Boolean(errors.name)" placeholder="例如：新客户交付项目" @input="errors.name = ''" />
+          <small v-if="errors.name" class="field-error">{{ errors.name }}</small>
+        </label>
+
+        <label class="full-field">
+          <span>项目概述</span>
+          <textarea v-model="form.description" placeholder="说明项目目标、范围和交付背景"></textarea>
+        </label>
+
+        <div class="form-two">
+          <label>
+            <span>项目负责人</span>
+            <PersonPicker v-model="form.owner" :people="people" title="选择项目负责人" />
           </label>
-          <div class="form-two">
-            <label>
-              <span>项目负责人</span>
-              <PersonPicker v-model="form.owner" :people="people" title="选择项目负责人" />
-            </label>
-            <label>
-              <span>项目模板</span>
-              <select v-model="form.templateId" :disabled="isEditing">
-                <option v-for="template in templates" :key="template.id" :value="template.id">{{ template.name }}</option>
-              </select>
-            </label>
-          </div>
-          <div class="form-two">
-            <label>
-              <span>开始日期</span>
-              <input v-model="form.startDate" type="date" />
-            </label>
-            <label>
-              <span>截止日期</span>
-              <input v-model="form.dueDate" type="date" />
-            </label>
-          </div>
-          <div class="form-section">
-            <span class="form-label">项目当前状态</span>
-            <div class="status-chip-group form-status">
-              <button
-                v-for="status in projectStatuses"
-                :key="status"
-                type="button"
-                :class="{ active: form.status === status }"
-                @click="form.status = status"
-              >
-                {{ status }}
-              </button>
-            </div>
-          </div>
-          <div class="form-two">
-            <label>
-              <span>测试时间</span>
-              <input v-model="form.testDate" type="date" />
-            </label>
-            <label>
-              <span>验收时间</span>
-              <input v-model="form.acceptanceDate" type="date" />
-            </label>
-          </div>
-          <label class="full-field">
-            <span>上线时间</span>
-            <input v-model="form.releaseDate" type="date" />
-          </label>
-          <label class="full-field">
-            <span>项目说明</span>
-            <textarea v-model="form.description" placeholder="说明项目目标、范围或客户背景"></textarea>
+          <label>
+            <span>项目状态</span>
+            <select v-model="form.status">
+              <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
+            </select>
           </label>
         </div>
 
-        <div v-if="!isEditing">
-          <p class="form-label">模板会决定默认视图、事项类型、字段和空状态引导</p>
-          <div class="template-select">
-            <TemplateCard
-              v-for="template in templates"
-              :key="template.id"
-              :template="template"
-              :selected="form.templateId === template.id"
-              @select="form.templateId = $event"
-            />
+        <fieldset class="team-picker">
+          <legend>执行团队</legend>
+          <p>可多选，默认不指定团队。</p>
+          <div>
+            <label v-for="team in teamOptions" :key="team" :class="{ active: form.executionTeams.includes(team) }">
+              <input v-model="form.executionTeams" type="checkbox" :value="team" />
+              <span>{{ team }}</span>
+            </label>
           </div>
+        </fieldset>
+
+        <div class="form-two key-date-form">
+          <label>
+            <span>项目开始时间</span>
+            <input v-model="form.startDate" type="date" />
+          </label>
+          <label>
+            <span>测试时间</span>
+            <input v-model="form.testDate" type="date" />
+          </label>
+          <label>
+            <span>验收时间</span>
+            <input v-model="form.acceptanceDate" type="date" />
+          </label>
+          <label>
+            <span>上线时间</span>
+            <input v-model="form.releaseDate" type="date" />
+          </label>
         </div>
+      </div>
+
+      <aside class="project-template-panel">
+        <div class="project-template-heading">
+          <span>排期模版</span>
+          <small>{{ isEditing ? "已创建项目不可切换模版" : "决定默认视图和事项类型" }}</small>
+        </div>
+        <div class="template-select compact">
+          <TemplateCard
+            v-for="template in templates"
+            :key="template.id"
+            :template="template"
+            :selected="form.templateId === template.id"
+            @select="!isEditing && (form.templateId = $event)"
+          />
+        </div>
+      </aside>
     </div>
+
+    <div v-show="step === 'timeline'" class="project-timeline-step">
+      <label class="timeline-enable-row">
+        <input v-model="useTimeline" type="checkbox" />
+        <span>
+          <strong>{{ isEditing ? "重新导入 Timeline" : "使用 Timeline 初始化项目" }}</strong>
+          <small>{{ isEditing ? "先预览影响范围；手工维护的任务默认不会被覆盖。" : "解析成功后再随项目一起保存。" }}</small>
+        </span>
+      </label>
+      <TimelineImportPanel v-if="useTimeline" ref="timelinePanel" @change="handleTimelineChange" />
+      <div v-else class="timeline-skipped-state">
+        <strong>暂不导入</strong>
+        <p>可以先创建项目，之后在项目工作区重新导入 Timeline。</p>
+      </div>
+      <p v-if="errors.timeline" class="field-error timeline-error" role="alert">{{ errors.timeline }}</p>
+    </div>
+
     <template #footer>
-      <Button variant="ghost" @click="$emit('close')">取消</Button>
-      <Button variant="primary" @click="submit">{{ isEditing ? "保存项目" : "创建项目" }}</Button>
+      <Button variant="ghost" :disabled="saving" @click="requestClose">取消</Button>
+      <Button v-if="step === 'timeline'" variant="ghost" :disabled="saving" @click="step = 'basic'">上一步</Button>
+      <Button v-if="step === 'basic'" variant="primary" :disabled="saving" @click="step = 'timeline'">下一步</Button>
+      <Button v-else variant="primary" :disabled="saving" @click="submit">
+        {{ saving ? "正在保存…" : isEditing ? "保存项目" : "创建项目" }}
+      </Button>
     </template>
   </Modal>
 </template>
 
 <script setup>
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import TemplateCard from "../components/template/TemplateCard.vue";
 import PersonPicker from "../components/common/PersonPicker.vue";
+import TimelineImportPanel from "../components/project/TimelineImportPanel.vue";
 import Button from "../components/ui/Button.vue";
 import Modal from "../components/ui/Modal.vue";
-import { addDays, formatDate } from "../services/projectService";
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 
 const props = defineProps({
@@ -103,52 +131,36 @@ const props = defineProps({
   people: { type: Array, required: true },
   selectedTemplateId: { type: String, default: "agile" },
   project: { type: Object, default: null },
+  busy: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["close", "create", "save"]);
 const projectStatuses = PROJECT_STATUS_OPTIONS;
+const teamOptions = ["商务", "设计", "开发", "特效"];
 const isEditing = computed(() => Boolean(props.project));
+const saving = computed(() => props.busy || submitting.value);
+const step = ref("basic");
+const useTimeline = ref(false);
+const timelinePanel = ref(null);
+const timelinePreview = ref(null);
+const submitting = ref(false);
+const errors = reactive({ name: "", timeline: "" });
 
-const form = reactive({
-  name: "",
-  owner: "",
-  templateId: "agile",
-  status: "规划中",
-  startDate: "",
-  dueDate: "",
-  testDate: "",
-  acceptanceDate: "",
-  releaseDate: "",
-  description: "",
-});
+const form = reactive(emptyForm());
 
 watch(() => props.open, (open) => {
   if (!open) return;
-  if (props.project) {
-    Object.assign(form, {
-      name: props.project.name,
-      owner: props.project.owner,
-      templateId: props.project.templateId,
-      status: props.project.status,
-      startDate: props.project.startDate,
-      dueDate: props.project.dueDate,
-      testDate: props.project.testDate,
-      acceptanceDate: props.project.acceptanceDate,
-      releaseDate: props.project.releaseDate,
-      description: props.project.description,
-    });
-    return;
-  }
-  form.name = "";
-  form.owner = props.people[0] || "";
-  form.templateId = props.selectedTemplateId;
-  form.status = props.selectedTemplateId === "agile" ? "规划中" : "开发阶段";
-  form.startDate = formatDate(new Date());
-  form.dueDate = formatDate(addDays(new Date(), 30));
-  form.testDate = formatDate(addDays(new Date(), 21));
-  form.acceptanceDate = formatDate(addDays(new Date(), 27));
-  form.releaseDate = formatDate(addDays(new Date(), 30));
-  form.description = "";
+  step.value = "basic";
+  useTimeline.value = false;
+  timelinePreview.value = null;
+  submitting.value = false;
+  errors.name = "";
+  errors.timeline = "";
+  Object.assign(form, props.project ? projectForm(props.project) : emptyForm(props.selectedTemplateId, props.people[0] || ""));
+}, { flush: "post" });
+
+watch(() => props.busy, (busy, previous) => {
+  if (previous && !busy && props.open) submitting.value = false;
 });
 
 watch(() => form.templateId, (templateId) => {
@@ -156,11 +168,69 @@ watch(() => form.templateId, (templateId) => {
   form.status = templateId === "agile" ? "规划中" : "开发阶段";
 });
 
+function handleTimelineChange(preview) {
+  timelinePreview.value = preview;
+  errors.timeline = "";
+  if (!preview?.valid) return;
+  const dates = preview.dates || {};
+  form.startDate = dates.startDate || form.startDate;
+  form.testDate = dates.testDate || form.testDate;
+  form.acceptanceDate = dates.acceptanceDate || form.acceptanceDate;
+  form.releaseDate = dates.releaseDate || form.releaseDate;
+}
+
 function submit() {
-  if (isEditing.value) {
-    emit("save", props.project.id, { ...form });
+  if (saving.value) return;
+  errors.name = form.name.trim() ? "" : "请填写项目名称。";
+  errors.timeline = useTimeline.value && !timelinePreview.value?.valid ? "请先完成 Timeline 解析并确认至少一条有效任务。" : "";
+  if (errors.name || errors.timeline) {
+    step.value = errors.name ? "basic" : "timeline";
     return;
   }
-  emit("create", { ...form });
+
+  submitting.value = true;
+  const payload = {
+    ...form,
+    name: form.name.trim(),
+    description: form.description.trim(),
+    executionTeams: [...form.executionTeams],
+    timeline: useTimeline.value ? timelinePreview.value : null,
+  };
+  if (isEditing.value) emit("save", props.project.id, payload);
+  else emit("create", payload);
+}
+
+function requestClose() {
+  if (!saving.value) emit("close");
+}
+
+function emptyForm(templateId = "agile", owner = "") {
+  return {
+    name: "",
+    owner,
+    templateId,
+    status: templateId === "agile" ? "规划中" : "开发阶段",
+    executionTeams: [],
+    startDate: "",
+    testDate: "",
+    acceptanceDate: "",
+    releaseDate: "",
+    description: "",
+  };
+}
+
+function projectForm(project) {
+  return {
+    name: project.name || "",
+    owner: project.owner || "",
+    templateId: project.templateId || "agile",
+    status: project.status || "规划中",
+    executionTeams: Array.isArray(project.executionTeams) ? [...project.executionTeams] : [],
+    startDate: project.startDate || "",
+    testDate: project.testDate || "",
+    acceptanceDate: project.acceptanceDate || "",
+    releaseDate: project.releaseDate || "",
+    description: project.description || "",
+  };
 }
 </script>

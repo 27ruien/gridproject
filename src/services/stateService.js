@@ -256,9 +256,8 @@ function normalizeSettings(settings) {
 }
 
 function normalizeProject(project) {
-  const today = new Date().toISOString().slice(0, 10);
   const template = getTemplateById(project.templateId || "agile");
-  const startDate = project.startDate || today;
+  const startDate = project.startDate || "";
   const ownerId = project.ownerId || userIdForName(seedState.users, project.owner) || "user-linxia";
   return {
     id: project.id,
@@ -269,14 +268,15 @@ function normalizeProject(project) {
     ownerId,
     owner: project.owner || userNameForId(seedState.users, ownerId),
     status: normalizeProjectStatus(project.status),
+    executionTeams: Array.isArray(project.executionTeams) ? [...new Set(project.executionTeams)] : [],
     startDate,
-    dueDate: project.dueDate || today,
-    testDate: project.testDate || project.dueDate || today,
-    acceptanceDate: project.acceptanceDate || project.dueDate || today,
-    releaseDate: project.releaseDate || project.dueDate || today,
+    dueDate: project.dueDate || "",
+    testDate: project.testDate || "",
+    acceptanceDate: project.acceptanceDate || "",
+    releaseDate: project.releaseDate || "",
     milestones: normalizeMilestones(project.milestones, template, startDate),
     health: Number.isFinite(project.health) ? project.health : 90,
-    description: project.description || "暂无项目说明。",
+    description: project.description || "暂无项目概述。",
     createdById: project.createdById || ownerId,
     deletedAt: project.deletedAt || null,
     deletedById: project.deletedById || null,

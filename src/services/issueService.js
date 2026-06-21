@@ -1,5 +1,5 @@
 import { filterIssues, normalizeIssue } from "../domain/issue.js";
-import { buildScheduleKey, createScheduleIssueInput, getIssueScheduleRisks, parseScheduleText } from "../domain/scheduleImport.js";
+import { analyzeScheduleImport, buildScheduleKey, createScheduleIssueInput, getIssueScheduleRisks, parseScheduleText } from "../domain/scheduleImport.js";
 import { getTemplateById } from "../domain/template.js";
 import { getNextStatus } from "../domain/workflow.js";
 import { addDays, formatDate } from "./projectService.js";
@@ -77,17 +77,31 @@ export const issueService = {
 
     return updated;
   },
-  importSchedule(text, project, existingIssues = [], options = {}) {
+  importSchedule(source, project, existingIssues = [], options = {}) {
     const template = getTemplateById(project.templateId);
-    const parsed = parseScheduleText(text);
+    const parsed = typeof source === "string" ? parseScheduleText(source) : analyzeScheduleImport(source || {});
+    const behavior = options.behavior || (options.merge === false ? "replace" : "merge");
     const created = [];
     const updated = [];
+    const skipped = [];
+    const removed = behavior === "replace" ? existingIssues.filter(isTimelineIssue) : [];
+
+    if (behavior === "dates-only") {
+      return {
+        created, updated, skipped, removed: [], warnings: parsed.warnings,
+        riskCount: 0, totalCount: parsed.tasks.length, behavior,
+      };
+    }
 
     parsed.tasks.forEach((task) => {
       const input = createScheduleIssueInput(task, project, template);
-      const existing = options.merge === false ? null : findExistingScheduleIssue(existingIssues, project.id, task);
+      const existing = behavior === "merge" ? findExistingScheduleIssue(existingIssues, project.id, task) : null;
 
       if (existing) {
+        if (wasEditedAfterImport(existing)) {
+          skipped.push(existing);
+          return;
+        }
         updated.push(this.updateIssue(existing, {
           ...input,
           actualHours: existing.actualHours,
@@ -107,6 +121,9 @@ export const issueService = {
       warnings: parsed.warnings,
       riskCount: importedIssues.filter((issue) => getIssueScheduleRisks(issue).length).length,
       totalCount: parsed.tasks.length,
+      skipped,
+      removed,
+      behavior,
     };
   },
   advanceIssue(issue, template) {
@@ -149,8 +166,17 @@ export const issueService = {
 
 function findExistingScheduleIssue(issues, projectId, task) {
   const scheduleKey = buildScheduleKey(projectId, task);
-  return issues.find((issue) => issue.scheduleKey === scheduleKey)
-    || issues.find((issue) => issue.title === task.name && (issue.scheduleModel || "未分类") === (task.model || "未分类"));
+  return issues.find((issue) => isTimelineIssue(issue) && issue.scheduleKey === scheduleKey);
+}
+
+function isTimelineIssue(issue) {
+  return issue.scheduleSource === "gridtimeline" && Boolean(issue.scheduleKey);
+}
+
+function wasEditedAfterImport(issue) {
+  const importedAt = Date.parse(issue.scheduleImportedAt || "");
+  const updatedAt = Date.parse(issue.updatedAt || "");
+  return Number.isFinite(importedAt) && Number.isFinite(updatedAt) && updatedAt - importedAt > 1000;
 }
 
 function createActivity(type, text, at = new Date().toISOString(), actor = "本地用户") {

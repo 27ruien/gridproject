@@ -239,7 +239,7 @@ export function useKiviflowStore() {
   function createProject(input) {
     if (apiMode) {
       return withApiSave(async () => {
-        const payload = await apiClient.projects.create(input);
+        const payload = await apiClient.projects.create(projectPayload(input, users.value, currentUser.value));
         upsertById(state.projects, payload.project, true);
         await loadProjectBoard(payload.project.id).catch(() => null);
         return payload.project;
@@ -255,7 +255,7 @@ export function useKiviflowStore() {
       deletedAt: null,
       deletedById: null,
     };
-    const seedIssues = issueService.createSeedIssues(project);
+    const seedIssues = input.skipSeedIssues ? [] : issueService.createSeedIssues(project);
     state.projects.unshift(project);
     state.projectMembers.unshift({
       id: `pm-${project.id}-${ownerId}`,
@@ -276,7 +276,7 @@ export function useKiviflowStore() {
         const { milestones, ...projectPatch } = patch;
         let projectPayload = null;
         if (Object.keys(projectPatch).length) {
-          const payload = await apiClient.projects.update(projectId, projectPatch);
+          const payload = await apiClient.projects.update(projectId, projectPayload(projectPatch, users.value, currentUser.value));
           projectPayload = {
             ...payload.project,
             milestones: payload.project.milestones || getProject(projectId)?.milestones || [],
@@ -401,14 +401,18 @@ export function useKiviflowStore() {
     return issue;
   }
 
-  function importProjectSchedule(projectId, text, options = {}) {
+  function importProjectSchedule(projectId, source, options = {}) {
     const project = getProject(projectId);
-    const result = issueService.importSchedule(text, project, getProjectIssues(project.id), options);
+    const result = issueService.importSchedule(source, project, getProjectIssues(project.id), options);
 
     if (apiMode) {
       return withApiSave(async () => {
         const created = [];
         const updated = [];
+        for (const issue of result.removed) {
+          await apiClient.issues.delete(issue.id);
+          removeById(state.issues, issue.id);
+        }
         for (const issue of result.updated) {
           const payload = await apiClient.issues.update(issue.id, issuePayload(issue, users.value, currentUser.value));
           upsertById(state.issues, payload.issue);
@@ -427,6 +431,7 @@ export function useKiviflowStore() {
       const index = state.issues.findIndex((item) => item.id === issue.id);
       if (index >= 0) state.issues.splice(index, 1, issue);
     });
+    result.removed.forEach((issue) => removeById(state.issues, issue.id));
     state.issues.unshift(...result.created);
 
     return result;
@@ -1038,7 +1043,10 @@ function milestonePatchPayload(milestone) {
 
 function issuePayload(input = {}, users = [], currentUser = null) {
   const payload = {};
-  const copyIfPresent = ["code", "title", "type", "status", "priority", "startDate", "dueDate", "description", "next"];
+  const copyIfPresent = [
+    "code", "title", "type", "status", "priority", "startDate", "dueDate", "description", "next",
+    "scheduleKey", "scheduleModel", "scheduleOwners", "scheduleWorkdays", "scheduleImportedAt", "scheduleSource",
+  ];
   copyIfPresent.forEach((key) => {
     if (input[key] !== undefined) payload[key] = input[key];
   });
@@ -1051,9 +1059,20 @@ function issuePayload(input = {}, users = [], currentUser = null) {
   if (input.ownerId !== undefined) payload.ownerId = input.ownerId || null;
   else if (input.owner !== undefined) payload.ownerId = userIdForName(users, input.owner) || currentUser?.id || null;
 
-  if (input.creatorId !== undefined) payload.creatorId = input.creatorId || null;
-  else if (input.creator !== undefined) payload.creatorId = userIdForName(users, input.creator) || currentUser?.id || null;
+  return payload;
+}
 
+function projectPayload(input = {}, users = [], currentUser = null) {
+  const payload = {};
+  const copyIfPresent = [
+    "name", "code", "templateId", "description", "status", "health", "executionTeams",
+    "startDate", "dueDate", "testDate", "acceptanceDate", "releaseDate",
+  ];
+  copyIfPresent.forEach((key) => {
+    if (input[key] !== undefined) payload[key] = input[key];
+  });
+  if (input.ownerId !== undefined) payload.ownerId = input.ownerId || currentUser?.id;
+  else if (input.owner !== undefined) payload.ownerId = userIdForName(users, input.owner) || currentUser?.id;
   return payload;
 }
 

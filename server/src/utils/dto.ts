@@ -43,6 +43,7 @@ export function projectDto(project: any) {
   return {
     ...safeProject,
     templateId: String(config.templateId || "agile"),
+    executionTeams: Array.isArray(config.executionTeams) ? config.executionTeams.map(String) : [],
     milestones: Array.isArray(milestones) ? milestones.map(milestoneDto) : milestones,
     startDate: toDateOnly(project.startDate),
     dueDate: toDateOnly(project.dueDate),
@@ -57,9 +58,16 @@ export function projectDto(project: any) {
 }
 
 export function issueDto(issue: any) {
-  const { comments, activities, ...safeIssue } = issue;
+  const { comments, activities, scheduleData, ...safeIssue } = issue;
+  const schedule = toJsonObject(scheduleData);
   return {
     ...safeIssue,
+    scheduleKey: String(schedule.scheduleKey || ""),
+    scheduleModel: String(schedule.scheduleModel || ""),
+    scheduleOwners: Array.isArray(schedule.scheduleOwners) ? schedule.scheduleOwners.map(String) : [],
+    scheduleWorkdays: toNumber(schedule.scheduleWorkdays),
+    scheduleImportedAt: String(schedule.scheduleImportedAt || ""),
+    scheduleSource: String(schedule.scheduleSource || ""),
     comments: Array.isArray(comments) ? comments.map(issueCommentDto) : [],
     activity: Array.isArray(activities) ? activities.map(issueActivityDto) : [],
     startDate: toDateOnly(issue.startDate),
