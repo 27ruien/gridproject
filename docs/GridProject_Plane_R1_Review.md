@@ -12,7 +12,7 @@ This review covers only the real App Shell, project context header, project tabs
 
 2. **Is the project name the page's primary visual anchor?**
 
-   Yes. A compact project mark and 20px project name lead the content area, followed by status and actions. No larger competing title remains.
+   Yes. A compact project mark and 20px project name lead the content area, followed by a status lozenge and actions. No larger competing title remains.
 
 3. **Does the Header still lay out many properties horizontally?**
 
@@ -20,7 +20,7 @@ This review covers only the real App Shell, project context header, project tabs
 
 4. **Do Tabs and Toolbar form a clear hierarchy?**
 
-   Yes. Project identity is followed by a divider-based tab row and then one compact view toolbar. The active tab uses a restrained underline; the toolbar has view/search/filter/sort/display on the left and the sole primary action on the right.
+   Yes. Project identity is followed by a divider-based tab row and then one compact view toolbar. The active tab uses a restrained underline; sorting and display are grouped inside View Options so mobile keeps view/search/filter/create on one row.
 
 5. **Does the Toolbar still resemble an admin query form?**
 
@@ -68,4 +68,4 @@ This review covers only the real App Shell, project context header, project tabs
 - `artifacts/plane-r1/comparison/project-board-comparison.png`
 - `artifacts/plane-r1/comparison/shell-comparison.png`
 
-The automated capture report is `artifacts/plane-r1/report.json`. It records viewport overflow and browser errors only; it does not mark visual alignment as accepted.
+The original automated capture report is `artifacts/plane-r1/report.json`. The visual-acceptance revision produces new evidence under `artifacts/plane-r1-revision/`; neither report marks visual alignment as accepted.

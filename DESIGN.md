@@ -11,7 +11,7 @@ The project-level frontend design Skill used for this work is `.codex/skills/fro
 1. Global navigation: workbench, projects, time entries, costs, people when authorized, settings.
 2. Top bar: current area and global project/issue search.
 3. Page header: page title, short operational context, one primary action.
-4. Project header: project status, overview, owner, execution teams, key dates, compact signals.
+4. Project header: project identity first, status adjacent to the name, one-line overview, owner and actions. Detailed properties belong in the project-properties popover or overview; only real exceptions stay visible.
 5. Project tabs: overview, board or phase plan, issue views, Gantt, milestones, and activity views supplied by the project template.
 6. View toolbar: search, frequent filters, optional advanced filters, and the primary create action.
 
@@ -47,7 +47,7 @@ Use the 4/8/12/16/24/32px token rhythm. Dense table and toolbar controls may use
 - Application shell: fixed-width collapsible navigation plus `minmax(0, 1fr)` workspace.
 - Content: full-width page bands with constrained internal alignment.
 - Dashboard: four operational metrics, project list, and a secondary task queue only when width permits.
-- Project workspace: unframed project header, tabs and toolbar, filters, then the active work surface.
+- Project workspace: an 80-96px desktop identity header, tabs, one compact view toolbar, then the active work surface. Mobile keeps project identity through tabs within roughly 140-160px.
 - Tables, boards, and Gantt may scroll inside their own containers; the page root must not scroll horizontally.
 
 ## Components
@@ -55,7 +55,7 @@ Use the 4/8/12/16/24/32px token rhythm. Dense table and toolbar controls may use
 - Buttons use the shared `Button`, `IconButton`, and `OverflowMenu` components.
 - Only one primary button appears in a page or workspace toolbar.
 - Low-frequency or destructive actions live in an overflow menu.
-- Status uses one select when editable or one lozenge when read-only, never both.
+- Project status is a lozenge by default. Editing opens its menu or popover; a native select does not remain visible in the header.
 - Execution teams use multi-select checkboxes and remain separate from project members and task execution ownership.
 - Tabs, modals, panels, empty states, tables, and filters use existing shared components.
 
@@ -79,7 +79,7 @@ The task identity column and timeline are separate. Timeline ticks and task lane
 
 - 1440px and above: full operational layout with optional secondary column.
 - 1024-1439px: single-column content where secondary modules would compress the workspace.
-- Below 768px: overlay navigation, stacked toolbars, information lists instead of full tables, full-width detail panels, and modal personnel selection.
+- Below 768px: overlay navigation, a single-row project toolbar with chips on demand, information lists instead of full tables, full-width detail panels, and modal personnel selection.
 - Verify 390, 768, 1024, 1280, 1440, 1728, and 1920 widths and browser scaling from 80% through 200%.
 
 ## Accessibility
@@ -88,9 +88,9 @@ All controls need accessible names and visible focus. Tabs support Arrow keys, H
 
 ## Do / Don't
 
-Do use dividers, compact property bands, explicit status text, and stable dimensions. Do preserve user input and show data source information before writing imported data.
+Do use dividers, compact property popovers, explicit status text, and stable dimensions. Make the project name the header anchor and keep status next to it. Preserve user input and show data source information before writing imported data.
 
-Don't use glass effects, decorative gradients, nested cards, page-wide horizontal scrolling, fixed popovers without coordinates, duplicate status controls, fabricated key dates, or hidden destructive behavior.
+Don't use glass effects, decorative gradients, nested cards, page-wide horizontal scrolling, fixed popovers without coordinates, permanent project status forms, header signal dashboards, fabricated key dates, or hidden destructive behavior.
 
 ## Agent Implementation Guide
 
