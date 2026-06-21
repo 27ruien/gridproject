@@ -2,36 +2,30 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
 import { buildApp } from "../src/app.js";
+import { createTestPrisma, integrationTestSkipReason, testServerConfig } from "./testDatabase.js";
 
-const databaseUrl = process.env.DATABASE_URL || "";
 const adminEmail = process.env.ADMIN_EMAIL || "";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
-const canRun = Boolean(databaseUrl && adminEmail && adminPassword)
-  && !databaseUrl.includes("127.0.0.1:5433")
-  && !databaseUrl.includes("gridproject_prod");
+const skipReason = integrationTestSkipReason() || (!adminEmail || !adminPassword ? "Set ADMIN_EMAIL and ADMIN_PASSWORD for Dev release smoke tests." : false);
 
-function config() {
-  return {
-    databaseUrl,
-    host: "127.0.0.1",
-    port: 0,
-    nodeEnv: "test",
-    sessionSecret: process.env.SESSION_SECRET || "test-session-secret",
-    sessionTtlHours: 8,
-    cookieSecure: false,
-    frontendOrigins: ["http://127.0.0.1:5173"],
-    appVersion: process.env.APP_VERSION || "0.1.0-dev.1",
-  };
-}
-
-test("Dev release smoke flow", { skip: !canRun }, async () => {
-  const app = await buildApp(config());
+test("Dev release smoke flow", { skip: skipReason }, async () => {
+  const app = await buildApp(testServerConfig());
   await app.listen({ host: "127.0.0.1", port: 0 });
   const address = app.server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const suffix = `${Date.now()}${Math.floor(Math.random() * 10000)}`;
+  const prefix = `Smoke ${suffix}`;
   const ownerPassword = `SmokeOwner${suffix}9`;
   const memberPassword = `SmokeMember${suffix}9`;
+  const cleanup = {
+    adminId: "",
+    ownerId: "",
+    memberId: "",
+    projectId: "",
+    issueIds: [] as string[],
+    timeEntryIds: [] as string[],
+    costRecordId: "",
+  };
 
   try {
     const health = await request(baseUrl, "GET", "/api/health");
@@ -48,10 +42,11 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     });
     assert.equal(adminLogin.status, 200, JSON.stringify(adminLogin.body));
     assert.equal(adminLogin.body.user.passwordHash, undefined);
+    cleanup.adminId = adminLogin.body.user.id;
     const adminCookie = cookie(adminLogin);
 
     const ownerCreate = await request(baseUrl, "POST", "/api/users", {
-      name: `Smoke Owner ${suffix}`,
+      name: `${prefix} Owner`,
       email: `smoke-owner-${suffix}@example.test`,
       role: "MEMBER",
       status: "ACTIVE",
@@ -60,10 +55,11 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     }, adminCookie);
     assert.equal(ownerCreate.status, 201, JSON.stringify(ownerCreate.body));
     const owner = ownerCreate.body.user;
+    cleanup.ownerId = owner.id;
     assert.equal(owner.passwordHash, undefined);
 
     const memberCreate = await request(baseUrl, "POST", "/api/users", {
-      name: `Smoke Member ${suffix}`,
+      name: `${prefix} Member`,
       email: `smoke-member-${suffix}@example.test`,
       role: "MEMBER",
       status: "ACTIVE",
@@ -72,6 +68,7 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     }, adminCookie);
     assert.equal(memberCreate.status, 201, JSON.stringify(memberCreate.body));
     const member = memberCreate.body.user;
+    cleanup.memberId = member.id;
 
     const ownerLogin = await request(baseUrl, "POST", "/api/auth/login", {
       email: owner.email,
@@ -88,12 +85,13 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     const memberCookie = cookie(memberLogin);
 
     const projectCreate = await request(baseUrl, "POST", "/api/projects", {
-      name: `Smoke Project ${suffix}`,
+      name: `${prefix} Project`,
       code: `SMK${suffix.slice(-6)}`,
       status: "进行中",
     }, ownerCookie);
     assert.equal(projectCreate.status, 201, JSON.stringify(projectCreate.body));
     const project = projectCreate.body.project;
+    cleanup.projectId = project.id;
     assert.equal(project.ownerId, owner.id);
 
     let board = await request(baseUrl, "GET", `/api/projects/${project.id}/board`, undefined, ownerCookie);
@@ -108,13 +106,14 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
 
     const issueCreate = await request(baseUrl, "POST", `/api/projects/${project.id}/issues`, {
       code: `ISS${suffix.slice(-6)}`,
-      title: `Smoke Issue ${suffix}`,
+      title: `${prefix} Issue`,
       type: "任务",
       status: "进行中",
       ownerId: member.id,
     }, ownerCookie);
     assert.equal(issueCreate.status, 201, JSON.stringify(issueCreate.body));
     const issue = issueCreate.body.issue;
+    cleanup.issueIds.push(issue.id);
     assert.equal(issue.creatorId, owner.id);
 
     const timeCreate = await request(baseUrl, "POST", "/api/time-entries", {
@@ -126,6 +125,7 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     }, memberCookie);
     assert.equal(timeCreate.status, 201, JSON.stringify(timeCreate.body));
     const entry = timeCreate.body.entry;
+    cleanup.timeEntryIds.push(entry.id);
     assert.equal(entry.status, "DRAFT");
     assert.equal(entry.userId, member.id);
 
@@ -145,6 +145,7 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     }, ownerCookie);
     assert.equal(costCreate.status, 201, JSON.stringify(costCreate.body));
     const costRecord = costCreate.body.record;
+    cleanup.costRecordId = costRecord.id;
 
     const costPatch = await request(baseUrl, "PATCH", `/api/cost-records/${costRecord.id}`, {
       plannedPersonDays: 2,
@@ -165,6 +166,7 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
       description: "Owner private draft",
     }, ownerCookie);
     assert.equal(ownerTime.status, 201, JSON.stringify(ownerTime.body));
+    cleanup.timeEntryIds.push(ownerTime.body.entry.id);
 
     const memberTimeList = await request(baseUrl, "GET", "/api/time-entries", undefined, memberCookie);
     assert.equal(memberTimeList.status, 200, JSON.stringify(memberTimeList.body));
@@ -190,8 +192,60 @@ test("Dev release smoke flow", { skip: !canRun }, async () => {
     assert.equal(JSON.stringify(bootstrap.body).includes("tokenHash"), false);
   } finally {
     await app.close();
+    await cleanupSmokeData(cleanup);
   }
 });
+
+async function cleanupSmokeData(cleanup: {
+  adminId: string;
+  ownerId: string;
+  memberId: string;
+  projectId: string;
+  issueIds: string[];
+  timeEntryIds: string[];
+  costRecordId: string;
+}) {
+  const prisma = createTestPrisma();
+  try {
+    const testUserIds = [cleanup.ownerId, cleanup.memberId].filter(Boolean);
+    const sessionUserIds = [cleanup.adminId, ...testUserIds].filter(Boolean);
+    if (!cleanup.projectId && !testUserIds.length) return;
+    await prisma.auditLog.deleteMany({ where: { actorId: { in: testUserIds } } });
+    await prisma.session.deleteMany({ where: { userId: { in: sessionUserIds } } });
+    await prisma.timeEntry.deleteMany({
+      where: {
+        OR: [
+          cleanup.projectId ? { projectId: cleanup.projectId } : {},
+          testUserIds.length ? { userId: { in: testUserIds } } : {},
+          cleanup.timeEntryIds.length ? { id: { in: cleanup.timeEntryIds } } : {},
+        ].filter((item) => Object.keys(item).length > 0),
+      },
+    });
+    const costRecordWhere = [
+      cleanup.costRecordId ? { id: cleanup.costRecordId } : {},
+      cleanup.projectId ? { projectId: cleanup.projectId } : {},
+    ].filter((item) => Object.keys(item).length > 0);
+    if (costRecordWhere.length) {
+      await prisma.projectCostRecord.deleteMany({ where: { OR: costRecordWhere } });
+    }
+    if (cleanup.issueIds.length) {
+      await prisma.issueActivity.deleteMany({ where: { issueId: { in: cleanup.issueIds } } });
+      await prisma.issueComment.deleteMany({ where: { issueId: { in: cleanup.issueIds } } });
+    }
+    if (cleanup.projectId) {
+      await prisma.issue.deleteMany({ where: { projectId: cleanup.projectId } });
+      await prisma.milestone.deleteMany({ where: { projectId: cleanup.projectId } });
+      await prisma.projectMember.deleteMany({ where: { projectId: cleanup.projectId } });
+      await prisma.project.deleteMany({ where: { id: cleanup.projectId } });
+    }
+    if (testUserIds.length) {
+      await prisma.projectMember.deleteMany({ where: { userId: { in: testUserIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
+    }
+  } finally {
+    await prisma.$disconnect();
+  }
+}
 
 async function request(baseUrl: string, method: string, path: string, payload?: unknown, sessionCookie?: string) {
   const headers: Record<string, string> = {};

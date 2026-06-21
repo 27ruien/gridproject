@@ -1,28 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PrismaClient } from "../generated/prisma/client.js";
 import { buildApp } from "../src/app.js";
 import { hashPassword } from "../src/utils/password.js";
+import { createTestPrisma, integrationTestSkipReason, testServerConfig } from "./testDatabase.js";
 
-const databaseUrl = process.env.DATABASE_URL || "";
-const canRun = Boolean(databaseUrl) && !databaseUrl.includes("127.0.0.1:5433") && !databaseUrl.includes("gridproject_prod");
-
-function config() {
-  return {
-    databaseUrl,
-    host: "127.0.0.1",
-    port: 0,
-    nodeEnv: "test",
-    sessionSecret: process.env.SESSION_SECRET || "test-session-secret",
-    sessionTtlHours: 8,
-    cookieSecure: false,
-    frontendOrigins: ["http://127.0.0.1:5173"],
-    appVersion: "0.1.0-dev.1",
-  };
-}
+const skipReason = integrationTestSkipReason();
 
 async function fixture() {
-  const prisma = new PrismaClient();
+  const prisma = createTestPrisma();
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
   const password = `StrongPass${suffix}9`;
   const organization = await prisma.organization.create({ data: { id: `org-${suffix}`, name: `Org ${suffix}` } });
@@ -54,9 +39,9 @@ async function login(app: any, email: string, password: string) {
   return String(response.headers["set-cookie"]);
 }
 
-test("auth session, bootstrap safety, logout, reset, disabled login and rate limit", { skip: !canRun }, async () => {
+test("auth session, bootstrap safety, logout, reset, disabled login and rate limit", { skip: skipReason }, async () => {
   const data = await fixture();
-  const app = await buildApp(config());
+  const app = await buildApp(testServerConfig());
   try {
     const adminCookie = await login(app, data.admin.email, data.password);
     const me = await app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie: adminCookie } });
@@ -101,9 +86,9 @@ test("auth session, bootstrap safety, logout, reset, disabled login and rate lim
   }
 });
 
-test("time entry permissions, status transitions and validation", { skip: !canRun }, async () => {
+test("time entry permissions, status transitions and validation", { skip: skipReason }, async () => {
   const data = await fixture();
-  const app = await buildApp(config());
+  const app = await buildApp(testServerConfig());
   try {
     const memberCookie = await login(app, data.member.email, data.password);
     const ownerCookie = await login(app, data.owner.email, data.password);
@@ -214,9 +199,9 @@ test("time entry permissions, status transitions and validation", { skip: !canRu
   }
 });
 
-test("business API modules persist project members, issues, comments, milestones, settings and trash", { skip: !canRun }, async () => {
+test("business API modules persist project members, issues, comments, milestones, settings and trash", { skip: skipReason }, async () => {
   const data = await fixture();
-  const app = await buildApp(config());
+  const app = await buildApp(testServerConfig());
   try {
     const adminCookie = await login(app, data.admin.email, data.password);
     const ownerCookie = await login(app, data.owner.email, data.password);

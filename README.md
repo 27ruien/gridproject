@@ -23,7 +23,8 @@ cp server/.env.example server/.env
 # 编辑 server/.env，使用 127.0.0.1:5432/gridproject_dev
 
 npm run server:prisma:generate
-npm run server:prisma:migrate:dev
+npm run db:safety:dev
+npm run db:migrate:deploy:dev
 npm run server:prisma:seed
 npm run server:dev
 ```
@@ -34,7 +35,7 @@ npm run server:dev
 VITE_DATA_SOURCE=api VITE_API_BASE_URL=/api npm run dev
 ```
 
-后端只读取 `process.env.DATABASE_URL`。开发和测试环境会拒绝 `127.0.0.1:5433/gridproject_prod`，避免误连生产库。
+后端运行只读取 `process.env.DATABASE_URL`。开发和测试环境会拒绝 `127.0.0.1:5433/gridproject_prod`，避免误连生产库。后端集成测试和 Dev Smoke Test 只允许读取 `TEST_DATABASE_URL`，不得回退到部署用的 `DATABASE_URL`。
 
 ## 验证
 
@@ -45,8 +46,22 @@ npm run db:validate
 npm run server:prisma:generate
 npm run server:lint
 npm run server:build
-npm run server:test
+TEST_DATABASE_ADMIN_URL="postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public" npm run test:integration
 ```
+
+CI 使用：
+
+```bash
+npm run release:check:ci
+```
+
+Dev 服务器发布前使用非破坏性检查：
+
+```bash
+npm run release:check:server
+```
+
+`release:check:server` 不会执行会写入数据的集成测试或 Smoke Test。
 
 ## 当前能力
 

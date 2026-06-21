@@ -23,16 +23,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gridproject_ci?schema=public
+      TEST_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public
       SESSION_SECRET: ci-session-secret-not-for-production
       FRONTEND_ORIGIN: http://127.0.0.1:5173
       NODE_ENV: test
       APP_VERSION: 0.1.0-dev.1
-      ALLOW_CI_DATABASE_URL: "true"
-      ADMIN_EMAIL: admin-ci@example.test
-      ADMIN_PASSWORD: CIAdminPassword123
-      ADMIN_DISPLAY_NAME: CI Admin
-      INITIAL_ORGANIZATION_NAME: GridProject CI
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,23 +53,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Prisma schema validate
-        run: npm run db:validate
-
-      - name: Generate server Prisma client
-        run: npm run server:prisma:generate
-
-      - name: Apply server migrations
-        run: npm run server:prisma:migrate:deploy
-
-      - name: Seed CI database
-        run: npm run server:prisma:seed
-
-      - name: Seed CI database again
-        run: npm run server:prisma:seed
-
-      - name: Release check
-        run: npm run release:check
+      - name: Release check CI
+        run: npm run release:check:ci
 
       - name: Visual and interaction tests
         run: npm run test:visual

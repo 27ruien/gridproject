@@ -46,7 +46,7 @@ export async function buildApp(config: ServerConfig = getConfig()) {
     credentials: true,
   });
   await app.register(cookie);
-  await app.register(prismaPlugin);
+  await app.register(prismaPlugin, { config });
   await app.register(authContextPlugin, { config });
 
   await app.register(healthRoutes, { prefix: "/api", config });

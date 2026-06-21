@@ -56,15 +56,13 @@ npm run db:safety:dev
 
 如果发现生产数据库特征，脚本会立即终止。
 
-## 5. 执行发布检查
+## 5. 备份 Dev 数据库
+
+首次部署前确认已创建空的 `gridproject_dev`。非首次部署前先备份 Dev 数据库，备份文件不要提交到 Git：
 
 ```bash
-npm run release:check
+pg_dump "$DATABASE_URL" > "gridproject_dev_$(date +%Y%m%d_%H%M%S).sql"
 ```
-
-该脚本会依次执行前端 lint、前端 test、前端 build、后端 lint、后端 test、后端 build、Prisma validate、Prisma generate、Migration 状态检查、`.env` 和 Secret 跟踪检查。任一环节失败都会返回非零退出码。
-
-首次空库部署时，Migration 状态检查可能提示存在未应用迁移；此时先执行下一步 `migrate deploy`，Seed 后必须再次执行 `npm run release:check`，确认最终状态通过。
 
 ## 6. 执行 Prisma Migration
 
@@ -74,13 +72,7 @@ Dev 部署只允许执行：
 npm run db:migrate:deploy:dev
 ```
 
-禁止在 Dev 部署中执行：
-
-```text
-prisma migrate dev
-prisma migrate reset
-prisma db push
-```
+首次部署时，空数据库尚无业务表，必须先执行 migration，不要先运行会读取业务表的测试。
 
 ## 7. 执行幂等 Seed
 
@@ -97,14 +89,55 @@ npm run server:prisma:seed
 
 重复 Seed 不应产生重复 Organization、ADMIN、角色、权限或成员关系。当前版本 Seed 创建初始 Organization 和 ADMIN；角色、权限、成员关系模型尚未拆分。
 
-## 8. 构建前端和后端
+## 8. 执行服务器发布检查
+
+```bash
+npm run release:check:server
+```
+
+`release:check:server` 只执行非破坏性检查：前端 lint、前端 test、前端 build、后端 lint、后端 build、Prisma validate、Prisma generate、Migration status、Secret 检查。它不会执行会写入数据的后端集成测试或 Smoke Test，因此不会污染 `gridproject_dev` 用户测试数据。
+
+如果 Migration status 提示目标 Dev 数据库尚未初始化，请先执行：
+
+```bash
+npm run db:migrate:deploy:dev
+npm run server:prisma:seed
+```
+
+然后再次执行：
+
+```bash
+npm run release:check:server
+```
+
+## 9. CI 发布检查
+
+CI 不连接真实 Dev 或 Prod 数据库，只使用 GitHub Actions PostgreSQL Service 创建随机临时测试库：
+
+```bash
+npm run release:check:ci
+```
+
+`release:check:ci` 会执行前端 lint、前端 test、前端 build、后端 lint、后端 build、Prisma validate、Prisma generate、临时数据库 migrate deploy、后端集成测试、Smoke Test 和 Secret 检查。临时数据库会在测试结束后删除。
+
+## 10. 禁止的部署命令
+
+禁止在 Dev 部署中执行：
+
+```text
+prisma migrate dev
+prisma migrate reset
+prisma db push
+```
+
+## 11. 构建前端和后端
 
 ```bash
 npm run build
 npm run server:build
 ```
 
-## 9. 启动 Fastify
+## 12. 启动 Fastify
 
 临时验证：
 
@@ -114,7 +147,7 @@ pnpm --dir server run start
 
 建议用 systemd 管理长期进程。
 
-## 10. systemd 示例
+## 13. systemd 示例
 
 ```ini
 [Unit]
@@ -142,7 +175,7 @@ sudo systemctl restart gridproject-dev
 sudo systemctl status gridproject-dev
 ```
 
-## 11. Nginx `/api` 代理
+## 14. Nginx `/api` 代理
 
 ```nginx
 location /api/ {
@@ -162,7 +195,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 12. 健康检查
+## 15. 健康检查
 
 ```bash
 curl -fsS http://127.0.0.1:3000/api/health
@@ -180,7 +213,7 @@ curl -fsS http://127.0.0.1:3000/api/health
 
 响应中不得包含 Secret、数据库地址或服务器信息。
 
-## 13. 登录验证
+## 16. 登录验证
 
 使用 `ADMIN_EMAIL` 和 `ADMIN_PASSWORD` 登录 Dev 页面。登录成功后，通过人员管理页面创建：
 
@@ -189,7 +222,7 @@ curl -fsS http://127.0.0.1:3000/api/health
 
 不要在文档、Issue、截图或聊天记录中暴露真实密码。
 
-## 14. 回滚方式
+## 17. 回滚方式
 
 代码回滚：
 
@@ -209,7 +242,7 @@ sudo systemctl restart gridproject-dev
 - 如迁移已部署且需回滚，优先切回旧代码并由 DBA 基于备份或人工回滚脚本处理。
 - Dev 测试数据可在测试结束后按测试计划清理。
 
-## 15. 测试数据规则
+## 18. 测试数据规则
 
 Dev 用户测试只允许使用虚拟人员姓名、测试邮箱、测试项目、测试工时和非敏感描述。
 

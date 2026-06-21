@@ -6,7 +6,6 @@ loadEnvFile(resolve(process.cwd(), ".env"));
 
 const databaseUrl = process.env.DATABASE_URL || "";
 const nodeEnv = process.env.NODE_ENV || "development";
-const allowCiDatabase = process.env.ALLOW_CI_DATABASE_URL === "true";
 
 if (!databaseUrl) {
   fail("DATABASE_URL is required for Dev release checks.");
@@ -36,10 +35,9 @@ if (port === "5433" || databaseUrl.includes(":5433/")) {
 }
 
 const isDevDatabase = host === "127.0.0.1" && port === "5432" && databaseName === "gridproject_dev";
-const isCiDatabase = allowCiDatabase && host === "127.0.0.1" && port === "5432" && databaseName === "gridproject_ci";
 
-if (!isDevDatabase && !isCiDatabase) {
-  fail("Dev release database checks require 127.0.0.1:5432/gridproject_dev. CI may use gridproject_ci only with ALLOW_CI_DATABASE_URL=true.");
+if (!isDevDatabase) {
+  fail("Dev release database checks require 127.0.0.1:5432/gridproject_dev.");
 }
 
 console.log(`Database safety check passed for ${host}:${port}/${databaseName} with NODE_ENV=${nodeEnv}.`);
