@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-06-21T12:02:51.355Z",
+  "baseURL": "http://127.0.0.1:5173",
+  "captures": [
+    {
+      "filename": "project-list-1440x900.png",
+      "route": "/?view=project&project=crm&tab=Sprint",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-board-1440x900.png",
+      "route": "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-list-1280x800.png",
+      "route": "/?view=project&project=crm&tab=Sprint",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-board-1280x800.png",
+      "route": "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-list-390x844.png",
+      "route": "/?view=project&project=crm&tab=Sprint",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-board-390x844.png",
+      "route": "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    }
+  ],
+  "passed": true
+}

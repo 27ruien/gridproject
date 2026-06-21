@@ -30,11 +30,12 @@ test("project creation previews Timeline and persists project fields", async ({ 
   await expect(dialog.locator(".key-date-editor-grid")).toContainText("需求 / 需求确认");
   await dialog.getByRole("button", { name: "创建项目" }).click();
 
-  await expect(page.locator(".project-overview-header h1")).toHaveText("Timeline 创建回归");
-  await expect(page.locator(".project-attribute-grid")).toContainText("开发");
+  await expect(page.locator(".project-context-header h1")).toHaveText("Timeline 创建回归");
+  await page.locator(".project-properties-menu > summary").click();
+  await expect(page.locator(".project-properties-popover")).toContainText("开发");
   await expect(page.locator(".issue-table-row")).toHaveCount(5);
   await page.reload({ waitUntil: "networkidle" });
-  await expect(page.locator(".project-overview-header h1")).toHaveText("Timeline 创建回归");
+  await expect(page.locator(".project-context-header h1")).toHaveText("Timeline 创建回归");
   await expect(page.locator(".issue-table-row")).toHaveCount(5);
   expect(consoleErrors).toEqual([]);
 });
