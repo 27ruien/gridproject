@@ -23,19 +23,19 @@ try {
     ["projects-1440x900.png", projectRoute, 1440, 900],
     ["projects-1280x800.png", projectRoute, 1280, 800],
     ["projects-390x844.png", projectRoute, 390, 844],
-    ["dense-20.png", projectRoute, 1440, 900],
-    ["empty.png", "/?qa=plane-r2-projects-empty&view=projects", 1440, 900],
+    ["projects-dense-20.png", projectRoute, 1440, 900],
+    ["projects-empty.png", "/?qa=plane-r2-projects-empty&view=projects", 1440, 900],
   ];
   for (const captureCase of cases) report.captures.push(await capturePage(afterBase, outputDir, ...captureCase));
 
   report.captures.push(await captureAction("home-due-all.png", homeRoute, 1440, 900, async (page) => page.getByRole("tab", { name: /^全部/ }).click()));
   report.captures.push(await captureAction("home-due-others.png", homeRoute, 1440, 900, async (page) => page.getByRole("tab", { name: /^其他成员/ }).click()));
-  report.captures.push(await captureAction("project-filter-open.png", projectRoute, 1440, 900, async (page) => page.getByRole("button", { name: /^筛选/ }).click()));
+  report.captures.push(await captureAction("projects-filter-open.png", projectRoute, 1440, 900, async (page) => page.getByRole("button", { name: /^筛选/ }).click()));
   report.captures.push(await captureAction("account-menu-open.png", projectRoute, 1440, 900, openDesktopAccount));
   report.captures.push(await captureAction("account-menu-mobile.png", projectRoute, 390, 844, openMobileAccount));
-  report.captures.push(await capturePage(afterBase, outputDir, "profile.png", "/settings/profile", 1440, 900));
-  report.captures.push(await capturePage(afterBase, outputDir, "preferences.png", "/settings/preferences", 1440, 900));
-  report.captures.push(await capturePage(afterBase, outputDir, "security.png", "/settings/security", 1440, 900));
+  report.captures.push(await capturePage(afterBase, outputDir, "profile-settings.png", "/settings/profile", 1440, 900));
+  report.captures.push(await capturePage(afterBase, outputDir, "preference-settings.png", "/settings/preferences", 1440, 900));
+  report.captures.push(await capturePage(afterBase, outputDir, "security-settings.png", "/settings/security", 1440, 900));
   report.captures.push(await capturePage(afterBase, outputDir, "personal-settings-mobile.png", "/settings/profile", 390, 844));
 
   const beforeHome = await capturePage(beforeBase, beforeDir, "home-1440x900.png", "/?view=dashboard", 1440, 900);
@@ -48,8 +48,8 @@ try {
   const comparisons = [
     ["project-library-comparison.png", beforeProjects.path, planeWorkspace, path.join(outputDir, "projects-1440x900.png"), "Project library"],
     ["home-comparison.png", beforeHome.path, planeBoard, path.join(outputDir, "home-1440x900.png"), "Home"],
-    ["account-comparison.png", beforeAccount.path, planeWorkspace, path.join(outputDir, "account-menu-open.png"), "Account menu"],
-    ["profile-comparison.png", beforeAccount.path, planeWorkspace, path.join(outputDir, "profile.png"), "Personal profile"],
+    ["account-menu-comparison.png", beforeAccount.path, planeWorkspace, path.join(outputDir, "account-menu-open.png"), "Account menu"],
+    ["profile-settings-comparison.png", beforeAccount.path, planeWorkspace, path.join(outputDir, "profile-settings.png"), "Personal profile"],
   ];
   for (const [filename, beforePath, reference, afterPath, topic] of comparisons) {
     await composeComparison(filename, topic, await localDataUrl(beforePath), reference, await localDataUrl(afterPath));

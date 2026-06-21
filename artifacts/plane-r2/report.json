@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-21T17:15:12.633Z",
+  "generatedAt": "2026-06-21T17:18:05.517Z",
   "afterBase": "http://127.0.0.1:5174",
   "beforeBase": "http://127.0.0.1:5175",
   "captures": [
@@ -76,25 +76,25 @@
       "pageErrors": []
     },
     {
-      "filename": "dense-20.png",
+      "filename": "projects-dense-20.png",
       "route": "/?qa=plane-r2-projects-20&view=projects",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/dense-20.png",
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/projects-dense-20.png",
       "horizontalOverflow": 0,
       "consoleErrors": [],
       "pageErrors": []
     },
     {
-      "filename": "empty.png",
+      "filename": "projects-empty.png",
       "route": "/?qa=plane-r2-projects-empty&view=projects",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/empty.png",
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/projects-empty.png",
       "horizontalOverflow": 0,
       "consoleErrors": [],
       "pageErrors": []
@@ -124,13 +124,13 @@
       "pageErrors": []
     },
     {
-      "filename": "project-filter-open.png",
+      "filename": "projects-filter-open.png",
       "route": "/?qa=plane-r2-projects-20&view=projects",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/project-filter-open.png",
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/projects-filter-open.png",
       "horizontalOverflow": 0,
       "consoleErrors": [],
       "pageErrors": []
@@ -160,37 +160,37 @@
       "pageErrors": []
     },
     {
-      "filename": "profile.png",
+      "filename": "profile-settings.png",
       "route": "/settings/profile",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/profile.png",
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/profile-settings.png",
       "horizontalOverflow": 0,
       "consoleErrors": [],
       "pageErrors": []
     },
     {
-      "filename": "preferences.png",
+      "filename": "preference-settings.png",
       "route": "/settings/preferences",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/preferences.png",
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/preference-settings.png",
       "horizontalOverflow": 0,
       "consoleErrors": [],
       "pageErrors": []
     },
     {
-      "filename": "security.png",
+      "filename": "security-settings.png",
       "route": "/settings/security",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/security.png",
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/security-settings.png",
       "horizontalOverflow": 0,
       "consoleErrors": [],
       "pageErrors": []
@@ -260,18 +260,18 @@
       "after": "artifacts/plane-r2/home-1440x900.png"
     },
     {
-      "filename": "account-comparison.png",
+      "filename": "account-menu-comparison.png",
       "topic": "Account menu",
       "before": "artifacts/plane-r2/before/account-menu-open.png",
       "reference": "Plane official public interface reference",
       "after": "artifacts/plane-r2/account-menu-open.png"
     },
     {
-      "filename": "profile-comparison.png",
+      "filename": "profile-settings-comparison.png",
       "topic": "Personal profile",
       "before": "artifacts/plane-r2/before/account-menu-open.png",
       "reference": "Plane official public interface reference",
-      "after": "artifacts/plane-r2/profile.png"
+      "after": "artifacts/plane-r2/profile-settings.png"
     }
   ],
   "notes": [
