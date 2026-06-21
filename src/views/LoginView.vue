@@ -3,7 +3,7 @@
     <section class="login-panel">
       <div>
         <p class="eyebrow">GridProject</p>
-        <h1>登录工作台</h1>
+        <h1>登录 GridProject</h1>
       </div>
       <label>
         <span>邮箱</span>

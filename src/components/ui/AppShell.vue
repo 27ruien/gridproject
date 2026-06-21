@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell" :class="{ 'nav-collapsed': navCollapsed }" @keydown.esc="mobileNavOpen = false">
+  <div class="app-shell" :class="[{ 'nav-collapsed': navCollapsed }, `density-${preferences.density}`]" @keydown.esc="mobileNavOpen = false">
     <header class="mobile-shellbar">
       <div class="brand">
         <span class="brand-mark">{{ settings.logoText }}</span>
@@ -65,19 +65,7 @@
         </section>
       </div>
 
-      <details class="account-menu">
-        <summary class="account-trigger" :data-tooltip="manager.name">
-          <span class="avatar">{{ manager.name.slice(0, 1) }}</span>
-          <strong>{{ manager.name }}</strong>
-          <Icon name="chevronDown" />
-        </summary>
-        <div class="account-popover">
-          <strong>{{ manager.name }}</strong>
-          <small>{{ manager.role }}</small>
-          <small>管理 {{ projectCount }} 个项目</small>
-          <button v-if="showLogout" class="account-action" type="button" @click="$emit('logout')">退出登录</button>
-        </div>
-      </details>
+      <AccountMenu :user="manager" :preferences="preferences" :show-logout="showLogout" @navigate="$emit('account-navigate', $event)" @logout="$emit('logout')" />
     </aside>
 
     <main class="workspace">
@@ -90,18 +78,19 @@
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Icon from "./Icon.vue";
 import IconButton from "./IconButton.vue";
+import AccountMenu from "../account/AccountMenu.vue";
 
 const props = defineProps({
   routes: { type: Array, required: true },
   currentView: { type: String, required: true },
   settings: { type: Object, required: true },
   manager: { type: Object, required: true },
-  projectCount: { type: Number, required: true },
+  preferences: { type: Object, required: true },
   showLogout: { type: Boolean, default: false },
   projectContext: { type: Object, default: null },
 });
 
-const emit = defineEmits(["navigate", "logout", "project-view"]);
+const emit = defineEmits(["navigate", "logout", "project-view", "account-navigate"]);
 const mobileNavOpen = ref(false);
 const navCollapsed = ref(false);
 const navPreference = "gridproject.navCollapsed";
@@ -111,10 +100,11 @@ watch(() => props.currentView, () => {
 });
 
 onMounted(() => {
-  const saved = window.localStorage.getItem(navPreference);
-  navCollapsed.value = saved ? saved === "true" : window.innerWidth >= 768 && window.innerWidth < 1024;
+  applyNavPreference(props.preferences.defaultNav);
   window.addEventListener("resize", syncResponsiveCollapse);
 });
+
+watch(() => props.preferences.defaultNav, applyNavPreference, { immediate: true });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", syncResponsiveCollapse);
@@ -146,5 +136,13 @@ function toggleCollapsed() {
 
 function syncResponsiveCollapse() {
   if (window.innerWidth < 768) navCollapsed.value = false;
+  else if (props.preferences.defaultNav === "auto") navCollapsed.value = window.innerWidth < 1024;
+}
+
+function applyNavPreference(value) {
+  if (typeof window === "undefined") return;
+  if (value === "collapsed") navCollapsed.value = true;
+  else if (value === "expanded") navCollapsed.value = false;
+  else navCollapsed.value = window.innerWidth >= 768 && window.innerWidth < 1024;
 }
 </script>

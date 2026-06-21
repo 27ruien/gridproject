@@ -17,11 +17,12 @@
     :current-view="currentView"
     :settings="settings"
     :manager="currentManager"
-    :project-count="projects.length"
-    :show-logout="store.apiMode"
+    :preferences="preferences"
+    show-logout
     :project-context="projectSidebarContext"
     @navigate="setView"
     @project-view="selectProjectView"
+    @account-navigate="openPersonalSettings"
     @logout="logout"
   >
       <header class="topbar">
@@ -94,6 +95,11 @@
         :project-rows="projectRows"
         :open-issues="openIssues"
         :manager-name="currentManager.name"
+        :current-user="store.currentUser.value"
+        :users="store.users.value"
+        :project-members="store.projectMembers.value"
+        :preferences="preferences"
+        :is-admin="store.currentContext.value.isAdmin"
         @show-projects="setView('projects')"
         @open-project="openProject"
         @open-issue="openIssue"
@@ -106,27 +112,26 @@
             <Button variant="primary" size="small" @click="openProjectModal()">创建项目</Button>
           </template>
         </PageHeader>
-        <div class="project-library-toolbar">
-          <label class="search project-library-search">
-            <Icon name="search" />
-            <input v-model="projectLibrarySearch" type="search" placeholder="搜索项目名称、概述或负责人" />
-          </label>
-          <label>
-            <span>执行团队</span>
-            <select v-model="projectTeamFilter">
-              <option value="">全部团队</option>
-              <option v-for="team in executionTeamOptions" :key="team" :value="team">{{ team }}</option>
-            </select>
-          </label>
-          <label>
-            <span>项目状态</span>
-            <select v-model="projectStatusFilter">
-              <option value="">全部状态</option>
-              <option v-for="status in projectStatusOptions" :key="status" :value="status">{{ status }}</option>
-            </select>
-          </label>
-        </div>
-        <ProjectTable :projects="filteredProjectRows" @open="openProject" />
+        <ProjectLibraryToolbar
+          v-model:search="projectLibrarySearch"
+          v-model:sort="projectLibrarySort"
+          :filters="projectLibraryFilters"
+          :options="projectFilterOptions"
+          @update:filters="projectLibraryFilters = $event"
+          @clear-filters="clearProjectFilters"
+          @remove-filter="removeProjectFilter"
+          @create="openProjectModal()"
+        />
+        <ProjectCardGrid
+          :projects="filteredProjectRows"
+          :date-format="preferences.dateFormat"
+          :empty-title="projectLibraryHasQuery ? '没有符合条件的项目' : '还没有项目'"
+          :empty-text="projectLibraryHasQuery ? '调整搜索或筛选条件后再试。' : '创建第一个项目，开始组织工作。'"
+          :show-create="!projectLibraryHasQuery"
+          @open="openProject"
+          @edit="openProjectEditModal"
+          @create="openProjectModal()"
+        />
       </section>
 
       <TimesheetView
@@ -259,6 +264,20 @@
       @confirm="confirmDialog.onConfirm"
     />
 
+    <PersonalSettingsView
+      v-if="personalSettingsSection"
+      :section="personalSettingsSection"
+      :user="store.currentUser.value"
+      :preferences="preferences"
+      :saving="store.operation.saving"
+      :api-mode="store.apiMode"
+      @close="closePersonalSettings"
+      @navigate="openPersonalSettings"
+      @save-profile="saveProfile"
+      @save-preferences="savePreferences"
+      @save-password="savePassword"
+    />
+
     <Toast :message="toastMessage" />
   </AppShell>
 </template>
@@ -284,7 +303,9 @@ import UserManagementView from "./views/UserManagementView.vue";
 import TrashView from "./views/TrashView.vue";
 import PlatformSettingsView from "./views/PlatformSettingsView.vue";
 import LoginView from "./views/LoginView.vue";
-import ProjectTable from "./components/project/ProjectTable.vue";
+import ProjectCardGrid from "./components/project/ProjectCardGrid.vue";
+import ProjectLibraryToolbar from "./components/project/ProjectLibraryToolbar.vue";
+import PersonalSettingsView from "./views/PersonalSettingsView.vue";
 import ScheduleImportModal from "./components/project/ScheduleImportModal.vue";
 import IssueDrawer from "./components/issue/IssueDrawer.vue";
 import IssueCreateModal from "./components/issue/IssueCreateModal.vue";
@@ -316,8 +337,10 @@ const searchInput = ref(null);
 const selectedSearchIndex = ref(0);
 const toastMessage = ref("");
 const projectLibrarySearch = ref("");
-const projectTeamFilter = ref("");
-const projectStatusFilter = ref("");
+const projectLibrarySort = ref("updated");
+const projectLibraryFilters = ref(emptyProjectFilters());
+const personalSettingsSection = ref("");
+const personalSettingsReturnUrl = ref("");
 const executionTeamOptions = ["商务", "设计", "开发", "特效"];
 const projectStatusOptions = PROJECT_STATUS_OPTIONS;
 const isRestoringUrl = ref(false);
@@ -332,6 +355,7 @@ const {
   openIssues,
   projectRows,
   settings,
+  preferences,
 } = store;
 
 const {
@@ -347,12 +371,13 @@ const pageTitle = computed(() => {
   if (currentView.value === "project") return "项目空间";
   if (currentView.value === "trash") return "回收站";
   const route = routes.find((item) => item.key === currentView.value);
-  return route?.label || "工作台";
+  return route?.label || "主页";
 });
 const browserTitle = computed(() => currentView.value === "project" && project.value?.name ? `${project.value.name} | GridProject` : "GridProject");
 const currentManager = computed(() => ({
   name: store.currentUser.value?.name || "未登录",
-  role: store.currentUser.value?.role === "ADMIN" ? "组织管理员" : "项目成员",
+  email: store.currentUser.value?.email || "",
+  role: store.currentUser.value?.role || "MEMBER",
 }));
 
 const selectedIssue = computed(() => store.getIssue(selectedIssueId.value));
@@ -396,14 +421,31 @@ const searchResults = computed(() => {
 const flatSearchResults = computed(() => [...searchResults.value.projects, ...searchResults.value.issues]);
 const filteredProjectRows = computed(() => {
   const keyword = projectLibrarySearch.value.trim().toLowerCase();
-  return projectRows.value.filter((entry) => {
+  const filters = projectLibraryFilters.value;
+  const rows = projectRows.value.filter((entry) => {
     const searchable = `${entry.name} ${entry.description} ${entry.owner} ${(entry.executionTeams || []).join(" ")}`.toLowerCase();
     if (keyword && !searchable.includes(keyword)) return false;
-    if (projectTeamFilter.value && !(entry.executionTeams || []).includes(projectTeamFilter.value)) return false;
-    if (projectStatusFilter.value && entry.status !== projectStatusFilter.value) return false;
+    const phase = currentProjectPhase(entry);
+    if (filters.team && !(entry.executionTeams || []).includes(filters.team)) return false;
+    if (filters.status && entry.status !== filters.status) return false;
+    if (filters.owner && entry.owner !== filters.owner) return false;
+    if (filters.phase && phase !== filters.phase) return false;
+    if (filters.releaseFrom && (!entry.releaseDate || entry.releaseDate < filters.releaseFrom)) return false;
+    if (filters.releaseTo && (!entry.releaseDate || entry.releaseDate > filters.releaseTo)) return false;
+    if (filters.risk === "risk" && !entry.summary.riskCount) return false;
+    if (filters.risk === "overdue" && !entry.summary.overdueCount) return false;
+    if (filters.risk === "clear" && (entry.summary.riskCount || entry.summary.overdueCount)) return false;
     return true;
   });
+  return rows.sort(projectLibrarySortFunction(projectLibrarySort.value));
 });
+const projectLibraryHasQuery = computed(() => Boolean(projectLibrarySearch.value.trim() || Object.values(projectLibraryFilters.value).some(Boolean)));
+const projectFilterOptions = computed(() => ({
+  statuses: projectStatusOptions,
+  teams: executionTeamOptions,
+  owners: [...new Set(projectRows.value.map((entry) => entry.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")),
+  phases: [...new Set(projectRows.value.map(currentProjectPhase).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")),
+}));
 const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
 const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
 const workspaceFilterParam = computed(() => encodeFilters(workspaceUrlFilters.value));
@@ -467,6 +509,40 @@ function setView(view) {
   closeSearch();
 }
 
+function openPersonalSettings(section = "profile") {
+  const normalized = ["profile", "preferences", "security"].includes(section) ? section : "profile";
+  if (!personalSettingsSection.value) personalSettingsReturnUrl.value = `${window.location.pathname}${window.location.search}`;
+  personalSettingsSection.value = normalized;
+  const path = `/settings/${normalized}`;
+  if (window.location.pathname !== path) window.history.pushState({ personalSettings: true, returnUrl: personalSettingsReturnUrl.value }, "", path);
+}
+
+function closePersonalSettings() {
+  if (!personalSettingsSection.value) return;
+  const returnUrl = personalSettingsReturnUrl.value || "/?view=dashboard";
+  personalSettingsSection.value = "";
+  personalSettingsReturnUrl.value = "";
+  window.history.replaceState({}, "", returnUrl);
+}
+
+async function saveProfile(payload, resolve) {
+  const result = await store.updateProfile(payload);
+  if (result.ok) showToast("个人资料已保存");
+  resolve(result);
+}
+
+async function savePreferences(payload, resolve) {
+  const result = await store.updatePreferences(payload);
+  if (result.ok) showToast("偏好设置已保存");
+  resolve(result);
+}
+
+async function savePassword(payload, resolve) {
+  const result = await store.updateCurrentPassword(payload);
+  if (result.ok) showToast("密码已更新，其他设备已退出登录");
+  resolve(result);
+}
+
 function openProject(projectId) {
   currentProjectId.value = projectId;
   currentView.value = "project";
@@ -519,7 +595,7 @@ async function login(input) {
 
 async function logout() {
   await store.logout();
-  showToast("已退出登录");
+  showToast(store.apiMode ? "已退出登录" : "本地演示模式无需退出登录");
 }
 
 async function createProject(input) {
@@ -957,6 +1033,9 @@ function applyUrlState(params) {
   workspacePage.value = params.get("page") || "";
   workspaceViewMode.value = params.get("viewMode") || "";
   projectNavigationMode.value = params.get("projectNav") === "sidebar" ? "sidebar" : "tabs";
+  const settingsMatch = window.location.pathname.match(/^\/settings\/(profile|preferences|security)$/);
+  if (settingsMatch && !personalSettingsSection.value && !personalSettingsReturnUrl.value) personalSettingsReturnUrl.value = window.history.state?.returnUrl || "/?view=dashboard";
+  personalSettingsSection.value = settingsMatch?.[1] || "";
   if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
   if (window.location.pathname === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
   if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) {
@@ -974,7 +1053,7 @@ function handlePopState() {
 }
 
 function syncUrlState(mode = "replace") {
-  if (isRestoringUrl.value) return;
+  if (isRestoringUrl.value || personalSettingsSection.value) return;
   const params = new URLSearchParams();
   params.set("view", currentView.value);
   if (currentProjectId.value) params.set("project", currentProjectId.value);
@@ -991,6 +1070,29 @@ function syncUrlState(mode = "replace") {
   lastUrl.value = nextUrl;
   if (mode === "push") window.history.pushState({}, "", nextUrl);
   else window.history.replaceState({}, "", nextUrl);
+}
+
+function emptyProjectFilters() {
+  return { status: "", team: "", owner: "", phase: "", releaseFrom: "", releaseTo: "", risk: "" };
+}
+
+function clearProjectFilters() {
+  projectLibraryFilters.value = emptyProjectFilters();
+}
+
+function removeProjectFilter(key) {
+  projectLibraryFilters.value = { ...projectLibraryFilters.value, [key]: "" };
+}
+
+function currentProjectPhase(entry) {
+  return entry.milestones?.find((milestone) => milestone.status !== "已完成")?.name || entry.status || "未设置";
+}
+
+function projectLibrarySortFunction(sort) {
+  if (sort === "name") return (a, b) => a.name.localeCompare(b.name, "zh-CN");
+  if (sort === "release") return (a, b) => String(a.releaseDate || "9999").localeCompare(String(b.releaseDate || "9999"));
+  if (sort === "risk") return (a, b) => (b.summary.overdueCount - a.summary.overdueCount) || (b.summary.riskCount - a.summary.riskCount) || String(b.updatedAt).localeCompare(String(a.updatedAt));
+  return (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt));
 }
 
 function encodeFilters(filters = {}) {

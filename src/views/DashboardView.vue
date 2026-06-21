@@ -1,164 +1,107 @@
 <template>
-  <section class="view-stack">
-    <div class="metrics">
-      <Metric label="我负责的项目" :value="ownedProjectCount" :hint="`全部 ${projects.length} 个项目`" />
-      <Metric label="待处理事项" :value="totals.openCount" :hint="`已完结 ${totals.doneCount} / 共 ${totals.totalCount}`" />
-      <Metric label="即将到期" :value="dueSoonIssues.length" hint="未来 7 天需要处理" />
-      <Metric label="风险/逾期" :value="riskOrOverdueIssues.length" :hint="`逾期 ${totals.overdueCount}，风险 ${totals.riskCount}`" />
-    </div>
+  <section class="home-view">
+    <header class="home-greeting">
+      <div>
+        <p>{{ greeting }}，{{ managerName }}</p>
+        <h1>把今天最重要的工作向前推进。</h1>
+        <small>{{ todayLabel }} · {{ weekRangeLabel }}</small>
+      </div>
+      <dl class="home-summary" aria-label="工作摘要">
+        <div><dt>参与项目</dt><dd>{{ accessibleProjects.length }}</dd></div>
+        <div><dt>开放事项</dt><dd>{{ accessibleIssues.length }}</dd></div>
+        <div><dt>七日到期</dt><dd>{{ dueIssues.all.length }}</dd></div>
+        <div v-if="riskIssues.length"><dt>异常</dt><dd class="danger">{{ riskIssues.length }}</dd></div>
+      </dl>
+    </header>
 
-    <div class="workbench-modules">
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>我的项目</h2>
-            <p>优先展示状态、进度、上线日期和风险信号。</p>
-          </div>
-          <Button variant="ghost" size="small" @click="$emit('show-projects')">查看全部</Button>
-        </div>
-        <DashboardProjectList :projects="projectRows" @open="$emit('open-project', $event)" />
-      </section>
+    <section class="home-section home-projects-section">
+      <div class="section-head"><div><h2>我的项目</h2><p>优先显示风险、临近上线和最近更新的项目。</p></div><Button variant="ghost" size="small" @click="$emit('show-projects')">查看全部</Button></div>
+      <ProjectCardGrid :projects="homeProjects" compact :date-format="preferences.dateFormat" empty-title="暂无可访问项目" empty-text="加入项目后会在这里显示。" @open="$emit('open-project', $event)" />
+    </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>待办事项</h2>
-            <p>从我的任务、即将到期和风险逾期三个角度安排今天的动作。</p>
-          </div>
-        </div>
-        <div class="segmented-control todo-tabs">
-          <button
-            v-for="tab in todoTabs"
-            :key="tab.key"
-            type="button"
-            :class="{ active: activeTodoTab === tab.key }"
-            @click="activeTodoTab = tab.key"
-          >
-            {{ tab.label }} {{ tab.count }}
-          </button>
-        </div>
-        <div class="work-list">
-          <button v-for="issue in currentTodoIssues.slice(0, 10)" :key="issue.id" class="work-row" type="button" @click="$emit('open-issue', issue.id)">
-            <span>
-              <strong>{{ issue.title }}</strong>
-              <small>{{ issue.code }} · {{ projectName(issue.projectId) }} · {{ issue.next }}</small>
-            </span>
-            <span class="work-tags">
-              <PriorityPill :priority="issue.priority" />
-              <span>{{ issue.owner }}</span>
-              <span>{{ issue.dueDate || "未设截止" }}</span>
-            </span>
-          </button>
-          <p v-if="!currentTodoIssues.length" class="quiet-text">{{ emptyTodoText }}</p>
-        </div>
-      </section>
-    </div>
+    <section class="home-section due-section">
+      <div class="section-head"><div><h2>即将到期</h2><p>包含已逾期以及未来 7 天到期的未完成事项。</p></div></div>
+      <div class="segmented-control due-tabs" role="tablist" aria-label="到期事项范围">
+        <button v-for="tab in dueTabs" :key="tab.key" type="button" role="tab" :aria-selected="activeDueTab === tab.key" :class="{ active: activeDueTab === tab.key }" @click="activeDueTab = tab.key">{{ tab.label }} <span>{{ tab.count }}</span></button>
+      </div>
+      <div v-if="currentDueIssues.length" class="due-issue-list">
+        <button v-for="issue in currentDueIssues" :key="issue.id" class="due-issue-card" type="button" @click="$emit('open-issue', issue.id)">
+          <span class="issue-type-mark" :class="issue.type"><Icon :name="issueIcon(issue.type)" /></span>
+          <span class="due-issue-main"><strong>{{ issue.title }}</strong><small>{{ issue.code }} · {{ projectName(issue.projectId) }}</small></span>
+          <span class="due-issue-owner"><span class="avatar mini-avatar">{{ ownerName(issue).slice(0, 1) || "未" }}</span>{{ ownerName(issue) }}</span>
+          <PriorityPill :priority="issue.priority" />
+          <StatusLozenge :label="issue.status" />
+          <span class="due-date" :class="dueTone(issue)"><strong>{{ dueRelative(issue) }}</strong><small>{{ formatPreferenceDate(issue.dueDate, preferences.dateFormat) }}</small></span>
+        </button>
+      </div>
+      <div v-else class="home-empty"><Icon name="check" /><span><strong>{{ dueEmptyText }}</strong><small>当前范围内没有需要处理的到期事项。</small></span></div>
+    </section>
+
+    <section v-if="riskIssues.length" class="home-section risk-section">
+      <div class="section-head"><div><h2>需要关注</h2><p>来自可访问项目的风险和逾期事项。</p></div></div>
+      <div class="risk-strip">
+        <button v-for="issue in riskIssues.slice(0, 6)" :key="issue.id" type="button" @click="$emit('open-issue', issue.id)"><Icon name="issueRisk" /><span><strong>{{ issue.title }}</strong><small>{{ projectName(issue.projectId) }} · {{ dueRelative(issue) }}</small></span></button>
+      </div>
+    </section>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import PriorityPill from "../components/common/PriorityPill.vue";
+import { computed, ref, watch } from "vue";
 import Button from "../components/ui/Button.vue";
-import Metric from "../components/ui/Metric.vue";
-import DashboardProjectList from "../components/project/DashboardProjectList.vue";
+import Icon from "../components/ui/Icon.vue";
+import StatusLozenge from "../components/ui/StatusLozenge.vue";
+import PriorityPill from "../components/common/PriorityPill.vue";
+import ProjectCardGrid from "../components/project/ProjectCardGrid.vue";
+import { formatPreferenceDate } from "../domain/preferences.js";
 
 const props = defineProps({
   projects: { type: Array, required: true },
   projectRows: { type: Array, required: true },
   openIssues: { type: Array, required: true },
   managerName: { type: String, required: true },
+  currentUser: { type: Object, required: true },
+  users: { type: Array, required: true },
+  projectMembers: { type: Array, required: true },
+  preferences: { type: Object, required: true },
+  isAdmin: { type: Boolean, default: false },
 });
-
 defineEmits(["show-projects", "open-project", "open-issue"]);
+const activeDueTab = ref(props.preferences.homeDueRange || "all");
+watch(() => props.preferences.homeDueRange, (value) => { activeDueTab.value = value || "all"; });
 
-const activeTodoTab = ref("mine");
-
-const totals = computed(() => {
-  const metrics = props.projectRows.reduce((result, row) => ({
-    actualHours: result.actualHours + row.summary.actualHours,
-    estimatedHours: result.estimatedHours + row.summary.estimatedHours,
-    remainingHours: result.remainingHours + row.summary.remainingHours,
-    openCount: result.openCount + row.summary.openCount,
-    doneCount: result.doneCount + row.summary.doneCount,
-    totalCount: result.totalCount + row.summary.totalCount,
-    overdueCount: result.overdueCount + row.summary.overdueCount,
-    riskCount: result.riskCount + row.summary.riskCount,
-  }), {
-    actualHours: 0,
-    estimatedHours: 0,
-    remainingHours: 0,
-    openCount: 0,
-    doneCount: 0,
-    totalCount: 0,
-    overdueCount: 0,
-    riskCount: 0,
-  });
-
-  return {
-    ...metrics,
-    progress: metrics.totalCount ? Math.round((metrics.doneCount / metrics.totalCount) * 100) : 0,
-  };
+const now = new Date();
+const greeting = computed(() => now.getHours() < 12 ? "早上好" : now.getHours() < 18 ? "下午好" : "晚上好");
+const todayLabel = computed(() => new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(now));
+const weekRangeLabel = computed(() => {
+  const date = startOfWeek(now, props.preferences.weekStart);
+  const end = new Date(date); end.setDate(date.getDate() + 6);
+  return `本周 ${date.getMonth() + 1}月${date.getDate()}日–${end.getMonth() + 1}月${end.getDate()}日`;
 });
-
-const myTodoIssues = computed(() => sortIssues(props.openIssues.filter((issue) => issue.owner === props.managerName)));
-const dueSoonIssues = computed(() => sortIssues(props.openIssues.filter(isDueSoon)));
-const riskOrOverdueIssues = computed(() => sortIssues(props.openIssues.filter((issue) => issue.priority === "P0" || issue.type === "风险" || isOverdue(issue))));
-const ownedProjectCount = computed(() => props.projects.filter((project) => project.owner === props.managerName).length);
-
-const todoTabs = computed(() => [
-  { key: "mine", label: "我的", count: myTodoIssues.value.length },
-  { key: "due", label: "即将到期", count: dueSoonIssues.value.length },
-  { key: "risk", label: "风险逾期", count: riskOrOverdueIssues.value.length },
-]);
-
-const currentTodoIssues = computed(() => {
-  if (activeTodoTab.value === "due") return dueSoonIssues.value;
-  if (activeTodoTab.value === "risk") return riskOrOverdueIssues.value;
-  return myTodoIssues.value;
+const accessibleProjectIds = computed(() => new Set(props.projects.filter((project) => props.isAdmin || project.ownerId === props.currentUser.id || props.projectMembers.some((member) => member.projectId === project.id && member.userId === props.currentUser.id && member.status === "ACTIVE")).map((project) => project.id)));
+const accessibleProjects = computed(() => props.projectRows.filter((project) => accessibleProjectIds.value.has(project.id)));
+const accessibleIssues = computed(() => props.openIssues.filter((issue) => accessibleProjectIds.value.has(issue.projectId) && !["已完成", "已关闭", "已验收"].includes(issue.status)));
+const homeProjects = computed(() => [...accessibleProjects.value].sort((a, b) => projectScore(b) - projectScore(a) || String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6));
+const dueIssues = computed(() => {
+  const all = sortDue(accessibleIssues.value.filter(isInDueWindow));
+  return { all, mine: all.filter((issue) => issue.ownerId === props.currentUser.id || ownerName(issue) === props.managerName), others: all.filter((issue) => Boolean(issue.ownerId || issue.owner) && issue.ownerId !== props.currentUser.id && ownerName(issue) !== props.managerName) };
 });
+const dueTabs = computed(() => [{ key: "all", label: "全部", count: dueIssues.value.all.length }, { key: "mine", label: "我的", count: dueIssues.value.mine.length }, { key: "others", label: "其他成员", count: dueIssues.value.others.length }]);
+const currentDueIssues = computed(() => dueIssues.value[activeDueTab.value] || dueIssues.value.all);
+const riskIssues = computed(() => sortDue(accessibleIssues.value.filter((issue) => issue.type === "风险" || issue.priority === "P0" || daysUntil(issue.dueDate) < 0)));
+const dueEmptyText = computed(() => activeDueTab.value === "mine" ? "我的事项已安排妥当" : activeDueTab.value === "others" ? "其他成员暂无临期事项" : "未来七天暂无临期事项");
 
-const emptyTodoText = computed(() => {
-  if (activeTodoTab.value === "due") return "未来 7 天暂无即将到期事项。";
-  if (activeTodoTab.value === "risk") return "暂无 P0、风险或逾期事项。";
-  return "暂无分配给我的未完成事项。";
-});
-
-function projectName(projectId) {
-  return props.projects.find((project) => project.id === projectId)?.name || "未知项目";
-}
-
-function sortIssues(issues) {
-  return [...issues].sort((a, b) => priorityWeight(a) - priorityWeight(b) || dateWeight(a.dueDate) - dateWeight(b.dueDate));
-}
-
-function priorityWeight(issue) {
-  const weights = { P0: 0, P1: 1, P2: 2, P3: 3 };
-  if (issue.type === "风险") return -1;
-  return weights[issue.priority] ?? 4;
-}
-
-function dateWeight(value) {
-  if (!value) return Number.MAX_SAFE_INTEGER;
-  return new Date(value).getTime();
-}
-
-function isDueSoon(issue) {
-  if (!issue.dueDate) return false;
-  const days = daysUntil(issue.dueDate);
-  return days >= 0 && days <= 7;
-}
-
-function isOverdue(issue) {
-  return Boolean(issue.dueDate && daysUntil(issue.dueDate) < 0);
-}
-
-function daysUntil(dateValue) {
-  if (!dateValue) return 999;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dueDate = new Date(dateValue);
-  dueDate.setHours(0, 0, 0, 0);
-  return Math.ceil((dueDate.getTime() - today.getTime()) / 86400000);
-}
+function projectName(id) { return props.projects.find((project) => project.id === id)?.name || "未知项目"; }
+function ownerName(issue) { return issue.owner || props.users.find((user) => user.id === issue.ownerId)?.name || "未分配"; }
+function projectScore(project) { return (project.summary.overdueCount * 1000) + (project.summary.riskCount * 500) + (project.ownerId === props.currentUser.id ? 100 : 0) + releaseUrgency(project.releaseDate); }
+function releaseUrgency(value) { const days = daysUntil(value); return days >= 0 && days <= 30 ? 30 - days : 0; }
+function isInDueWindow(issue) { const days = daysUntil(issue.dueDate); return Boolean(issue.dueDate) && days <= 7; }
+function sortDue(issues) { return [...issues].sort((a, b) => dueBucket(a) - dueBucket(b) || daysUntil(a.dueDate) - daysUntil(b.dueDate) || priorityWeight(a.priority) - priorityWeight(b.priority)); }
+function dueBucket(issue) { const days = daysUntil(issue.dueDate); if (days < 0) return 0; if (days === 0) return 1; if (days === 1) return 2; return 3; }
+function priorityWeight(priority) { return ({ P0: 0, P1: 1, P2: 2, P3: 3 })[priority] ?? 4; }
+function daysUntil(value) { if (!value) return 9999; const today = new Date(); today.setHours(0, 0, 0, 0); const due = new Date(`${String(value).slice(0, 10)}T00:00:00`); return Math.round((due.getTime() - today.getTime()) / 86400000); }
+function dueRelative(issue) { const days = daysUntil(issue.dueDate); if (days < 0) return `逾期 ${Math.abs(days)} 天`; if (days === 0) return "今天到期"; if (days === 1) return "明天到期"; return `${days} 天后到期`; }
+function dueTone(issue) { const days = daysUntil(issue.dueDate); return days < 0 ? "overdue" : days <= 1 ? "urgent" : ""; }
+function issueIcon(type) { return ({ 需求: "issueRequirement", 任务: "issueTask", 缺陷: "issueBug", 风险: "issueRisk", 交付物: "issueEpic" })[type] || "issueTask"; }
+function startOfWeek(value, weekStart) { const date = new Date(value); date.setHours(0, 0, 0, 0); const day = date.getDay(); const offset = weekStart === "sunday" ? day : (day + 6) % 7; date.setDate(date.getDate() - offset); return date; }
 </script>
