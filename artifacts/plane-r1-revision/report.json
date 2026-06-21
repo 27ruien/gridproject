@@ -1,0 +1,283 @@
+{
+  "generatedAt": "2026-06-21T13:47:10.518Z",
+  "baseURL": "http://127.0.0.1:4177",
+  "captures": [
+    {
+      "filename": "project-list-1440x900.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-board-1440x900.png",
+      "route": "/?qa=plane-r1-board-dense&view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-list-1280x800.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-board-1280x800.png",
+      "route": "/?qa=plane-r1-board-dense&view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-list-390x844.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-board-390x844.png",
+      "route": "/?qa=plane-r1-board-dense&view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "dense-list.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "dense-board.png",
+      "route": "/?qa=plane-r1-board-dense&view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "sidebar-a-project-nav-1440x900.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3&projectNav=sidebar",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "sidebar-b-tabs-only-1440x900.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "project-header-mobile.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "selector": ".project-context-header",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    },
+    {
+      "filename": "toolbar-mobile.png",
+      "route": "/?qa=plane-r1-list-dense&view=project&project=crm&tab=%E8%BF%AD%E4%BB%A3",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "selector": ".view-toolbar",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "horizontalOverflow": 0
+    }
+  ],
+  "measurements": {
+    "project-list-1440x900.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "project-board-1440x900.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 0,
+      "mobileIssueCards": 0,
+      "boardCards": 16,
+      "boardCardDistribution": [
+        6,
+        5,
+        3,
+        2
+      ],
+      "horizontalOverflow": 0
+    },
+    "project-list-1280x800.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "project-board-1280x800.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 0,
+      "mobileIssueCards": 0,
+      "boardCards": 16,
+      "boardCardDistribution": [
+        6,
+        5,
+        3,
+        2
+      ],
+      "horizontalOverflow": 0
+    },
+    "project-list-390x844.png": {
+      "headerHeight": 74,
+      "toolbarHeight": 45,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "project-board-390x844.png": {
+      "headerHeight": 74,
+      "toolbarHeight": 45,
+      "toolbarRows": 1,
+      "issueRows": 0,
+      "mobileIssueCards": 0,
+      "boardCards": 16,
+      "boardCardDistribution": [
+        6,
+        5,
+        3,
+        2
+      ],
+      "horizontalOverflow": 0
+    },
+    "dense-list.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "dense-board.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 0,
+      "mobileIssueCards": 0,
+      "boardCards": 16,
+      "boardCardDistribution": [
+        6,
+        5,
+        3,
+        2
+      ],
+      "horizontalOverflow": 0
+    },
+    "sidebar-a-project-nav-1440x900.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "sidebar-b-tabs-only-1440x900.png": {
+      "headerHeight": 80,
+      "toolbarHeight": 47,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "project-header-mobile.png": {
+      "headerHeight": 74,
+      "toolbarHeight": 45,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    },
+    "toolbar-mobile.png": {
+      "headerHeight": 74,
+      "toolbarHeight": 45,
+      "toolbarRows": 1,
+      "issueRows": 24,
+      "mobileIssueCards": 24,
+      "boardCards": 0,
+      "boardCardDistribution": [],
+      "horizontalOverflow": 0
+    }
+  },
+  "passed": true
+}
