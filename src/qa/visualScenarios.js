@@ -62,7 +62,105 @@ export function applyVisualScenario(state, scenario) {
     if (!project) return;
     const count = scenario === "plane-r1-list-dense" ? 24 : 16;
     state.issues = createPlaneReviewIssues(project.id, count, scenario === "plane-r1-board-dense");
+    return;
   }
+
+  if (scenario === "plane-r2-projects-empty") {
+    state.projects = [];
+    state.issues = [];
+    state.projectMembers = [];
+    return;
+  }
+
+  if (scenario.startsWith("plane-r2-projects-")) {
+    const count = Math.max(1, Math.min(100, Number(scenario.split("-").at(-1)) || 20));
+    const review = createR2ReviewData(count);
+    state.projects = review.projects;
+    state.issues = review.issues;
+    state.projectMembers = review.projectMembers;
+    return;
+  }
+
+  if (scenario === "plane-r2-home") {
+    const review = createR2ReviewData(8);
+    state.projects = review.projects;
+    state.issues = review.issues;
+    state.projectMembers = review.projectMembers;
+  }
+}
+
+function createR2ReviewData(count) {
+  const owners = [
+    { id: "user-linxia", name: "林夏" },
+    { id: "user-zhoucheng", name: "周程" },
+    { id: "user-hanyue", name: "韩越" },
+    { id: "user-chenche", name: "陈澈" },
+  ];
+  const names = ["客户数据中台升级", "AI 试衣体验优化", "海外站点交付计划", "销售线索协同", "品牌活动 AR 交付", "内部效率工具建设", "会员增长实验", "移动端质量专项"];
+  const statuses = ["开发阶段", "测试阶段", "规划中", "验收阶段", "已暂停", "上线阶段"];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const projects = Array.from({ length: count }, (_item, index) => {
+    const owner = owners[index % owners.length];
+    const release = new Date(today);
+    release.setDate(today.getDate() + 4 + (index % 45));
+    return {
+      id: `plane-r2-project-${index + 1}`,
+      organizationId: "org-default",
+      name: `${names[index % names.length]}${index >= names.length ? ` · ${index + 1}` : ""}`,
+      code: `R2${String(index + 1).padStart(3, "0")}`,
+      templateId: index % 3 ? "agile" : "waterfall",
+      ownerId: owner.id,
+      owner: owner.name,
+      status: statuses[index % statuses.length],
+      executionTeams: [["开发"], ["设计", "开发"], ["商务", "特效"]][index % 3],
+      startDate: formatDate(today),
+      dueDate: formatDate(release),
+      testDate: "",
+      acceptanceDate: "",
+      releaseDate: formatDate(release),
+      milestones: [{ id: `r2-milestone-${index + 1}`, name: ["需求梳理", "研发实现", "客户验收"][index % 3], status: "进行中", dueDate: formatDate(release) }],
+      health: 78 + (index % 20),
+      description: index % 5 === 0 ? "覆盖多团队协作、复杂交付边界和一段足够长的项目概述，用于验证卡片在真实内容长度下仍保持等高。" : "围绕关键目标推进跨团队协作与交付。",
+      createdById: owner.id,
+      createdAt: new Date(today.getTime() - index * 86400000).toISOString(),
+      updatedAt: new Date(today.getTime() - (index % 11) * 3600000).toISOString(),
+    };
+  });
+  const projectMembers = projects.flatMap((project, index) => {
+    const members = [{ id: `r2-pm-owner-${index}`, organizationId: "org-default", projectId: project.id, userId: project.ownerId, status: "ACTIVE" }];
+    if (index % 3 !== 2 && project.ownerId !== "user-linxia") members.push({ id: `r2-pm-linxia-${index}`, organizationId: "org-default", projectId: project.id, userId: "user-linxia", status: "ACTIVE" });
+    return members;
+  });
+  const issues = projects.flatMap((project, projectIndex) => Array.from({ length: projectIndex % 4 + 1 }, (_item, issueIndex) => {
+    const due = new Date(today);
+    due.setDate(today.getDate() + [-3, 0, 1, 4, 7, 12][(projectIndex + issueIndex) % 6]);
+    const owner = owners[(projectIndex + issueIndex) % owners.length];
+    const completed = projectIndex === 0 && issueIndex === 0;
+    return {
+      id: `r2-issue-${projectIndex}-${issueIndex}`,
+      organizationId: "org-default",
+      projectId: project.id,
+      code: `${project.code}-${issueIndex + 1}`,
+      type: (projectIndex + issueIndex) % 7 === 0 ? "风险" : (projectIndex + issueIndex) % 4 === 0 ? "缺陷" : "任务",
+      title: `${["确认发布范围", "修复验收阻塞问题", "补齐接口联调结果", "完成客户反馈闭环"][issueIndex % 4]}${projectIndex % 4 === 0 ? "并同步所有相关成员" : ""}`,
+      status: completed ? "已完成" : issueIndex % 3 === 1 ? "进行中" : "未开始",
+      ownerId: owner.id,
+      owner: owner.name,
+      creatorId: project.ownerId,
+      creator: project.owner,
+      priority: ["P0", "P1", "P2"][issueIndex % 3],
+      startDate: formatDate(today),
+      dueDate: formatDate(due),
+      estimatedHours: 8,
+      actualHours: issueIndex * 2,
+      next: "完成当前验收条件。",
+      description: "R2 本地视觉验收数据，不写入持久化数据库。",
+      createdAt: today.toISOString(),
+      updatedAt: today.toISOString(),
+    };
+  }));
+  return { projects, issues, projectMembers };
 }
 
 function createPlaneReviewIssues(projectId, count, boardMode) {
