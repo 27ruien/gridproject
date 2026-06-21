@@ -9,7 +9,7 @@
     >
       <span class="dashboard-project-main">
         <strong class="truncate">{{ project.name }}</strong>
-        <small class="truncate">截止 {{ project.dueDate }} · {{ project.template.badge }}</small>
+        <small class="truncate">上线 {{ project.releaseDate || "未设置" }} · {{ project.owner }}</small>
       </span>
       <StatusLozenge :label="project.status" />
       <span class="dashboard-progress">

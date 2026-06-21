@@ -12,7 +12,7 @@
         <div class="panel-head">
           <div>
             <h2>我的项目</h2>
-            <p>优先展示状态、进度、截止日期和风险信号。</p>
+            <p>优先展示状态、进度、上线日期和风险信号。</p>
           </div>
           <Button variant="ghost" size="small" @click="$emit('show-projects')">查看全部</Button>
         </div>

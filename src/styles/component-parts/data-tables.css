@@ -369,6 +369,41 @@
   gap: var(--space-025);
 }
 
+.project-table-wrap .data-table-head,
+.project-table-wrap .data-table-row {
+  min-width: 1120px;
+}
+
+.team-chip-list {
+  min-width: 0;
+  display: flex;
+  gap: var(--space-050);
+  overflow: hidden;
+}
+
+.team-chip-list small {
+  flex: 0 0 auto;
+  min-height: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  padding: 1px var(--space-075);
+}
+
+.team-chip-list .muted-chip {
+  color: var(--subtle);
+}
+
+.project-risk-cell {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.project-risk-cell.danger,
+.mobile-card-meta .danger {
+  color: var(--red);
+}
+
 .overflow-panel .ui-button {
   width: 100%;
   justify-content: flex-start;

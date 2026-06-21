@@ -71,7 +71,7 @@ const props = defineProps({
 const emit = defineEmits(["navigate", "logout"]);
 const mobileNavOpen = ref(false);
 const navCollapsed = ref(false);
-const navPreference = "kiviflow.navCollapsed";
+const navPreference = "gridproject.navCollapsed";
 
 watch(() => props.currentView, () => {
   mobileNavOpen.value = false;

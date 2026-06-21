@@ -11,17 +11,17 @@
 
       <div class="settings-form">
         <div class="brand-preview">
-          <span class="brand-mark preview-mark">{{ form.logoText || "K" }}</span>
-          <strong>{{ form.platformName || "KiviFlow" }}</strong>
+          <span class="brand-mark preview-mark">{{ form.logoText || "G" }}</span>
+          <strong>{{ form.platformName || "GridProject" }}</strong>
         </div>
         <div class="settings-fields">
           <label>
             <span>平台 Logo 文案</span>
-            <input v-model="form.logoText" maxlength="2" placeholder="例如 K" />
+            <input v-model="form.logoText" maxlength="2" placeholder="例如 G" />
           </label>
           <label>
             <span>平台名称</span>
-            <input v-model="form.platformName" placeholder="例如 KiviFlow" />
+            <input v-model="form.platformName" placeholder="例如 GridProject" />
           </label>
           <div class="modal-actions">
             <Button variant="primary" @click="save">保存设置</Button>

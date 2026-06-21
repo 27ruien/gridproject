@@ -9,6 +9,7 @@
   --space-0: 0;
   --space-025: 2px;
   --space-050: 4px;
+  --space-075: 6px;
   --space-100: 8px;
   --space-150: 12px;
   --space-200: 16px;
@@ -48,7 +49,9 @@
   --brand: #2563eb;
   --brand-hover: #1d4ed8;
   --brand-subtle: #eef4ff;
+  --accent: var(--brand);
   --blue: #2563eb;
+  --blue-soft: #eef4ff;
   --green: #0f8f63;
   --amber: #b86b00;
   --red: #c93535;
@@ -56,6 +59,7 @@
   --cyan: #0b8fa8;
 
   --shadow-popover: 0 10px 28px rgba(15, 23, 42, 0.12);
+  --shadow-panel: var(--shadow-popover);
   --shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.22);
 
   --nav-width: 240px;

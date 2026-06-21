@@ -61,8 +61,18 @@
   margin: calc(var(--space-300) * -1) calc(var(--content-pad) * -1) var(--space-300);
   padding: 0 var(--content-pad);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--surface);
+}
+
+.topbar-context {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.topbar-breadcrumb {
+  color: var(--subtle);
+  font-size: var(--text-caption);
 }
 
 .topbar-actions,
@@ -142,4 +152,25 @@
 
 .project-edit-layout {
   grid-template-columns: 1fr;
+}
+
+.project-library-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(150px, 190px) minmax(150px, 190px);
+  gap: var(--space-100);
+  align-items: end;
+  border-block: 1px solid var(--line);
+  padding: var(--space-150) 0;
+}
+
+.project-library-search {
+  width: 100%;
+}
+
+.workbench-modules > .panel,
+.workspace-grid > .panel {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }

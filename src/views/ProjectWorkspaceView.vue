@@ -1,60 +1,56 @@
 <template>
   <section class="view-stack">
-    <header class="project-hero compact-hero">
-      <div class="project-heading">
-        <p class="eyebrow">项目 / {{ template.name }}</p>
-        <div class="project-title-row">
-          <h1>{{ project.name }}</h1>
-          <StatusLozenge :label="project.status" />
+    <header class="project-overview-header">
+      <div class="project-breadcrumb">项目库 <span>/</span> {{ template.name }}</div>
+      <div class="project-overview-main">
+        <div class="project-heading">
+          <div class="project-title-row">
+            <h1 :title="project.name">{{ project.name }}</h1>
+            <select
+              v-if="permissions.canUpdate"
+              class="project-status-control"
+              aria-label="项目状态"
+              :value="project.status"
+              @change="$emit('update-project', project.id, { status: $event.target.value })"
+            >
+              <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
+            </select>
+            <span v-else class="status-lozenge neutral">{{ project.status }}</span>
+          </div>
+          <p class="project-overview-copy"><strong>项目概述</strong>{{ project.description || "暂无项目概述。" }}</p>
         </div>
-        <p>{{ project.description }}</p>
-        <div class="project-meta-row">
-          <span>负责人：{{ project.owner }}</span>
-          <span>周期：{{ project.startDate }} - {{ project.dueDate }}</span>
-          <span>关键日期：测试 {{ project.testDate }} · 验收 {{ project.acceptanceDate }} · 上线 {{ project.releaseDate }}</span>
+
+        <div class="project-header-actions">
+          <Button v-if="permissions.canUpdate" variant="ghost" size="small" @click="$emit('edit-project', project.id)">编辑项目</Button>
+          <OverflowMenu v-if="permissions.canUpdate || permissions.canDelete">
+            <template #default="{ close }">
+              <Button v-if="permissions.canUpdate" variant="ghost" size="small" @click="close(); $emit('import-schedule')">导入 Timeline</Button>
+              <Button v-if="permissions.canDelete" variant="danger" size="small" @click="close(); $emit('delete-project', project.id)">删除项目</Button>
+            </template>
+          </OverflowMenu>
         </div>
       </div>
 
-      <div class="project-kpi-strip">
-        <article>
-          <span>健康度</span>
-          <strong>{{ summary.health }}</strong>
-        </article>
-        <article>
-          <span>进度</span>
-          <strong>{{ summary.progress }}%</strong>
-          <div class="progress-line"><i :style="{ width: `${summary.progress}%` }"></i></div>
-        </article>
-        <article>
-          <span>待办</span>
-          <strong>{{ summary.openCount }}</strong>
-        </article>
-        <article>
-          <span>风险</span>
-          <strong>{{ summary.scheduleRiskCount }}</strong>
-        </article>
-      </div>
+      <dl class="project-attribute-grid">
+        <div><dt>负责人</dt><dd>{{ project.owner }}</dd></div>
+        <div><dt>执行团队</dt><dd>{{ executionTeamsText }}</dd></div>
+        <div><dt>项目开始</dt><dd>{{ project.startDate || "未设置" }}</dd></div>
+        <div><dt>测试</dt><dd>{{ project.testDate || "未设置" }}</dd></div>
+        <div><dt>验收</dt><dd>{{ project.acceptanceDate || "未设置" }}</dd></div>
+        <div><dt>上线</dt><dd>{{ project.releaseDate || "未设置" }}</dd></div>
+      </dl>
 
-      <div class="project-hero-actions">
-        <label v-if="permissions.canUpdate" class="project-status-select">
-          <span>项目状态</span>
-          <select :value="project.status" @change="$emit('update-project', project.id, { status: $event.target.value })">
-            <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
-          </select>
-        </label>
-        <Button v-if="permissions.canUpdate" variant="ghost" size="small" @click="$emit('edit-project', project.id)">编辑项目</Button>
-        <OverflowMenu v-if="permissions.canDelete">
-          <template #default="{ close }">
-            <Button variant="danger" size="small" @click="close(); $emit('delete-project', project.id)">删除项目</Button>
-          </template>
-        </OverflowMenu>
+      <div class="project-signal-strip" aria-label="项目关键指标">
+        <span><small>健康度</small><strong>{{ summary.health }}</strong></span>
+        <span><small>进度</small><strong>{{ summary.progress }}%</strong></span>
+        <span><small>待办</small><strong>{{ summary.openCount }}</strong></span>
+        <span :class="{ danger: summary.scheduleRiskCount }"><small>排期风险</small><strong>{{ summary.scheduleRiskCount }}</strong></span>
       </div>
     </header>
 
     <div class="project-toolbar">
       <Tabs v-model="activeView" :items="availableViews" id-base="project-workspace-tabs" />
       <div class="project-toolbar-actions">
-        <Button variant="ghost" size="small" @click="$emit('import-schedule')">导入排期</Button>
         <Button variant="primary" size="small" @click="$emit('create-issue')">新建事项</Button>
       </div>
     </div>
@@ -210,7 +206,6 @@ import { getProjectActivities, getProjectAlerts } from "../domain/projectInsight
 import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 import Button from "../components/ui/Button.vue";
 import Tabs from "../components/ui/Tabs.vue";
-import StatusLozenge from "../components/ui/StatusLozenge.vue";
 import OverflowMenu from "../components/ui/OverflowMenu.vue";
 import AgileBoard from "../components/project/AgileBoard.vue";
 import WaterfallPhaseView from "../components/project/WaterfallPhaseView.vue";
@@ -267,6 +262,7 @@ const paginatedVisibleIssues = computed(() => {
 });
 const projectAlerts = computed(() => getProjectAlerts(filteredIssues.value));
 const recentActivities = computed(() => getProjectActivities(props.issues));
+const executionTeamsText = computed(() => props.project.executionTeams?.length ? props.project.executionTeams.join("、") : "未指定");
 
 watch(availableViews, (views) => {
   if (!views.includes(activeView.value)) activeView.value = views[0] || "概览";

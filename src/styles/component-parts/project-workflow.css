@@ -227,6 +227,117 @@
   align-items: start;
 }
 
+.project-overview-header {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-150);
+  padding-bottom: var(--space-200);
+  border-bottom: 1px solid var(--line);
+}
+
+.project-breadcrumb {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.project-breadcrumb span {
+  padding: 0 var(--space-050);
+  color: var(--subtle);
+}
+
+.project-overview-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-200);
+  min-width: 0;
+}
+
+.project-overview-header .project-heading {
+  min-width: 0;
+  gap: var(--space-075);
+}
+
+.project-overview-copy {
+  max-width: 920px;
+  overflow-wrap: anywhere;
+}
+
+.project-overview-copy strong {
+  color: var(--text);
+  margin-right: var(--space-100);
+}
+
+.project-status-control {
+  width: auto;
+  min-width: 118px;
+  min-height: 30px;
+  padding-block: 0;
+}
+
+.project-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-075);
+  flex: 0 0 auto;
+}
+
+.project-attribute-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+  margin: 0;
+}
+
+.project-attribute-grid > div {
+  min-width: 0;
+  padding: var(--space-100) var(--space-150);
+}
+
+.project-attribute-grid > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.project-attribute-grid dt {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.project-attribute-grid dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--text-control);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-signal-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-300);
+  flex-wrap: wrap;
+}
+
+.project-signal-strip span {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-075);
+}
+
+.project-signal-strip small {
+  color: var(--muted);
+}
+
+.project-signal-strip strong {
+  font-size: var(--text-section);
+}
+
+.project-signal-strip .danger strong {
+  color: var(--red);
+}
+
 .project-heading {
   grid-area: heading;
   display: grid;

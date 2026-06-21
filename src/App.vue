@@ -23,7 +23,8 @@
     @logout="logout"
   >
       <header class="topbar">
-        <div>
+        <div class="topbar-context">
+          <p class="topbar-breadcrumb">GridProject / {{ pageTitle }}</p>
           <h1>{{ pageTitle }}</h1>
         </div>
         <div ref="searchRoot" class="search-combobox" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
@@ -55,7 +56,7 @@
                 @click="openProject(result.id)"
               >
                 <strong>{{ result.name }}</strong>
-                <small>{{ result.owner }} · {{ result.status }} · 截止 {{ result.dueDate }}</small>
+                <small>{{ result.owner }} · {{ result.status }} · 上线 {{ result.releaseDate || "未设置" }}</small>
               </button>
             </div>
             <div v-if="searchResults.issues.length" class="search-result-group">
@@ -91,15 +92,33 @@
       />
 
       <section v-else-if="currentView === 'projects'" class="view-stack">
-        <div class="panel">
-          <PageHeader title="项目库" description="按模板、健康度和进度扫描所有项目。">
-            <template #actions>
-              <Button variant="ghost" size="small" @click="setView('trash')">回收站</Button>
-              <Button variant="primary" size="small" @click="openProjectModal()">创建项目</Button>
-            </template>
-          </PageHeader>
-          <ProjectTable :projects="projectRows" @open="openProject" />
+        <PageHeader title="项目库" description="按负责人、执行团队、当前阶段和上线风险管理项目。">
+          <template #actions>
+            <Button variant="ghost" size="small" @click="setView('trash')">回收站</Button>
+            <Button variant="primary" size="small" @click="openProjectModal()">创建项目</Button>
+          </template>
+        </PageHeader>
+        <div class="project-library-toolbar">
+          <label class="search project-library-search">
+            <Icon name="search" />
+            <input v-model="projectLibrarySearch" type="search" placeholder="搜索项目名称、概述或负责人" />
+          </label>
+          <label>
+            <span>执行团队</span>
+            <select v-model="projectTeamFilter">
+              <option value="">全部团队</option>
+              <option v-for="team in executionTeamOptions" :key="team" :value="team">{{ team }}</option>
+            </select>
+          </label>
+          <label>
+            <span>项目状态</span>
+            <select v-model="projectStatusFilter">
+              <option value="">全部状态</option>
+              <option v-for="status in projectStatusOptions" :key="status" :value="status">{{ status }}</option>
+            </select>
+          </label>
         </div>
+        <ProjectTable :projects="filteredProjectRows" @open="openProject" />
       </section>
 
       <TimesheetView
@@ -260,6 +279,7 @@ import ProjectTable from "./components/project/ProjectTable.vue";
 import ScheduleImportModal from "./components/project/ScheduleImportModal.vue";
 import IssueDrawer from "./components/issue/IssueDrawer.vue";
 import IssueCreateModal from "./components/issue/IssueCreateModal.vue";
+import { PROJECT_STATUS_OPTIONS } from "./domain/project.js";
 
 const routes = ROUTES;
 const store = useProjects();
@@ -282,6 +302,11 @@ const searchFocused = ref(false);
 const searchRoot = ref(null);
 const selectedSearchIndex = ref(0);
 const toastMessage = ref("");
+const projectLibrarySearch = ref("");
+const projectTeamFilter = ref("");
+const projectStatusFilter = ref("");
+const executionTeamOptions = ["商务", "设计", "开发", "特效"];
+const projectStatusOptions = PROJECT_STATUS_OPTIONS;
 const isRestoringUrl = ref(false);
 const lastUrl = ref("");
 const searchPanelId = `search-results-${Math.random().toString(36).slice(2)}`;
@@ -306,11 +331,12 @@ const {
 } = useProjectWorkspace(currentProjectId);
 
 const pageTitle = computed(() => {
-  if (currentView.value === "project") return project.value?.name || "项目空间";
+  if (currentView.value === "project") return "项目空间";
   if (currentView.value === "trash") return "回收站";
   const route = routes.find((item) => item.key === currentView.value);
   return route?.label || "工作台";
 });
+const browserTitle = computed(() => currentView.value === "project" && project.value?.name ? `${project.value.name} | GridProject` : "GridProject");
 const currentManager = computed(() => ({
   name: store.currentUser.value?.name || "未登录",
   role: store.currentUser.value?.role === "ADMIN" ? "组织管理员" : "项目成员",
@@ -347,6 +373,16 @@ const searchResults = computed(() => {
   return { projects: projectsResult, issues: issuesResult };
 });
 const flatSearchResults = computed(() => [...searchResults.value.projects, ...searchResults.value.issues]);
+const filteredProjectRows = computed(() => {
+  const keyword = projectLibrarySearch.value.trim().toLowerCase();
+  return projectRows.value.filter((entry) => {
+    const searchable = `${entry.name} ${entry.description} ${entry.owner} ${(entry.executionTeams || []).join(" ")}`.toLowerCase();
+    if (keyword && !searchable.includes(keyword)) return false;
+    if (projectTeamFilter.value && !(entry.executionTeams || []).includes(projectTeamFilter.value)) return false;
+    if (projectStatusFilter.value && entry.status !== projectStatusFilter.value) return false;
+    return true;
+  });
+});
 const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
 const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
 const workspaceFilterParam = computed(() => encodeFilters(workspaceUrlFilters.value));
@@ -363,8 +399,8 @@ onMounted(() => {
   window.addEventListener("popstate", handlePopState);
 });
 
-watch(pageTitle, (title) => {
-  document.title = currentView.value === "project" && project.value?.name ? `${title} | GridProject` : "GridProject";
+watch(browserTitle, (title) => {
+  document.title = title;
 }, { immediate: true });
 
 watch(() => store.auth.authenticated, (authenticated) => {

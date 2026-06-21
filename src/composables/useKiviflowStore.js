@@ -323,7 +323,7 @@ export function useKiviflowStore() {
     state.settings = {
       ...state.settings,
       ...patch,
-      logoText: (patch.logoText || state.settings.logoText || "K").slice(0, 2),
+      logoText: (patch.logoText || state.settings.logoText || "G").slice(0, 2),
     };
     return state.settings;
   }

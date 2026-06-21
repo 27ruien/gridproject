@@ -17,8 +17,8 @@ const seedState = {
   },
   users: DEMO_USERS,
   settings: {
-    platformName: "KiviFlow",
-    logoText: "K",
+    platformName: "GridProject",
+    logoText: "G",
   },
   projects: [
     {
@@ -250,8 +250,8 @@ function normalizeState(rawState) {
 
 function normalizeSettings(settings) {
   return {
-    platformName: settings.platformName || "KiviFlow",
-    logoText: (settings.logoText || "K").slice(0, 2),
+    platformName: settings.platformName === "KiviFlow" ? "GridProject" : settings.platformName || "GridProject",
+    logoText: ((settings.logoText === "K" ? "G" : settings.logoText) || "G").slice(0, 2),
   };
 }
 

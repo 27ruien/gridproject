@@ -37,6 +37,7 @@
 
   .create-layout,
   .schedule-import-layout,
+  .project-form-content,
   .settings-form {
     grid-template-columns: 1fr;
   }
@@ -51,6 +52,18 @@
     width: 100vw;
     min-width: 0;
     max-width: none;
+  }
+
+  .project-attribute-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .project-attribute-grid > div:nth-child(4) {
+    border-left: 0;
+  }
+
+  .key-date-editor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -138,6 +151,45 @@
   .missing-dates-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .project-library-toolbar,
+  .timeline-source-grid,
+  .timeline-behavior,
+  .key-date-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-overview-main {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-header-actions {
+    justify-content: flex-end;
+  }
+
+  .project-attribute-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .project-attribute-grid > div:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .project-attribute-grid > div:nth-child(even) {
+    border-left: 1px solid var(--line);
+  }
+
+  .timeline-import-heading,
+  .timeline-section-heading,
+  .timeline-file-note {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .timeline-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .topbar {
