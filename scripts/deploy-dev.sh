@@ -29,7 +29,6 @@ HEALTH_RESULT="not-started"
 ROLLBACK_OCCURRED="no"
 STATUS="failed"
 RECORD_FILE=""
-FRONTEND_SWAPPED="false"
 
 usage() {
   echo "Usage: scripts/deploy-dev.sh <target-ref-or-sha> <run-seed:true|false>" >&2
@@ -128,6 +127,8 @@ is_remote_commit() {
 
 validate_database_url() {
   local parsed
+  # JavaScript template interpolation is intentional here.
+  # shellcheck disable=SC2016
   parsed=$(node -e '
     const value = process.env.DATABASE_URL || "";
     let url;
@@ -347,8 +348,6 @@ if ! mv "$FRONTEND_NEXT" "$FRONTEND_CURRENT"; then
   mv "$FRONTEND_PREVIOUS" "$FRONTEND_CURRENT" || true
   fail "frontend swap failed; the previous frontend was restored."
 fi
-FRONTEND_SWAPPED="true"
-
 if ! sudo systemctl restart "$SERVICE_NAME"; then
   automatic_rollback
   fail "backend restart failed after activation."
