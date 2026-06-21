@@ -55,6 +55,7 @@ const icons = {
   sort: ["M8 6h12", "M8 12h9", "M8 18h6", "M4 5v14", "M2 17l2 2 2-2"],
   sliders: ["M4 6h8", "M16 6h4", "M4 12h3", "M11 12h9", "M4 18h10", "M18 18h2", "M12 4v4", "M7 10v4", "M14 16v4"],
   check: ["M5 12l4 4L19 6"],
+  calendar: ["M5 4v3", "M19 4v3", "M4 9h16", "M5 6h14a1 1 0 0 1 1 1v12H4V7a1 1 0 0 1 1-1Z"],
 };
 
 const paths = computed(() => icons[props.name] || icons.more);

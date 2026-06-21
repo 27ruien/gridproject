@@ -29,8 +29,8 @@
 
 .issue-table-head,
 .issue-table-row {
-  grid-template-columns: minmax(76px, 0.6fr) minmax(220px, 2fr) minmax(78px, 0.7fr) minmax(78px, 0.7fr) minmax(74px, 0.6fr) minmax(98px, 0.7fr) minmax(98px, 0.7fr) minmax(74px, 0.6fr) minmax(116px, 0.8fr);
-  min-width: 920px;
+  grid-template-columns: 28px 72px minmax(220px, 1fr) 92px 72px 48px 92px 30px;
+  min-width: 720px;
 }
 
 .timesheet-head,
@@ -51,7 +51,6 @@
   min-width: 940px;
 }
 
-.issue-table-head,
 .timesheet-head,
 .cost-table-head,
 .user-table-head,
@@ -67,7 +66,14 @@
   padding: var(--space-100) var(--space-150);
 }
 
-.issue-table-row,
+.issue-table-head {
+  min-height: 32px;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  background: var(--surface-subtle);
+  padding: 0 var(--space-100);
+}
+
 .timesheet-row,
 .cost-table-row,
 .user-table-row,
@@ -77,6 +83,192 @@
   border-radius: var(--radius-control);
   background: var(--surface);
   padding: var(--space-100) var(--space-150);
+}
+
+.issue-table {
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.issue-table-row {
+  position: relative;
+  min-height: 42px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  padding: 0 var(--space-100);
+  cursor: pointer;
+}
+
+.issue-table-row:hover {
+  background: #f7f8fa;
+}
+
+.issue-table-row.selected {
+  background: #eef4ff;
+}
+
+.issue-table-row:focus-visible {
+  z-index: 1;
+  outline: 2px solid color-mix(in srgb, var(--brand) 42%, transparent);
+  outline-offset: -2px;
+  background: #f4f7fd;
+}
+
+.issue-type-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: #edf0f4;
+  color: #56606d;
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.issue-code {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-title-column {
+  min-width: 0;
+}
+
+.issue-title-cell {
+  display: block;
+}
+
+.issue-title-cell strong {
+  font-size: var(--text-body);
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.issue-status-marker {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+  color: var(--muted);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+.issue-status-marker i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border: 1.5px solid #9aa2ae;
+  border-radius: var(--radius-pill);
+}
+
+.issue-status-marker.in-progress i {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.issue-status-marker.done i {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.issue-status-marker.danger {
+  color: var(--red);
+}
+
+.issue-status-marker.danger i {
+  border-color: var(--red);
+  background: var(--red);
+}
+
+.issue-owner-avatar {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #d7dce3;
+  border-radius: var(--radius-pill);
+  background: #f1f3f6;
+  color: #4d5662;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.issue-due-date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+  color: var(--muted);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+.issue-due-date .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.issue-due-date.overdue {
+  color: var(--red);
+}
+
+.issue-row-menu {
+  justify-self: end;
+  opacity: 0.28;
+}
+
+.issue-table-row:hover .issue-row-menu,
+.issue-table-row:focus-within .issue-row-menu,
+.issue-row-menu:has(.overflow-panel) {
+  opacity: 1;
+}
+
+.issue-row-menu .icon-btn,
+.issue-mobile-card .icon-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border-color: transparent;
+}
+
+.issue-menu-label {
+  padding: var(--space-050) var(--space-075);
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.issue-menu-option {
+  width: 100%;
+  min-height: 30px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  padding: 0 var(--space-075);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+  text-align: left;
+}
+
+.issue-menu-option:hover,
+.issue-menu-option.active {
+  background: var(--surface-subtle);
+}
+
+.issue-menu-option > .ui-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--brand);
 }
 
 .cost-table-row {
@@ -116,12 +308,12 @@
 
 .issue-table.density-compact .issue-table-head,
 .issue-table.density-compact .issue-table-row {
-  grid-template-columns: minmax(64px, 0.5fr) minmax(220px, 2.2fr) minmax(72px, 0.6fr) minmax(72px, 0.6fr) minmax(64px, 0.5fr) minmax(92px, 0.7fr) minmax(92px, 0.7fr) minmax(62px, 0.5fr) minmax(108px, 0.7fr);
+  grid-template-columns: 26px 68px minmax(220px, 1fr) 88px 68px 44px 88px 28px;
 }
 
 .issue-table.density-compact .issue-table-row {
-  min-height: 36px;
-  padding: var(--space-075) var(--space-100);
+  min-height: 40px;
+  padding: 0 var(--space-075);
 }
 
 .issue-list-controls,
@@ -168,6 +360,47 @@
   padding: var(--space-150);
   display: grid;
   gap: var(--space-100);
+}
+
+.issue-mobile-card {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: var(--space-100) var(--space-050);
+}
+
+.issue-mobile-card.selected {
+  background: var(--brand-subtle);
+}
+
+.issue-mobile-main {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  display: grid;
+  gap: var(--space-075);
+  text-align: left;
+}
+
+.issue-mobile-main > strong {
+  overflow: hidden;
+  font-size: var(--text-body);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-mobile-anchor,
+.issue-mobile-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-075);
+}
+
+.issue-mobile-anchor .issue-status-marker {
+  margin-left: auto;
 }
 
 .cost-toolbar,
