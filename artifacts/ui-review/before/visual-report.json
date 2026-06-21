@@ -1,0 +1,632 @@
+[
+  {
+    "name": "default-1920x1080",
+    "file": "artifacts/ui-review/before/default-1920x1080.png",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1920,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "bodyScrollWidth": 1920,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1440x900",
+    "file": "artifacts/ui-review/before/default-1440x900.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1280x800",
+    "file": "artifacts/ui-review/before/default-1280x800.png",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1280,
+      "height": 800,
+      "scrollWidth": 1280,
+      "scrollHeight": 800,
+      "bodyScrollWidth": 1280,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1024x768",
+    "file": "artifacts/ui-review/before/default-1024x768.png",
+    "viewport": {
+      "width": 1024,
+      "height": 768
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "scrollHeight": 884,
+      "bodyScrollWidth": 1024,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-768x1024",
+    "file": "artifacts/ui-review/before/default-768x1024.png",
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "scrollHeight": 1024,
+      "bodyScrollWidth": 768,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-390x844",
+    "file": "artifacts/ui-review/before/default-390x844.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1353,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "mobile-nav-open-390",
+    "file": "artifacts/ui-review/before/mobile-nav-open-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1353,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "projects-mobile-390",
+    "file": "artifacts/ui-review/before/projects-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=projects",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 905,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "project-overview-mobile-390",
+    "file": "artifacts/ui-review/before/project-overview-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2499,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-detail-open-mobile-390",
+    "file": "artifacts/ui-review/before/issue-detail-open-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=概览&issue=i1",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2499,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-modal-open-mobile-390",
+    "file": "artifacts/ui-review/before/issue-modal-open-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2499,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "board-mobile-390",
+    "file": "artifacts/ui-review/before/board-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=看板",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1841,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "gantt-mobile-390",
+    "file": "artifacts/ui-review/before/gantt-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=甘特图",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1577,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "timesheets-mobile-390",
+    "file": "artifacts/ui-review/before/timesheets-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=timesheets",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1073,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "project-overview-1440",
+    "file": "artifacts/ui-review/before/project-overview-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1068,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-detail-open-1440",
+    "file": "artifacts/ui-review/before/issue-detail-open-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览&issue=i1",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1068,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-modal-open-1440",
+    "file": "artifacts/ui-review/before/issue-modal-open-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1068,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "filters-expanded-1440",
+    "file": "artifacts/ui-review/before/filters-expanded-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1068,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "board-1440",
+    "file": "artifacts/ui-review/before/board-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=看板",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 980,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "gantt-1440",
+    "file": "artifacts/ui-review/before/gantt-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=甘特图",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "timesheet-filters-1440",
+    "file": "artifacts/ui-review/before/timesheet-filters-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=timesheets",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "global-search-1440",
+    "file": "artifacts/ui-review/before/global-search-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "long-text-1440",
+    "file": "artifacts/ui-review/before/long-text-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?qa=long&view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "bulk-gantt-1440",
+    "file": "artifacts/ui-review/before/bulk-gantt-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?qa=bulk&view=project&project=crm&tab=甘特图",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 3852,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "empty-dashboard-1440",
+    "file": "artifacts/ui-review/before/empty-dashboard-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?qa=empty&view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-80",
+    "file": "artifacts/ui-review/before/zoom-80.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-100",
+    "file": "artifacts/ui-review/before/zoom-100.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-125",
+    "file": "artifacts/ui-review/before/zoom-125.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-150",
+    "file": "artifacts/ui-review/before/zoom-150.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-200",
+    "file": "artifacts/ui-review/before/zoom-200.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  }
+]

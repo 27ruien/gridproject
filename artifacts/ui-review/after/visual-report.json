@@ -1,0 +1,738 @@
+[
+  {
+    "name": "default-1920x1080",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-1920x1080.png",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1920,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "bodyScrollWidth": 1920,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1728x972",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-1728x972.png",
+    "viewport": {
+      "width": 1728,
+      "height": 972
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1728,
+      "height": 972,
+      "scrollWidth": 1728,
+      "scrollHeight": 972,
+      "bodyScrollWidth": 1728,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1440x900",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-1440x900.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1280x800",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-1280x800.png",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1280,
+      "height": 800,
+      "scrollWidth": 1280,
+      "scrollHeight": 800,
+      "bodyScrollWidth": 1280,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-1024x768",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-1024x768.png",
+    "viewport": {
+      "width": 1024,
+      "height": 768
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "scrollHeight": 816,
+      "bodyScrollWidth": 1024,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-768x1024",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-768x1024.png",
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "scrollHeight": 1024,
+      "bodyScrollWidth": 768,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "default-390x844",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/default-390x844.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1308,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "mobile-nav-open-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/mobile-nav-open-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1308,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "projects-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/projects-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=projects",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1102,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "project-overview-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/project-overview-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2381,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-detail-open-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/issue-detail-open-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=概览&issue=i1",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2381,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-modal-open-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/issue-modal-open-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2381,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "board-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/board-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=看板",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1791,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "gantt-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/gantt-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=project&project=crm&tab=甘特图",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1527,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "timesheets-mobile-390",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/timesheets-mobile-390.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "query": "?view=timesheets",
+    "metrics": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1096,
+      "bodyScrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "project-overview-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/project-overview-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1011,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-detail-open-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/issue-detail-open-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览&issue=i1",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1011,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "issue-modal-open-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/issue-modal-open-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1011,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "project-create-open-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/project-create-open-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=projects",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "filters-expanded-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/filters-expanded-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=概览",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1011,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "board-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/board-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=看板",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 957,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "gantt-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/gantt-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=project&project=crm&tab=甘特图",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "timesheet-filters-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/timesheet-filters-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=timesheets",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "global-search-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/global-search-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "long-text-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/long-text-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?qa=long&view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "bulk-gantt-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/bulk-gantt-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?qa=bulk&view=project&project=crm&tab=甘特图",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 3777,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "empty-dashboard-1440",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/empty-dashboard-1440.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?qa=empty&view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-80",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/zoom-80.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-100",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/zoom-100.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-125",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/zoom-125.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-150",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/zoom-150.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "name": "zoom-200",
+    "file": "/Users/ryan/Documents/Playground/gridproject/artifacts/ui-review/after/zoom-200.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "query": "?view=dashboard",
+    "metrics": {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "bodyScrollWidth": 1440,
+      "hasHorizontalOverflow": false,
+      "dialogOverflow": [],
+      "viewportOverflow": [],
+      "controlOverlaps": [],
+      "fixedObstructions": []
+    },
+    "consoleErrors": [],
+    "pageErrors": []
+  }
+]

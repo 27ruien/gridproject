@@ -1,9 +1,9 @@
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 const baseUrl = process.env.BASE_URL || "http://127.0.0.1:5173/";
-const outputDir = process.env.OUTPUT_DIR || fileURLToPath(new URL("../outputs/screenshots", import.meta.url));
+const outputDir = resolve(process.cwd(), process.env.OUTPUT_DIR || "artifacts/ui-review/after");
 
 await mkdir(outputDir, { recursive: true });
 
@@ -41,7 +41,11 @@ async function capture(name, query, viewport, interact) {
         };
       })
       .filter((item) => item.overflow);
-    const viewportOverflow = Array.from(document.querySelectorAll("body > *"))
+    const viewportOverflow = Array.from(document.querySelectorAll("body > *, .modal, .detail-panel, .picker-popover, .search-panel, .sidebar.open"))
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0;
+      })
       .map((element) => {
         const rect = element.getBoundingClientRect();
         return {
@@ -52,6 +56,33 @@ async function capture(name, query, viewport, interact) {
       })
       .filter((item) => item.overflow);
 
+    const overlapRoots = Array.from(document.querySelectorAll(".topbar, .project-toolbar, .modal-footer, .project-header-actions"));
+    const controlOverlaps = overlapRoots.flatMap((root) => {
+      const controls = Array.from(root.querySelectorAll(":scope > button, :scope > .ui-button, :scope > label, :scope > .overflow-menu, :scope > .project-toolbar-actions, :scope > .search-combobox"))
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+        });
+      return controls.flatMap((left, index) => controls.slice(index + 1).flatMap((right) => {
+        const a = left.getBoundingClientRect();
+        const b = right.getBoundingClientRect();
+        const overlapWidth = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const overlapHeight = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        return overlapWidth > 2 && overlapHeight > 2 ? [{ root: root.className, left: left.className, right: right.className }] : [];
+      }));
+    });
+
+    const fixedObstructions = Array.from(document.querySelectorAll("body *"))
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        if (style.position !== "fixed" || style.display === "none" || style.visibility === "hidden" || Number(style.opacity || 1) === 0) return false;
+        if (element.matches(".modal-backdrop, .modal, .detail-panel, .picker-popover, .sidebar, .sidebar-scrim, .toast")) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.width * rect.height > width * height * 0.15;
+      })
+      .map((element) => ({ tag: element.tagName.toLowerCase(), className: element.className }));
+
     return {
       width,
       height,
@@ -61,6 +92,8 @@ async function capture(name, query, viewport, interact) {
       hasHorizontalOverflow: document.documentElement.scrollWidth > width + 2,
       dialogOverflow,
       viewportOverflow,
+      controlOverlaps,
+      fixedObstructions,
     };
   });
   const file = `${outputDir}/${name}.png`;
@@ -71,6 +104,7 @@ async function capture(name, query, viewport, interact) {
 
 const viewportCases = [
   ["default-1920x1080", "?view=dashboard", { width: 1920, height: 1080 }],
+  ["default-1728x972", "?view=dashboard", { width: 1728, height: 972 }],
   ["default-1440x900", "?view=dashboard", { width: 1440, height: 900 }],
   ["default-1280x800", "?view=dashboard", { width: 1280, height: 800 }],
   ["default-1024x768", "?view=dashboard", { width: 1024, height: 768 }],
@@ -104,6 +138,9 @@ await capture("project-overview-1440", "?view=project&project=crm&tab=概览", {
 await capture("issue-detail-open-1440", "?view=project&project=crm&tab=概览&issue=i1", { width: 1440, height: 900 });
 await capture("issue-modal-open-1440", "?view=project&project=crm&tab=概览", { width: 1440, height: 900 }, async (page) => {
   await page.getByRole("button", { name: "新建事项" }).click();
+});
+await capture("project-create-open-1440", "?view=projects", { width: 1440, height: 900 }, async (page) => {
+  await page.getByRole("button", { name: "创建项目" }).click();
 });
 await capture("filters-expanded-1440", "?view=project&project=crm&tab=概览", { width: 1440, height: 900 }, async (page) => {
   await page.getByRole("button", { name: "更多筛选" }).click();
@@ -140,6 +177,8 @@ const summary = results.map((item) => ({
   pageErrors: item.pageErrors.length,
   dialogOverflow: item.metrics.dialogOverflow.length,
   viewportOverflow: item.metrics.viewportOverflow.length,
+  controlOverlaps: item.metrics.controlOverlaps.length,
+  fixedObstructions: item.metrics.fixedObstructions.length,
 }));
 
 console.log(JSON.stringify(summary, null, 2));
@@ -149,7 +188,9 @@ const failed = results.filter((item) => (
   item.consoleErrors.length ||
   item.pageErrors.length ||
   item.metrics.dialogOverflow.length ||
-  item.metrics.viewportOverflow.length
+  item.metrics.viewportOverflow.length ||
+  item.metrics.controlOverlaps.length ||
+  item.metrics.fixedObstructions.length
 ));
 
 if (failed.length) {

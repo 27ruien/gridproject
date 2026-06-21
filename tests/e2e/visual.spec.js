@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const viewports = [
   ["1920x1080", { width: 1920, height: 1080 }],
+  ["1728x972", { width: 1728, height: 972 }],
   ["1440x900", { width: 1440, height: 900 }],
   ["1280x800", { width: 1280, height: 800 }],
   ["1024x768", { width: 1024, height: 768 }],
@@ -92,7 +93,7 @@ test.describe("visual baselines", () => {
     });
   }
 
-  for (const zoom of [1.25, 1.5, 2]) {
+  for (const zoom of [0.8, 1, 1.25, 1.5, 2]) {
     for (const [name, url, control] of zoomCases) {
       const label = `${Math.round(zoom * 100)}`;
       test(`${name} browser zoom ${label}%`, async ({ page }) => {
@@ -161,7 +162,7 @@ async function assertPageHealth(page) {
     const height = document.documentElement.clientHeight;
     const allowedScrollSelectors = [
       ".board",
-      ".gantt-grid",
+      ".gantt-timeline-scroll",
       ".data-table",
       ".issue-table",
       ".timesheet-table",

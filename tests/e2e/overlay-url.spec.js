@@ -15,6 +15,32 @@ test("nested person picker Escape only closes child overlay", async ({ page }) =
   await expect(page.locator(".modal .picker-trigger").first()).toBeFocused();
 });
 
+test("person picker stays in the viewport and closes on outside click", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 640 });
+  await page.goto("/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "新建事项" }).click();
+  const trigger = page.locator(".modal .picker-trigger").first();
+  await trigger.click();
+  const popover = page.locator(".picker-popover");
+  await expect(popover).toBeVisible();
+  const box = await popover.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(1024);
+  expect(box.y + box.height).toBeLessThanOrEqual(640);
+  await page.mouse.click(4, 4);
+  await expect(popover).toHaveCount(0);
+});
+
+test("issue status select does not open the issue detail", async ({ page }) => {
+  await page.goto("/?view=project&project=crm&tab=Sprint", { waitUntil: "networkidle" });
+  const firstRow = page.locator(".issue-table-row").first();
+  await firstRow.locator("select").selectOption({ index: 1 });
+  await expect(page.locator(".detail-panel")).toHaveCount(0);
+  await firstRow.click({ position: { x: 90, y: 20 } });
+  await expect(page.locator(".detail-panel")).toBeVisible();
+});
+
 test("top modal focus trap pulls Tab focus back from outside elements", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", { waitUntil: "networkidle" });
