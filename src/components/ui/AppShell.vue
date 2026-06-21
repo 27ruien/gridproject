@@ -38,14 +38,19 @@
         </button>
       </nav>
 
-      <section class="manager-card">
-        <span class="avatar">{{ manager.name.slice(0, 1) }}</span>
-        <div>
+      <details class="account-menu">
+        <summary class="account-trigger" :data-tooltip="manager.name">
+          <span class="avatar">{{ manager.name.slice(0, 1) }}</span>
           <strong>{{ manager.name }}</strong>
-          <small>{{ manager.role }} · 管理 {{ projectCount }} 个项目</small>
+          <Icon name="chevronDown" />
+        </summary>
+        <div class="account-popover">
+          <strong>{{ manager.name }}</strong>
+          <small>{{ manager.role }}</small>
+          <small>管理 {{ projectCount }} 个项目</small>
+          <button v-if="showLogout" class="account-action" type="button" @click="$emit('logout')">退出登录</button>
         </div>
-        <button v-if="showLogout" class="logout-button" type="button" @click="$emit('logout')">退出</button>
-      </section>
+      </details>
     </aside>
 
     <main class="workspace">

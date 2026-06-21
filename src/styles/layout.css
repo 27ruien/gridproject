@@ -14,13 +14,14 @@
 }
 
 .app-shell.nav-collapsed .brand strong,
-.app-shell.nav-collapsed .manager-card div,
+.app-shell.nav-collapsed .account-trigger strong,
+.app-shell.nav-collapsed .account-trigger > .ui-icon,
 .app-shell.nav-collapsed .nav-item span:last-child {
   display: none;
 }
 
 .app-shell.nav-collapsed .sidebar {
-  padding-inline: var(--space-100);
+  padding-inline: var(--space-075);
 }
 
 .sidebar {
@@ -30,17 +31,39 @@
   height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: var(--space-200);
+  gap: var(--space-100);
   border-right: 1px solid var(--line);
   background: var(--surface);
-  padding: var(--space-200) var(--space-150);
+  padding: 0 var(--space-075) var(--space-100);
 }
 
 .sidebar-head {
+  min-height: var(--topbar-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-100);
+}
+
+.app-shell.nav-collapsed .sidebar-head {
+  position: relative;
+  justify-content: center;
+}
+
+.app-shell.nav-collapsed .sidebar-head .collapse-toggle {
+  position: absolute;
+  inset: 7px auto auto 5px;
+  opacity: 0;
+}
+
+.app-shell.nav-collapsed .sidebar-head:hover .brand,
+.app-shell.nav-collapsed .sidebar-head:focus-within .brand {
+  opacity: 0;
+}
+
+.app-shell.nav-collapsed .sidebar-head:hover .collapse-toggle,
+.app-shell.nav-collapsed .sidebar-head:focus-within .collapse-toggle {
+  opacity: 1;
 }
 
 .mobile-close {
@@ -49,7 +72,7 @@
 
 .workspace {
   min-width: 0;
-  padding: var(--space-300) var(--content-pad) var(--space-400);
+  padding: var(--space-200) var(--content-pad) var(--space-400);
 }
 
 .topbar {
@@ -58,7 +81,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-200);
-  margin: calc(var(--space-300) * -1) calc(var(--content-pad) * -1) var(--space-300);
+  margin: calc(var(--space-200) * -1) calc(var(--content-pad) * -1) var(--space-200);
   padding: 0 var(--content-pad);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -66,13 +89,26 @@
 
 .topbar-context {
   min-width: 0;
-  display: grid;
-  gap: 1px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-075);
+  color: var(--muted);
+  font-size: var(--text-control);
 }
 
-.topbar-breadcrumb {
+.topbar-context .ui-icon {
+  width: 14px;
+  height: 14px;
   color: var(--subtle);
-  font-size: var(--text-caption);
+}
+
+.topbar-context strong {
+  max-width: min(46vw, 520px);
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-actions,

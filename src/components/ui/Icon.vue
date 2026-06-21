@@ -48,6 +48,7 @@ const icons = {
   edit: ["M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z", "M14 7l3 3"],
   import: ["M12 4v10", "M8 10l4 4 4-4", "M5 20h14"],
   chevronDown: ["M7 10l5 5 5-5"],
+  chevronRight: ["M9 6l6 6-6 6"],
 };
 
 const paths = computed(() => icons[props.name] || icons.more);

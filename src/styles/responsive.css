@@ -9,8 +9,8 @@
 
 @media (max-width: 1439px) {
   :root {
-    --nav-width: 224px;
-    --content-pad: 24px;
+    --nav-width: 220px;
+    --content-pad: 20px;
   }
 
   .workspace-grid,
@@ -124,7 +124,8 @@
   }
 
   .app-shell .brand strong,
-  .app-shell .manager-card div,
+  .app-shell .account-trigger strong,
+  .app-shell .account-trigger > .ui-icon,
   .app-shell .nav-item span:last-child {
     display: block;
   }
@@ -193,14 +194,14 @@
   }
 
   .topbar {
-    margin: 0 calc(var(--content-pad) * -1) var(--space-300);
-    padding-top: var(--space-100);
-    padding-bottom: var(--space-100);
+    min-height: var(--topbar-height);
+    margin: calc(var(--space-200) * -1) calc(var(--content-pad) * -1) var(--space-150);
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
-  .search,
+  .project-library-search,
   .global-search,
-  .search-combobox,
   .project-toolbar-actions,
   .topbar-actions {
     width: 100%;
@@ -335,5 +336,28 @@
   .dashboard-progress,
   .table-progress {
     grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .compact-search {
+    width: min(220px, 48vw);
+  }
+}
+
+@media (max-width: 479px) {
+  .topbar-context span,
+  .topbar-context .ui-icon,
+  .command-search-trigger span {
+    display: none;
+  }
+
+  .command-search-trigger {
+    min-width: 32px;
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .compact-search {
+    width: min(180px, 52vw);
   }
 }

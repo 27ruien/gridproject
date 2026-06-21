@@ -34,16 +34,16 @@
   --line-control: 20px;
   --line-caption: 18px;
 
-  --bg: #f7f8fa;
+  --bg: #f6f7f9;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --surface-subtle: #f3f4f6;
-  --surface-muted: #eef1f5;
-  --line: #dfe3ea;
-  --line-strong: #c7ced8;
-  --text: #17202a;
-  --muted: #5f6b7a;
-  --subtle: #8792a2;
+  --surface-subtle: #f4f5f7;
+  --surface-muted: #eceff3;
+  --line: #e1e4e9;
+  --line-strong: #c9ced6;
+  --text: #17191c;
+  --muted: #5c6470;
+  --subtle: #818995;
   --disabled: #aab3c0;
 
   --brand: #2563eb;
@@ -62,10 +62,10 @@
   --shadow-panel: var(--shadow-popover);
   --shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.22);
 
-  --nav-width: 240px;
-  --nav-collapsed: 64px;
-  --topbar-height: 56px;
-  --content-pad: 32px;
+  --nav-width: 220px;
+  --nav-collapsed: 54px;
+  --topbar-height: 46px;
+  --content-pad: 24px;
   --z-base: 0;
   --z-sticky: 100;
   --z-dropdown: 400;

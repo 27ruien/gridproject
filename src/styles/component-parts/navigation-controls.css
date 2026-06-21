@@ -3,13 +3,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-100);
-  min-height: 40px;
+  min-height: 32px;
 }
 
 .brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-control);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   background: var(--brand);
@@ -19,24 +19,25 @@
 
 .brand strong,
 .brand small,
-.manager-card strong,
-.manager-card small {
+.account-trigger strong,
+.account-popover strong,
+.account-popover small {
   display: block;
 }
 
 .nav {
   display: grid;
   align-content: start;
-  gap: var(--space-050);
+  gap: var(--space-025);
 }
 
 .nav-item {
   width: 100%;
-  min-height: 36px;
+  min-height: 32px;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--muted);
+  color: #525a66;
   padding: 0 var(--space-100);
   display: flex;
   align-items: center;
@@ -45,10 +46,20 @@
   position: relative;
 }
 
-.nav-item:hover,
+.nav-item:hover {
+  background: #f0f1f3;
+  color: var(--text);
+}
+
 .nav-item.active {
-  background: var(--brand-subtle);
-  color: var(--brand);
+  background: #e9ebef;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  outline-offset: -2px;
 }
 
 .app-shell.nav-collapsed .nav-item:hover::after,
@@ -77,8 +88,8 @@
 
 .nav-icon,
 .ui-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
 }
 
@@ -86,14 +97,86 @@
   display: none;
 }
 
-.manager-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  background: var(--surface-subtle);
-  padding: var(--space-100);
+.account-menu {
+  position: relative;
+}
+
+.account-menu > summary {
+  list-style: none;
+}
+
+.account-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-trigger {
+  min-height: 34px;
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-075);
   display: flex;
   align-items: center;
   gap: var(--space-100);
+  cursor: pointer;
+}
+
+.account-trigger:hover,
+.account-menu[open] .account-trigger {
+  background: var(--surface-subtle);
+}
+
+.account-trigger strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: var(--text-control);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-trigger > .ui-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--subtle);
+}
+
+.account-popover {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  bottom: calc(100% + var(--space-050));
+  left: 0;
+  width: 204px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-popover);
+  padding: var(--space-100);
+  display: grid;
+  gap: var(--space-025);
+}
+
+.account-popover small {
+  color: var(--muted);
+}
+
+.account-action {
+  min-height: 30px;
+  margin-top: var(--space-075);
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  padding: var(--space-075) var(--space-050) 0;
+  text-align: left;
+}
+
+.account-action:hover {
+  color: var(--red);
+}
+
+.app-shell.nav-collapsed .account-popover {
+  bottom: 0;
+  left: calc(100% + var(--space-100));
 }
 
 .avatar {
@@ -123,6 +206,31 @@
 .search-combobox {
   position: relative;
   min-width: 0;
+}
+
+.command-search-trigger {
+  min-width: 86px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--muted);
+  padding: 0 var(--space-100);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-075);
+}
+
+.command-search-trigger:hover,
+.command-search-trigger:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--surface-subtle);
+  color: var(--text);
+}
+
+.compact-search {
+  width: min(280px, 38vw);
+  min-height: 32px;
 }
 
 .search input,

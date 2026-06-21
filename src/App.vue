@@ -23,14 +23,20 @@
     @logout="logout"
   >
       <header class="topbar">
-        <div class="topbar-context">
-          <p class="topbar-breadcrumb">GridProject / {{ pageTitle }}</p>
-          <h1>{{ pageTitle }}</h1>
+        <div class="topbar-context" aria-label="当前位置">
+          <span v-if="currentView === 'project'">项目库</span>
+          <Icon v-if="currentView === 'project'" name="chevronRight" />
+          <strong>{{ currentView === "project" ? project.name : pageTitle }}</strong>
         </div>
-        <div ref="searchRoot" class="search-combobox" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
-          <label class="search">
+        <div ref="searchRoot" class="search-combobox" :class="{ expanded: searchExpanded || rawSearchText }" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
+          <button v-if="!searchExpanded && !rawSearchText" class="command-search-trigger" type="button" aria-label="打开全局搜索" @click="expandSearch">
+            <Icon name="search" />
+            <span>搜索</span>
+          </button>
+          <label v-else class="search compact-search">
             <Icon name="search" />
             <input
+              ref="searchInput"
               v-model="rawSearchText"
               type="search"
               role="combobox"
@@ -38,7 +44,7 @@
               :aria-controls="searchPanelId"
               :aria-expanded="searchPanelOpen"
               placeholder="搜索项目、事项或负责人"
-              @focus="searchFocused = true"
+              @focus="searchFocused = true; searchExpanded = true"
               @input="handleSearchInput"
             />
           </label>
@@ -255,7 +261,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ROUTES } from "./router/routes";
 import { useProjects } from "./composables/useProjects";
 import { useProjectWorkspace } from "./composables/useProjectWorkspace";
@@ -299,7 +305,9 @@ const workspaceSort = ref("");
 const workspacePage = ref("");
 const workspaceViewMode = ref("");
 const searchFocused = ref(false);
+const searchExpanded = ref(false);
 const searchRoot = ref(null);
+const searchInput = ref(null);
 const selectedSearchIndex = ref(0);
 const toastMessage = ref("");
 const projectLibrarySearch = ref("");
@@ -873,6 +881,12 @@ function openActiveSearchResult() {
 
 function closeSearch() {
   searchFocused.value = false;
+  if (!rawSearchText.value.trim()) searchExpanded.value = false;
+}
+
+function expandSearch() {
+  searchExpanded.value = true;
+  nextTick(() => searchInput.value?.focus());
 }
 
 function handleSearchInput() {
