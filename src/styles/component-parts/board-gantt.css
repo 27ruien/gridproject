@@ -112,87 +112,138 @@
   align-items: flex-start;
 }
 
-.gantt-grid {
-  --tick-count: 6;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+.gantt-workspace {
+  --gantt-row-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
+  overflow: hidden;
+  background: var(--surface);
 }
 
-.gantt-axis,
-.gantt-row {
-  min-width: 900px;
-  display: grid;
-  grid-template-columns: 260px minmax(520px, 1fr);
-  gap: var(--space-150);
+.gantt-task-column {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 8px 0 18px rgba(29, 42, 56, 0.06);
 }
 
-.gantt-axis {
+.gantt-task-header,
+.gantt-ticks {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  min-height: 40px;
-  align-items: center;
+  height: 44px;
   background: var(--surface-subtle);
+  border-bottom: 1px solid var(--line);
+}
+
+.gantt-task-header {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-150);
   color: var(--muted);
   font-size: var(--text-caption);
-  padding: 0 var(--space-150);
+  font-weight: 600;
 }
 
-.gantt-task-heading,
-.gantt-title {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: inherit;
-}
-
-.gantt-ticks {
-  display: grid;
-  grid-template-columns: repeat(var(--tick-count), minmax(80px, 1fr));
-  gap: var(--space-100);
-  align-items: center;
-}
-
-.gantt-ticks span {
+.gantt-task-row {
+  width: 100%;
+  height: var(--gantt-row-height);
   min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 0 var(--space-150);
+  text-align: left;
+}
+
+.gantt-task-row:hover,
+.gantt-task-row:focus-visible {
+  background: var(--surface-subtle);
+}
+
+.gantt-task-row strong,
+.gantt-task-row small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.gantt-row {
-  min-height: 52px;
-  border: 0;
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-  padding: var(--space-100) var(--space-150);
-  text-align: left;
-  align-items: center;
+.gantt-task-row small {
+  color: var(--muted);
+}
+
+.gantt-timeline-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.gantt-timeline {
+  position: relative;
+  width: var(--gantt-timeline-width);
+  min-width: 100%;
+}
+
+.gantt-ticks,
+.gantt-lane {
+  display: grid;
+  grid-template-columns: repeat(var(--gantt-day-count), minmax(0, 1fr));
+}
+
+.gantt-ticks span {
+  min-width: 0;
+  border-right: 1px solid var(--line);
+  display: grid;
+  place-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.gantt-ticks span.today {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.gantt-ticks b,
+.gantt-ticks small {
+  font-size: var(--text-caption);
+  line-height: 1.1;
 }
 
 .gantt-lane {
   position: relative;
-  height: 28px;
-  border-radius: var(--radius-control);
-  background: var(--surface-subtle);
-  overflow: hidden;
+  height: var(--gantt-row-height);
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background-image: repeating-linear-gradient(90deg, transparent 0, transparent calc((100% / var(--gantt-day-count)) - 1px), var(--line) calc((100% / var(--gantt-day-count)) - 1px), var(--line) calc(100% / var(--gantt-day-count)));
 }
 
-.gantt-lane::before {
-  content: "";
+.gantt-today-line {
   position: absolute;
-  inset: 0;
-  background-image: linear-gradient(90deg, rgba(95, 107, 122, 0.18) 1px, transparent 1px);
-  background-size: 14% 100%;
+  z-index: 2;
+  top: 44px;
+  bottom: 0;
+  width: 2px;
+  pointer-events: none;
+  background: var(--red);
+  opacity: 0.7;
 }
 
 .gantt-bar {
-  position: absolute;
-  top: 4px;
-  height: 20px;
-  min-width: 44px;
+  position: relative;
+  z-index: 1;
+  height: 24px;
+  min-width: 0;
+  border: 0;
   border-radius: var(--radius-control);
   color: #fff;
   display: flex;
@@ -204,6 +255,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin: 0 3px;
+}
+
+.gantt-bar.milestone {
+  justify-self: center;
+  width: 18px;
+  min-width: 18px;
+  padding: 0;
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+.gantt-bar.milestone span {
+  display: none;
 }
 
 .gantt-bar.info { background: var(--blue); }

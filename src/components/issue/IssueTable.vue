@@ -17,6 +17,7 @@
       class="issue-table-row"
       role="row"
       tabindex="0"
+      @click="openFromRow($event, issue.id)"
       @keydown.enter.prevent="openFromRow($event, issue.id)"
       @keydown.space.prevent="openFromRow($event, issue.id)"
     >
@@ -33,7 +34,7 @@
       <span>{{ issue.startDate || "未设定" }}</span>
       <span>{{ issue.dueDate || "未设定" }}</span>
       <span>{{ issue.actualHours }}/{{ issue.estimatedHours }}h</span>
-      <span class="status-inline" @click.stop>
+      <span class="status-inline">
         <select :value="issue.status" @change="$emit('status', issue.id, $event.target.value)">
           <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
         </select>
@@ -70,7 +71,7 @@ defineProps({
 const emit = defineEmits(["open", "status"]);
 
 function openFromRow(event, issueId) {
-  if (event.target !== event.currentTarget) return;
+  if (event.target.closest("button, select, input, textarea, a, [role='menuitem']")) return;
   emit("open", issueId);
 }
 </script>

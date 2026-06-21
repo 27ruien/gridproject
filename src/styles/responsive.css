@@ -253,7 +253,7 @@
   .cost-table-head,
   .cost-table-row,
   .board,
-  .gantt-grid {
+  .gantt-workspace {
     display: none;
   }
 

@@ -6,6 +6,7 @@
       class="detail-panel open"
       :class="panelClass"
       role="dialog"
+      aria-modal="true"
       :aria-labelledby="titleId"
       tabindex="-1"
     >
@@ -39,7 +40,7 @@ const props = defineProps({
   title: { type: String, default: "" },
   eyebrow: { type: String, default: "" },
   panelClass: { type: String, default: "" },
-  trapFocus: { type: Boolean, default: false },
+  trapFocus: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["close"]);
@@ -49,7 +50,7 @@ const titleId = `detail-${Math.random().toString(36).slice(2)}`;
 const isOpen = computed(() => props.open);
 
 useOverlay(isOpen, panel, () => emit("close"), {
-  lockScroll: false,
+  lockScroll: true,
   trapFocus: props.trapFocus,
 });
 </script>

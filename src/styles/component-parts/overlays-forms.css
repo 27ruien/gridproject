@@ -81,11 +81,9 @@
 }
 
 .picker-popover {
-  position: absolute;
-  top: calc(100% + var(--space-050));
-  left: 0;
+  position: fixed;
   z-index: calc(var(--z-modal) + 1);
-  width: min(420px, calc(100vw - 32px));
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--surface);
@@ -96,6 +94,7 @@
 .picker-panel {
   display: grid;
   gap: var(--space-100);
+  max-height: inherit;
 }
 
 .picker-search {
@@ -104,6 +103,7 @@
 }
 
 .picker-list {
+  min-height: 0;
   max-height: 300px;
   overflow: auto;
   display: grid;
