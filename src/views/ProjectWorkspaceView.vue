@@ -103,6 +103,7 @@
         :statuses="template.workflow"
         @open="$emit('open-issue', $event)"
         @status="(...args) => $emit('status', ...args)"
+        @create="$emit('create-issue')"
       />
     </section>
 
