@@ -856,8 +856,7 @@
   .home-summary div { min-width: 0; border-left: 0; padding: 0 var(--space-075); }
   .home-summary div + div { border-left: 1px solid var(--line); }
   .home-summary dd { font-size: 18px; }
-  .home-projects-section .project-card-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin-right: calc(var(--content-pad) * -1); padding-right: var(--content-pad); }
-  .home-projects-section .project-card { min-width: min(82vw, 310px); min-height: 180px; scroll-snap-align: start; }
+  .home-projects-section .project-card { min-height: 180px; }
 
   .due-issue-card { min-height: 84px; grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-areas: "type main date" "type owner priority"; align-items: start; }
   .due-issue-card .issue-type-mark { grid-area: type; }

@@ -72,7 +72,7 @@ test.describe("visual baselines", () => {
   }
 
   for (const [name, url, selector] of [
-    ["projects-mobile", "/?view=projects", ".project-mobile-list"],
+    ["projects-mobile", "/?view=projects", ".project-card-grid"],
     ["project-overview-mobile", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", ".workspace-grid"],
     ["issue-detail-mobile", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88&issue=i1", ".detail-panel"],
     ["issue-modal-mobile", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", ".modal"],
