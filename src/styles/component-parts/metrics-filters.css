@@ -45,7 +45,6 @@
 }
 
 .segmented-control,
-.project-tabs,
 .drawer-tabs {
   display: inline-flex;
   gap: var(--space-050);
@@ -58,7 +57,6 @@
 }
 
 .segmented-control button,
-.project-tab,
 .drawer-tabs button {
   min-height: 28px;
   border: 0;
@@ -70,7 +68,6 @@
 }
 
 .segmented-control button.active,
-.project-tab.active,
 .drawer-tabs button.active {
   background: var(--surface);
   color: var(--text);

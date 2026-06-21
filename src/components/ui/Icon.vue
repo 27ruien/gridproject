@@ -49,6 +49,12 @@ const icons = {
   import: ["M12 4v10", "M8 10l4 4 4-4", "M5 20h14"],
   chevronDown: ["M7 10l5 5 5-5"],
   chevronRight: ["M9 6l6 6-6 6"],
+  list: ["M8 6h12", "M8 12h12", "M8 18h12", "M4 6h.01", "M4 12h.01", "M4 18h.01"],
+  board: ["M4 5h7v14H4V5Z", "M13 5h7v8h-7V5Z"],
+  filter: ["M4 6h16", "M7 12h10", "M10 18h4"],
+  sort: ["M8 6h12", "M8 12h9", "M8 18h6", "M4 5v14", "M2 17l2 2 2-2"],
+  sliders: ["M4 6h8", "M16 6h4", "M4 12h3", "M11 12h9", "M4 18h10", "M18 18h2", "M12 4v4", "M7 10v4", "M14 16v4"],
+  check: ["M5 12l4 4L19 6"],
 };
 
 const paths = computed(() => icons[props.name] || icons.more);

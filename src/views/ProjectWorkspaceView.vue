@@ -1,61 +1,29 @@
 <template>
   <section class="view-stack">
-    <header class="project-overview-header">
-      <div class="project-breadcrumb">项目库 <span>/</span> {{ template.name }}</div>
-      <div class="project-overview-main">
-        <div class="project-heading">
-          <div class="project-title-row">
-            <h1 :title="project.name">{{ project.name }}</h1>
-            <select
-              v-if="permissions.canUpdate"
-              class="project-status-control"
-              aria-label="项目状态"
-              :value="project.status"
-              @change="$emit('update-project', project.id, { status: $event.target.value })"
-            >
-              <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
-            </select>
-            <span v-else class="status-lozenge neutral">{{ project.status }}</span>
-          </div>
-          <p class="project-overview-copy"><strong>项目概述</strong>{{ project.description || "暂无项目概述。" }}</p>
-        </div>
+    <ProjectContextHeader
+      :project="project"
+      :summary="summary"
+      :permissions="permissions"
+      @import-schedule="$emit('import-schedule')"
+      @update-project="(...args) => $emit('update-project', ...args)"
+      @edit-project="$emit('edit-project', $event)"
+      @delete-project="$emit('delete-project', $event)"
+    />
 
-        <div class="project-header-actions">
-          <Button v-if="permissions.canUpdate" variant="ghost" size="small" @click="$emit('edit-project', project.id)">编辑项目</Button>
-          <OverflowMenu v-if="permissions.canUpdate || permissions.canDelete">
-            <template #default="{ close }">
-              <Button v-if="permissions.canUpdate" variant="ghost" size="small" @click="close(); $emit('import-schedule')">导入 Timeline</Button>
-              <Button v-if="permissions.canDelete" variant="danger" size="small" @click="close(); $emit('delete-project', project.id)">删除项目</Button>
-            </template>
-          </OverflowMenu>
-        </div>
-      </div>
-
-      <dl class="project-attribute-grid">
-        <div><dt>负责人</dt><dd>{{ project.owner }}</dd></div>
-        <div><dt>执行团队</dt><dd>{{ executionTeamsText }}</dd></div>
-        <div><dt>项目开始</dt><dd>{{ project.startDate || "未设置" }}</dd></div>
-        <div><dt>测试</dt><dd>{{ project.testDate || "未设置" }}</dd></div>
-        <div><dt>验收</dt><dd>{{ project.acceptanceDate || "未设置" }}</dd></div>
-        <div><dt>上线</dt><dd>{{ project.releaseDate || "未设置" }}</dd></div>
-      </dl>
-
-      <div class="project-signal-strip" aria-label="项目关键指标">
-        <span><small>健康度</small><strong>{{ summary.health }}</strong></span>
-        <span><small>进度</small><strong>{{ summary.progress }}%</strong></span>
-        <span><small>待办</small><strong>{{ summary.openCount }}</strong></span>
-        <span :class="{ danger: summary.scheduleRiskCount }"><small>排期风险</small><strong>{{ summary.scheduleRiskCount }}</strong></span>
-      </div>
-    </header>
-
-    <div class="project-toolbar">
+    <div class="project-view-tabs">
       <Tabs v-model="activeView" :items="availableViews" id-base="project-workspace-tabs" />
-      <div class="project-toolbar-actions">
-        <Button variant="primary" size="small" @click="$emit('create-issue')">新建事项</Button>
-      </div>
     </div>
 
-    <IssueFilters v-model="filters" :people="people" @reset="resetFilters" />
+    <ViewToolbar
+      v-model:active-view="activeView"
+      v-model:filters="filters"
+      v-model:sort="issueSort"
+      v-model:view-mode="issueViewMode"
+      :people="people"
+      :views="availableViews"
+      @create="$emit('create-issue')"
+      @reset="resetFilters"
+    />
 
     <section v-if="activeView === '概览'" :id="tabPanelId('概览')" class="workspace-grid" role="tabpanel" :aria-labelledby="tabId('概览')">
       <div class="panel">
@@ -129,7 +97,7 @@
       </div>
     </section>
 
-    <section v-else-if="activeView === '看板' || activeView === '阶段计划'" :id="tabPanelId(activeView)" class="panel flush-panel" role="tabpanel" :aria-labelledby="tabId(activeView)">
+    <section v-else-if="activeView === '看板' || activeView === '阶段计划'" :id="tabPanelId(activeView)" class="workspace-view-surface board-view-surface" role="tabpanel" :aria-labelledby="tabId(activeView)">
       <AgileBoard
         :issues="filteredVisibleIssues"
         :statuses="template.workflow"
@@ -151,28 +119,7 @@
       <GanttChart :issues="filteredVisibleIssues" @open="$emit('open-issue', $event)" />
     </section>
 
-    <section v-else :id="tabPanelId(activeView)" class="panel issue-list-panel" :class="`is-${normalizedViewMode}`" role="tabpanel" :aria-labelledby="tabId(activeView)">
-      <div class="panel-head">
-        <div>
-          <h2>{{ activeView }}</h2>
-          <p>{{ template.positioning }}</p>
-        </div>
-        <div class="issue-list-controls">
-          <label>
-            <span>排序</span>
-            <select v-model="issueSort">
-              <option value="">默认排序</option>
-              <option value="dueDate:asc">截止日期由近到远</option>
-              <option value="dueDate:desc">截止日期由远到近</option>
-              <option value="priority">优先级优先</option>
-            </select>
-          </label>
-          <div class="segmented-control" aria-label="事项列表密度">
-            <button type="button" :class="{ active: normalizedViewMode === 'comfortable' }" @click="setIssueViewMode('comfortable')">舒适</button>
-            <button type="button" :class="{ active: normalizedViewMode === 'compact' }" @click="setIssueViewMode('compact')">紧凑</button>
-          </div>
-        </div>
-      </div>
+    <section v-else :id="tabPanelId(activeView)" class="workspace-view-surface issue-list-panel" :class="`is-${normalizedViewMode}`" role="tabpanel" :aria-labelledby="tabId(activeView)">
       <IssueTable
         v-if="paginatedVisibleIssues.length"
         :issues="paginatedVisibleIssues"
@@ -203,15 +150,14 @@
 import { computed, reactive, ref, watch } from "vue";
 import { filterIssues } from "../domain/issue.js";
 import { getProjectActivities, getProjectAlerts } from "../domain/projectInsight.js";
-import { PROJECT_STATUS_OPTIONS } from "../domain/project.js";
 import Button from "../components/ui/Button.vue";
 import Tabs from "../components/ui/Tabs.vue";
-import OverflowMenu from "../components/ui/OverflowMenu.vue";
 import AgileBoard from "../components/project/AgileBoard.vue";
+import ProjectContextHeader from "../components/project/ProjectContextHeader.vue";
+import ViewToolbar from "../components/project/ViewToolbar.vue";
 import WaterfallPhaseView from "../components/project/WaterfallPhaseView.vue";
 import GanttChart from "../components/project/GanttChart.vue";
 import IssueTable from "../components/issue/IssueTable.vue";
-import IssueFilters from "../components/issue/IssueFilters.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 
 const props = defineProps({
@@ -231,7 +177,6 @@ const props = defineProps({
 const activeView = defineModel("activeView", { type: String, required: true });
 
 const emit = defineEmits(["create-issue", "import-schedule", "open-issue", "status", "update-project", "edit-project", "delete-project", "url-state"]);
-const projectStatuses = PROJECT_STATUS_OPTIONS;
 const pageSizes = {
   comfortable: 6,
   compact: 10,
@@ -262,7 +207,6 @@ const paginatedVisibleIssues = computed(() => {
 });
 const projectAlerts = computed(() => getProjectAlerts(filteredIssues.value));
 const recentActivities = computed(() => getProjectActivities(props.issues));
-const executionTeamsText = computed(() => props.project.executionTeams?.length ? props.project.executionTeams.join("、") : "未指定");
 
 watch(availableViews, (views) => {
   if (!views.includes(activeView.value)) activeView.value = views[0] || "概览";
@@ -298,11 +242,6 @@ function resetFilters() {
 function setIssuePage(page) {
   const nextPage = clamp(page, 1, totalPages.value);
   issuePage.value = nextPage > 1 ? String(nextPage) : "";
-}
-
-function setIssueViewMode(mode) {
-  issueViewMode.value = mode === "compact" ? "compact" : "";
-  issuePage.value = "";
 }
 
 function updateMilestoneStatus(index, status) {
