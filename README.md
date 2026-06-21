@@ -15,8 +15,6 @@ npm run dev
 
 ```bash
 npm install
-corepack enable
-corepack prepare pnpm@11.0.7 --activate
 npm run server:install
 
 cp server/.env.example server/.env
@@ -125,3 +123,4 @@ npm run release:check:server
 - [Database Model](docs/database-model.md)
 - [Permissions Matrix](docs/permissions-matrix.md)
 - [Deployment](docs/deployment.md)
+- [GitHub Actions Dev Deployment](docs/github-actions-dev-deployment.md)

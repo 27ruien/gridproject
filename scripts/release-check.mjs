@@ -12,6 +12,7 @@ const profiles = {
     ["Prisma validate", "npm", ["run", "db:validate"]],
     ["Prisma generate", "npm", ["run", "server:prisma:generate"]],
     ["临时数据库 migrate deploy / 后端集成测试 / Smoke Test", "npm", ["run", "test:integration"]],
+    ["部署自动化静态测试", "npm", ["run", "test:deployment"]],
     ["Secret 检查", "npm", ["run", "security:check-tracked-secrets"]],
   ],
   server: [

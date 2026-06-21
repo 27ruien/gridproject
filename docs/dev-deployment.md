@@ -4,6 +4,8 @@
 
 本说明只适用于 Dev 环境。不要连接服务器 Prod 数据库，不要录入真实敏感数据，不要在文档、代码或日志中写入真实密码。
 
+服务器完成首次初始化后，日常发布优先使用 GitHub Actions 的手动部署和回滚流程。完整配置见 [GitHub Actions Dev Deployment](github-actions-dev-deployment.md)。
+
 ## 1. 拉取代码
 
 ```bash
@@ -14,7 +16,7 @@ git pull --ff-only origin main
 
 ```bash
 npm ci
-pnpm --dir server install --frozen-lockfile
+bash scripts/run-pnpm.sh --dir server install --frozen-lockfile
 ```
 
 ## 3. 配置 `server/.env`
@@ -142,7 +144,7 @@ npm run server:build
 临时验证：
 
 ```bash
-pnpm --dir server run start
+bash scripts/run-pnpm.sh --dir server run start
 ```
 
 建议用 systemd 管理长期进程。
@@ -230,7 +232,7 @@ curl -fsS http://127.0.0.1:3000/api/health
 git log --oneline -5
 git checkout <previous_commit_sha>
 npm ci
-pnpm --dir server install --frozen-lockfile
+bash scripts/run-pnpm.sh --dir server install --frozen-lockfile
 npm run build
 npm run server:build
 sudo systemctl restart gridproject-dev

@@ -6,7 +6,7 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 run("node", ["scripts/check-dev-db-safety.mjs"]);
 
-const status = spawnSync("pnpm", ["--dir", "server", "exec", "prisma", "migrate", "status", "--schema", "../prisma/schema.prisma"], {
+const status = spawnSync("bash", ["scripts/run-pnpm.sh", "--dir", "server", "exec", "prisma", "migrate", "status", "--schema", "../prisma/schema.prisma"], {
   cwd: rootDir,
   stdio: "inherit",
 });

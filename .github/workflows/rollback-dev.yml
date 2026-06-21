@@ -1,0 +1,140 @@
+name: Rollback Dev
+
+"on":
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: Full commit SHA from a successful Dev deployment record
+        required: true
+        type: string
+      confirm_environment:
+        description: Type dev to confirm the target environment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gridproject-dev-deployment
+  cancel-in-progress: false
+
+jobs:
+  validate-input:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Dev environment
+        env:
+          CONFIRM_ENVIRONMENT: ${{ inputs.confirm_environment }}
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+        run: |
+          if [[ "$CONFIRM_ENVIRONMENT" != "dev" ]]; then
+            echo "Rollback refused: confirm_environment must be exactly dev." >&2
+            exit 1
+          fi
+          if [[ ! "$TARGET_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Rollback refused: target_commit must be a full 40-character commit SHA." >&2
+            exit 1
+          fi
+
+  rollback:
+    needs: validate-input
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      TARGET_COMMIT: ${{ inputs.target_commit }}
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_KEY_PATH: ${{ runner.temp }}/gridproject-dev-rollback-key
+          DEV_SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
+          DEV_SSH_PORT: ${{ secrets.DEV_SSH_PORT }}
+          DEV_SSH_USER: ${{ secrets.DEV_SSH_USER }}
+          DEV_SSH_PRIVATE_KEY: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+        run: |
+          echo "SSH_KEY_PATH=$SSH_KEY_PATH" >> "$GITHUB_ENV"
+          if [[ "$DEV_SSH_USER" != "deploy" ]]; then
+            echo "Rollback refused: DEV_SSH_USER must be deploy." >&2
+            exit 1
+          fi
+          if [[ -z "$DEV_SSH_HOST" || -z "$DEV_SSH_PRIVATE_KEY" ]]; then
+            echo "Rollback refused: required Dev SSH secrets are missing." >&2
+            exit 1
+          fi
+          port="${DEV_SSH_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$DEV_SSH_PRIVATE_KEY" > "$SSH_KEY_PATH"
+          chmod 600 "$SSH_KEY_PATH"
+          ssh-keyscan -H -p "$port" "$DEV_SSH_HOST" > "$HOME/.ssh/known_hosts" 2>/dev/null
+          chmod 600 "$HOME/.ssh/known_hosts"
+          echo "SSH_PORT=$port" >> "$GITHUB_ENV"
+          echo "SSH_HOST=$DEV_SSH_HOST" >> "$GITHUB_ENV"
+          echo "SSH_USER=$DEV_SSH_USER" >> "$GITHUB_ENV"
+          echo "ROLLBACK_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Run server rollback
+        env:
+          ROLLBACK_OUTPUT: ${{ runner.temp }}/gridproject-dev-rollback-output.log
+          ROLLBACK_EXIT: ${{ runner.temp }}/gridproject-dev-rollback-exit
+        run: |
+          set +e
+          ssh \
+            -i "$SSH_KEY_PATH" \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "cd /opt/gridproject && bash scripts/rollback-dev.sh '$TARGET_COMMIT'" \
+            | tee "$ROLLBACK_OUTPUT"
+          rollback_status=${PIPESTATUS[0]}
+          printf '%s\n' "$rollback_status" > "$ROLLBACK_EXIT"
+          exit 0
+
+      - name: Write rollback summary
+        if: always()
+        env:
+          ROLLBACK_OUTPUT: ${{ runner.temp }}/gridproject-dev-rollback-output.log
+          ROLLBACK_EXIT: ${{ runner.temp }}/gridproject-dev-rollback-exit
+        run: |
+          summary_value() {
+            local key="$1"
+            local fallback="$2"
+            local value
+            value=$(grep -E "^${key}=" "$ROLLBACK_OUTPUT" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)
+            printf '%s' "${value:-$fallback}"
+          }
+          rollback_exit=$(cat "$ROLLBACK_EXIT" 2>/dev/null || printf '1')
+          {
+            echo "## GridProject Dev rollback"
+            echo
+            echo "| Item | Result |"
+            echo "| --- | --- |"
+            echo "| Environment | dev |"
+            echo "| Target commit | \`$TARGET_COMMIT\` |"
+            echo "| Started | $(summary_value ROLLBACK_SUMMARY_START_TIME "$ROLLBACK_STARTED_AT") |"
+            echo "| Finished | $(summary_value ROLLBACK_SUMMARY_END_TIME "not completed") |"
+            echo "| Deployment history check | $(summary_value ROLLBACK_SUMMARY_HISTORY "not completed") |"
+            echo "| Database compatibility check | $(summary_value ROLLBACK_SUMMARY_COMPATIBILITY "not completed") |"
+            echo "| Frontend build | $(summary_value ROLLBACK_SUMMARY_FRONTEND_BUILD "not completed") |"
+            echo "| Backend build | $(summary_value ROLLBACK_SUMMARY_BACKEND_BUILD "not completed") |"
+            echo "| Health check | $(summary_value ROLLBACK_SUMMARY_HEALTH "not completed") |"
+            echo "| Workflow result | $([[ "$rollback_exit" == "0" ]] && echo success || echo failed) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo
+            echo "> Database migrations are never rolled back automatically. A code rollback can be incompatible with the current database schema; the server-side read-only migration status check must pass first."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f "${SSH_KEY_PATH:-}" "$HOME/.ssh/known_hosts"
+
+      - name: Enforce rollback result
+        if: always()
+        env:
+          ROLLBACK_EXIT: ${{ runner.temp }}/gridproject-dev-rollback-exit
+        run: |
+          rollback_exit=$(cat "$ROLLBACK_EXIT" 2>/dev/null || printf '1')
+          exit "$rollback_exit"

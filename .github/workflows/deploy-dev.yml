@@ -1,0 +1,186 @@
+name: Deploy Dev
+
+"on":
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or full commit SHA to deploy
+        required: true
+        type: string
+        default: main
+      run_seed:
+        description: Run the idempotent seed after migrations
+        required: true
+        type: boolean
+        default: false
+      confirm_environment:
+        description: Type dev to confirm the target environment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gridproject-dev-deployment
+  cancel-in-progress: false
+
+jobs:
+  validate-input:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Dev environment
+        env:
+          CONFIRM_ENVIRONMENT: ${{ inputs.confirm_environment }}
+        run: |
+          if [[ "$CONFIRM_ENVIRONMENT" != "dev" ]]; then
+            echo "Deployment refused: confirm_environment must be exactly dev." >&2
+            exit 1
+          fi
+
+  deploy:
+    needs: validate-input
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: bash scripts/run-pnpm.sh --dir server install --frozen-lockfile
+
+      - name: Frontend lint
+        run: npm run frontend:lint
+
+      - name: Frontend test
+        run: npm run test
+
+      - name: Frontend build
+        run: npm run build
+
+      - name: Backend lint
+        run: npm run server:lint
+
+      - name: Backend build
+        run: npm run server:build
+
+      - name: Prisma validate
+        run: npm run db:validate
+
+      - name: Prisma generate
+        run: npm run server:prisma:generate
+
+      - name: Check tracked secrets
+        run: npm run security:check-tracked-secrets
+
+      - name: Resolve deployment commit
+        run: |
+          echo "TARGET_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "DEPLOY_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Configure SSH
+        env:
+          SSH_KEY_PATH: ${{ runner.temp }}/gridproject-dev-deploy-key
+          DEV_SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
+          DEV_SSH_PORT: ${{ secrets.DEV_SSH_PORT }}
+          DEV_SSH_USER: ${{ secrets.DEV_SSH_USER }}
+          DEV_SSH_PRIVATE_KEY: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+        run: |
+          echo "SSH_KEY_PATH=$SSH_KEY_PATH" >> "$GITHUB_ENV"
+          if [[ "$DEV_SSH_USER" != "deploy" ]]; then
+            echo "Deployment refused: DEV_SSH_USER must be deploy." >&2
+            exit 1
+          fi
+          if [[ -z "$DEV_SSH_HOST" || -z "$DEV_SSH_PRIVATE_KEY" ]]; then
+            echo "Deployment refused: required Dev SSH secrets are missing." >&2
+            exit 1
+          fi
+          port="${DEV_SSH_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$DEV_SSH_PRIVATE_KEY" > "$SSH_KEY_PATH"
+          chmod 600 "$SSH_KEY_PATH"
+          ssh-keyscan -H -p "$port" "$DEV_SSH_HOST" > "$HOME/.ssh/known_hosts" 2>/dev/null
+          chmod 600 "$HOME/.ssh/known_hosts"
+          echo "SSH_PORT=$port" >> "$GITHUB_ENV"
+          echo "SSH_HOST=$DEV_SSH_HOST" >> "$GITHUB_ENV"
+          echo "SSH_USER=$DEV_SSH_USER" >> "$GITHUB_ENV"
+
+      - name: Run server deployment
+        id: server-deploy
+        env:
+          RUN_SEED: ${{ inputs.run_seed }}
+          DEPLOY_OUTPUT: ${{ runner.temp }}/gridproject-dev-deploy-output.log
+          DEPLOY_EXIT: ${{ runner.temp }}/gridproject-dev-deploy-exit
+        run: |
+          set +e
+          ssh \
+            -i "$SSH_KEY_PATH" \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "cd /opt/gridproject && bash scripts/deploy-dev.sh '$TARGET_COMMIT' '$RUN_SEED'" \
+            | tee "$DEPLOY_OUTPUT"
+          deploy_status=${PIPESTATUS[0]}
+          printf '%s\n' "$deploy_status" > "$DEPLOY_EXIT"
+          exit 0
+
+      - name: Write deployment summary
+        if: always()
+        env:
+          DEPLOY_OUTPUT: ${{ runner.temp }}/gridproject-dev-deploy-output.log
+          DEPLOY_EXIT: ${{ runner.temp }}/gridproject-dev-deploy-exit
+        run: |
+          summary_value() {
+            local key="$1"
+            local fallback="$2"
+            local value
+            value=$(grep -E "^${key}=" "$DEPLOY_OUTPUT" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)
+            printf '%s' "${value:-$fallback}"
+          }
+          deploy_exit=$(cat "$DEPLOY_EXIT" 2>/dev/null || printf '1')
+          {
+            echo "## GridProject Dev deployment"
+            echo
+            echo "| Item | Result |"
+            echo "| --- | --- |"
+            echo "| Environment | dev |"
+            echo "| Target commit | \`$TARGET_COMMIT\` |"
+            echo "| Started | $(summary_value DEPLOY_SUMMARY_START_TIME "$DEPLOY_STARTED_AT") |"
+            echo "| Finished | $(summary_value DEPLOY_SUMMARY_END_TIME "not completed") |"
+            echo "| Database backup | $(summary_value DEPLOY_SUMMARY_BACKUP "not completed") |"
+            echo "| Migration | $(summary_value DEPLOY_SUMMARY_MIGRATION "not completed") |"
+            echo "| Seed | $(summary_value DEPLOY_SUMMARY_SEED "not requested") |"
+            echo "| Frontend build | $(summary_value DEPLOY_SUMMARY_FRONTEND_BUILD "not completed") |"
+            echo "| Backend build | $(summary_value DEPLOY_SUMMARY_BACKEND_BUILD "not completed") |"
+            echo "| Health check | $(summary_value DEPLOY_SUMMARY_HEALTH "not completed") |"
+            echo "| Automatic rollback | $(summary_value DEPLOY_SUMMARY_ROLLBACK "no") |"
+            echo "| Dev address | $(summary_value DEPLOY_SUMMARY_DEV_ADDRESS "configured Dev URL") |"
+            echo "| Workflow result | $([[ "$deploy_exit" == "0" ]] && echo success || echo failed) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f "${SSH_KEY_PATH:-}" "$HOME/.ssh/known_hosts"
+
+      - name: Enforce deployment result
+        if: always()
+        env:
+          DEPLOY_EXIT: ${{ runner.temp }}/gridproject-dev-deploy-exit
+        run: |
+          deploy_exit=$(cat "$DEPLOY_EXIT" 2>/dev/null || printf '1')
+          exit "$deploy_exit"

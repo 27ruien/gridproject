@@ -17,8 +17,6 @@ The running backend reads database configuration from `process.env.DATABASE_URL`
 
 ```bash
 npm install
-corepack enable
-corepack prepare pnpm@11.0.7 --activate
 npm run server:install
 ```
 
