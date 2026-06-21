@@ -13,8 +13,8 @@
 ## Core Entities
 
 - `Organization`：当前系统只有一个组织业务层级。
-- `User`：组织内用户，角色仅 `ADMIN`、`MEMBER`，状态为 `ACTIVE` 或 `INACTIVE`，保存 `passwordHash`、`lastLoginAt`、`deletedAt/deletedById`。
-- `Session`：用户会话，重置密码时将该用户现有未撤销 Session 标记为失效。
+- `User`：组织内用户，角色仅 `ADMIN`、`MEMBER`，状态为 `ACTIVE` 或 `INACTIVE`，保存 `passwordHash`、可空 `preferences`、`lastLoginAt`、`deletedAt/deletedById`。
+- `Session`：用户会话；管理员重置密码会撤销全部会话，用户自行改密保留当前会话并撤销其他会话。
 - `Project`：项目主表，包含 `organizationId`、`ownerId`、`createdById`、软删除字段 `deletedAt/deletedById`。
 - `ProjectMember`：项目相关人表，`Project.ownerId` 与 ACTIVE ProjectMember 共同定义项目相关人。
 - `Issue`：事项，保留项目事项、状态、优先级、负责人等字段。
@@ -36,6 +36,7 @@
 | `organizationId` | 组织隔离 |
 | `name` / `email` | 邮箱在同一组织下唯一 |
 | `passwordHash` | Argon2id PHC 编码哈希，不返回给 API 或前端详情 |
+| `preferences` | 可空 JSONB；保存密度、日期格式、每周起始日、默认导航、主页到期范围和头像色 |
 | `role` | `ADMIN/MEMBER` |
 | `status` | `ACTIVE/INACTIVE` |
 | `lastLoginAt` | 最近登录时间 |

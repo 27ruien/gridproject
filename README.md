@@ -63,12 +63,15 @@ npm run release:check:server
 
 ## 当前能力
 
-- 工作台、项目库、工时填报。
-- 工作台项目视图按高密度表格展示项目名称、状态、负责人、进度、模板、截止日期和风险/逾期。
-- 工作台将项目视图和待办事项作为同级模块展示。
-- 待办事项支持“我的 / 即将到期 / 风险逾期”Tab，方便项目经理安排当天动作。
-- 项目列表弱化敏捷/瀑布模板标签，突出项目阶段、进度、负责人和截止风险。
-- 工作台不承担创建项目和跳转项目库行为，只承担项目经理日常跟进。
+- 主页、项目库、工时填报。
+- 主页使用紧凑问候与摘要区，复用项目卡片展示最多 6 个优先项目。
+- 主页到期事项支持“全部 / 我的 / 其他成员”，按逾期、今天、明天、剩余天数和优先级排序。
+- 主页只显示当前用户有权访问的项目和事项，已完成、已关闭、已验收事项不进入到期列表。
+- 项目库只使用响应式卡片，支持搜索、排序，以及状态、团队、负责人、阶段、上线日期和风险筛选。
+- 项目卡片突出项目身份、状态、阶段、负责人、团队、进度、上线日期和真实异常。
+- 账户菜单支持个人资料、偏好设置、安全设置和 API 模式退出登录。
+- 个人偏好支持界面密度、日期格式、每周起始日、默认导航状态和主页到期范围，并在保存后立即生效。
+- API 模式支持修改当前用户姓名与密码；修改密码保留当前会话并撤销其他会话。
 - 侧栏不再保留低价值项目快捷入口。
 - 创建敏捷研发项目和瀑布交付项目。
 - 模板驱动默认视图、事项类型、字段、空状态和初始化事项。
@@ -96,7 +99,7 @@ npm run release:check:server
 - 人员选择使用可搜索弹层，替代长列表 select。
 - UI 层使用统一 Design Tokens、App Shell、SVG 图标和基础组件，普通页面不产生页面级横向滚动。
 - localStorage 持久化，已通过 storage adapter 隔离；`VITE_DATA_SOURCE=api` 时通过 `/api/bootstrap` 从后端 hydrate。
-- Fastify 后端提供 `/api/auth`、`/api/users`、`/api/projects`、`/api/time-entries`、`/api/cost-records`。
+- Fastify 后端提供 `/api/auth`、`/api/users`、`/api/projects`、`/api/time-entries`、`/api/cost-records`；个人资料、偏好和改密使用 `/api/auth/profile`、`/api/auth/preferences`、`/api/auth/password`。
 - 登录使用 HttpOnly Cookie，SameSite=Lax，生产环境 Secure；数据库只保存 session token hash。
 - 人员创建和 seed 通过 Argon2id 生成 `passwordHash`，代码和迁移不包含固定密码 hash。
 - 成本管理只保留 `plannedPersonDays`、`standardHoursPerDay`、工时折算和 Excel Raw Data 导出。
@@ -125,3 +128,4 @@ npm run release:check:server
 - [Deployment](docs/deployment.md)
 - [GitHub Actions Dev Deployment](docs/github-actions-dev-deployment.md)
 - [Plane R1 Visual Review](docs/GridProject_Plane_R1_Review.md)
+- [Plane R2 Visual Review](docs/GridProject_Plane_R2_Review.md)

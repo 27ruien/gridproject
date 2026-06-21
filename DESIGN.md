@@ -8,7 +8,7 @@ The project-level frontend design Skill used for this work is `.codex/skills/fro
 
 ## Information Architecture
 
-1. Global navigation: workbench, projects, time entries, costs, people when authorized, settings.
+1. Global navigation: home, projects, time entries, costs, people when authorized, settings.
 2. Top bar: current area and global project/issue search.
 3. Page header: page title, short operational context, one primary action.
 4. Project header: project identity first, status adjacent to the name, one-line overview, owner and actions. Detailed properties belong in the project-properties popover or overview; only real exceptions stay visible.
@@ -46,7 +46,8 @@ Use the 4/8/12/16/24/32px token rhythm. Dense table and toolbar controls may use
 
 - Application shell: fixed-width collapsible navigation plus `minmax(0, 1fr)` workspace.
 - Content: full-width page bands with constrained internal alignment.
-- Dashboard: four operational metrics, project list, and a secondary task queue only when width permits.
+- Home: a restrained greeting and inline summary, up to six priority project cards, due items split into all/mine/others, and a risk section only when real exceptions exist.
+- Project library: a card-only responsive grid with compact search, sort, filter, and create controls. There is no table/card mode toggle.
 - Project workspace: an 80-96px desktop identity header, tabs, one compact view toolbar, then the active work surface. Mobile keeps project identity through tabs within roughly 140-160px.
 - Tables, boards, and Gantt may scroll inside their own containers; the page root must not scroll horizontally.
 
@@ -59,9 +60,17 @@ Use the 4/8/12/16/24/32px token rhythm. Dense table and toolbar controls may use
 - Execution teams use multi-select checkboxes and remain separate from project members and task execution ownership.
 - Tabs, modals, panels, empty states, tables, and filters use existing shared components.
 
+## Project Card Rules
+
+Project library cards have stable equal heights and a deterministic abstract mark derived from project ID. The primary card action opens the project; the overflow menu is a separate sibling control and must not propagate. Cards show identity, two-line overview, state, phase, owner, team, progress, release date, and actual risk/overdue signals. The library uses 3-4 columns at wide desktop, 2-3 at medium desktop, 2 on tablet, and 1 on mobile.
+
+Home reuses the compact `ProjectCard` variant and never embeds the project library toolbar. Risk/overdue projects sort first, followed by close release dates, current-user ownership, and recent updates.
+
 ## Table Rules
 
 Desktop project tables prioritize name, status, owner, execution teams, progress, phase, release date, and risk. Headers stay visible inside the table. Low-priority columns may disappear at narrow widths; mobile uses an information list. Table rows expose an independent primary open action, while selects and menus remain separate controls.
+
+Project tables are not used in the project library. This table rule remains for issue, time-entry, cost, and other operational data surfaces.
 
 ## Form Rules
 
@@ -70,6 +79,8 @@ Labels stay above controls. Required errors appear next to the field. Project fo
 ## Modal Rules
 
 Use `Modal`, `DetailPanel`, and `ConfirmDialog`. Overlays require a dialog role, accessible title, Escape close, focus management, focus return, body scroll lock where modal, fixed header/footer, and independently scrolling content. Dangerous replacement and deletion operations require confirmation.
+
+The account menu uses a body-level anchored popover on desktop and a bottom sheet on mobile. Personal settings use `/settings/profile`, `/settings/preferences`, and `/settings/security`; the close action returns to the page from which settings were opened.
 
 ## Gantt Rules
 
