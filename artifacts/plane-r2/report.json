@@ -1,0 +1,281 @@
+{
+  "generatedAt": "2026-06-21T17:06:11.322Z",
+  "afterBase": "http://127.0.0.1:5174",
+  "beforeBase": "http://127.0.0.1:5175",
+  "captures": [
+    {
+      "filename": "home-1440x900.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/home-1440x900.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-1280x800.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/home-1280x800.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-390x844.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/home-390x844.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-1440x900.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/projects-1440x900.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-1280x800.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/projects-1280x800.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-390x844.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/projects-390x844.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "dense-20.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/dense-20.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "empty.png",
+      "route": "/?qa=plane-r2-projects-empty&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/empty.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-due-all.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/home-due-all.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-due-others.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/home-due-others.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "project-filter-open.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/project-filter-open.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "account-menu-open.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/account-menu-open.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "account-menu-mobile.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/account-menu-mobile.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "profile.png",
+      "route": "/settings/profile",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/profile.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "preferences.png",
+      "route": "/settings/preferences",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/preferences.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "security.png",
+      "route": "/settings/security",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/security.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "personal-settings-mobile.png",
+      "route": "/settings/profile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/personal-settings-mobile.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-1440x900.png",
+      "route": "/?view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/before/home-1440x900.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-1440x900.png",
+      "route": "/?view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/before/projects-1440x900.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "account-menu-open.png",
+      "route": "/?view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "path": "/Users/ryan/Documents/Playground/gridproject/artifacts/plane-r2/before/account-menu-open.png",
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  ],
+  "comparisons": [
+    {
+      "filename": "project-library-comparison.png",
+      "topic": "Project library",
+      "before": "artifacts/plane-r2/before/projects-1440x900.png",
+      "reference": "Plane official public interface reference",
+      "after": "artifacts/plane-r2/projects-1440x900.png"
+    },
+    {
+      "filename": "home-comparison.png",
+      "topic": "Home",
+      "before": "artifacts/plane-r2/before/home-1440x900.png",
+      "reference": "Plane official public interface reference",
+      "after": "artifacts/plane-r2/home-1440x900.png"
+    },
+    {
+      "filename": "account-comparison.png",
+      "topic": "Account menu",
+      "before": "artifacts/plane-r2/before/account-menu-open.png",
+      "reference": "Plane official public interface reference",
+      "after": "artifacts/plane-r2/account-menu-open.png"
+    },
+    {
+      "filename": "profile-comparison.png",
+      "topic": "Personal profile",
+      "before": "artifacts/plane-r2/before/account-menu-open.png",
+      "reference": "Plane official public interface reference",
+      "after": "artifacts/plane-r2/profile.png"
+    }
+  ],
+  "notes": [
+    "Plane reference assets are official public screenshots; no matching Plane image file was attached to the R2 text brief."
+  ],
+  "passed": true
+}
