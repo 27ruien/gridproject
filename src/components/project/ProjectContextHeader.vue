@@ -4,16 +4,23 @@
       <span class="project-identity-mark" aria-hidden="true">{{ project.name.slice(0, 1) }}</span>
       <div class="project-context-title">
         <h1 :title="project.name">{{ project.name }}</h1>
-        <select
-          v-if="permissions.canUpdate"
-          class="project-status-control"
-          aria-label="项目状态"
-          :value="project.status"
-          @change="$emit('update-project', project.id, { status: $event.target.value })"
-        >
-          <option v-for="status in projectStatuses" :key="status" :value="status">{{ status }}</option>
-        </select>
-        <span v-else class="status-lozenge neutral">{{ project.status }}</span>
+        <details v-if="permissions.canUpdate" class="project-status-menu">
+          <summary class="status-lozenge" :class="projectStatusTone">{{ project.status }}</summary>
+          <div class="project-status-popover" role="menu" aria-label="项目状态">
+            <button
+              v-for="status in projectStatuses"
+              :key="status"
+              type="button"
+              :class="{ active: project.status === status }"
+              role="menuitem"
+              @click="updateStatus(status, $event)"
+            >
+              <span class="status-lozenge" :class="statusTone(status)">{{ status }}</span>
+              <Icon v-if="project.status === status" name="check" />
+            </button>
+          </div>
+        </details>
+        <span v-else class="status-lozenge" :class="projectStatusTone">{{ project.status }}</span>
         <span v-if="summary.scheduleRiskCount" class="project-risk-alert">{{ summary.scheduleRiskCount }} 项排期风险</span>
       </div>
 
@@ -77,8 +84,21 @@ const props = defineProps({
   permissions: { type: Object, required: true },
 });
 
-defineEmits(["import-schedule", "update-project", "edit-project", "delete-project"]);
+const emit = defineEmits(["import-schedule", "update-project", "edit-project", "delete-project"]);
 
 const projectStatuses = PROJECT_STATUS_OPTIONS;
 const executionTeamsText = computed(() => props.project.executionTeams?.length ? props.project.executionTeams.join("、") : "未指定");
+const projectStatusTone = computed(() => statusTone(props.project.status));
+
+function statusTone(status) {
+  if (status === "已完成") return "success";
+  if (status === "已暂停") return "warn";
+  if (["测试阶段", "验收阶段", "上线阶段"].includes(status)) return "info";
+  return "neutral";
+}
+
+function updateStatus(status, event) {
+  emit("update-project", props.project.id, { status });
+  event.currentTarget.closest("details")?.removeAttribute("open");
+}
 </script>

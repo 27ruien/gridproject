@@ -152,8 +152,8 @@ export const issueService = {
     });
   },
   filterForView(issues, viewName) {
-    if (viewName === "Backlog") return issues.filter((issue) => ["Epic", "需求", "技术债"].includes(issue.type));
-    if (viewName === "Sprint") return issues.filter((issue) => ["任务", "缺陷", "需求"].includes(issue.type));
+    if (["待办事项", "Backlog"].includes(viewName)) return issues.filter((issue) => ["Epic", "需求", "技术债"].includes(issue.type));
+    if (["迭代", "Sprint"].includes(viewName)) return issues.filter((issue) => ["任务", "缺陷", "需求"].includes(issue.type));
     if (viewName === "风险") return issues.filter((issue) => issue.type === "风险" || issue.priority === "P0" || getIssueScheduleRisks(issue).length);
     if (viewName === "交付物") return issues.filter((issue) => ["交付物", "验收项"].includes(issue.type));
     if (viewName === "验收") return issues.filter((issue) => ["验收项", "交付物"].includes(issue.type));

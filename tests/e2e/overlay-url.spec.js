@@ -33,7 +33,7 @@ test("person picker stays in the viewport and closes on outside click", async ({
 });
 
 test("issue status menu does not open the issue detail", async ({ page }) => {
-  await page.goto("/?view=project&project=crm&tab=Sprint", { waitUntil: "networkidle" });
+  await page.goto("/?view=project&project=crm&tab=迭代", { waitUntil: "networkidle" });
   const firstRow = page.locator(".issue-table-row").first();
   await firstRow.locator(".issue-row-menu .icon-btn").click();
   await firstRow.locator(".issue-menu-option").nth(1).click();
@@ -65,27 +65,27 @@ test("URL q, filters, sort, page, and viewMode restore, clear, and support histo
   await page.goto(cleanUrl, { waitUntil: "networkidle" });
   await page.goto(stateUrl, { waitUntil: "networkidle" });
   await expect(page.getByPlaceholder("搜索项目、事项或负责人")).toHaveValue("CRM");
-  await expect(page.getByPlaceholder("搜索事项")).toHaveValue("缓存");
+  await expect(page.locator(".desktop-view-search input")).toHaveValue("缓存");
   await page.locator(".filter-popover > summary").click();
   await expect(page.locator(".filter-popover .picker-trigger").first()).toContainText("林夏");
   await expect(page).toHaveURL(/sort=dueDate%3Aasc/);
   await page.reload({ waitUntil: "networkidle" });
   await expect(page.getByPlaceholder("搜索项目、事项或负责人")).toHaveValue("CRM");
-  await expect(page.getByPlaceholder("搜索事项")).toHaveValue("缓存");
+  await expect(page.locator(".desktop-view-search input")).toHaveValue("缓存");
 
   await page.goBack({ waitUntil: "networkidle" });
   await expect(page.getByRole("button", { name: "打开全局搜索" })).toBeVisible();
-  await expect(page.getByPlaceholder("搜索事项")).toHaveValue("");
+  await expect(page.locator(".desktop-view-search input")).toHaveValue("");
   await expect(page.locator(".filter-popover .picker-trigger").first()).toContainText("全部");
 
   await page.goForward({ waitUntil: "networkidle" });
   await expect(page.getByPlaceholder("搜索项目、事项或负责人")).toHaveValue("CRM");
-  await expect(page.getByPlaceholder("搜索事项")).toHaveValue("缓存");
+  await expect(page.locator(".desktop-view-search input")).toHaveValue("缓存");
 });
 
 test("search, filters, sort, page, and viewMode replace history while navigation pushes", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/?qa=bulk&view=project&project=crm&tab=Sprint", { waitUntil: "networkidle" });
+  await page.goto("/?qa=bulk&view=project&project=crm&tab=迭代", { waitUntil: "networkidle" });
   const beforeReplace = await page.evaluate(() => history.length);
 
   await page.getByRole("button", { name: "打开全局搜索" }).click();
@@ -98,11 +98,11 @@ test("search, filters, sort, page, and viewMode replace history while navigation
   await page.waitForTimeout(260);
   expect(await page.evaluate(() => history.length)).toBe(beforeReplace);
 
-  await page.getByPlaceholder("搜索事项").fill("批量视觉");
-  await page.locator(".view-toolbar .toolbar-menu").filter({ hasText: "排序" }).locator("summary").click();
+  await page.locator(".desktop-view-search input").fill("批量视觉");
+  await page.locator(".view-options-menu > summary").click();
   await page.getByRole("button", { name: "优先级优先" }).click();
-  await page.locator(".view-toolbar .toolbar-menu").filter({ hasText: "显示" }).locator("summary").click();
-  await page.getByRole("button", { name: "紧凑密度" }).click();
+  await page.locator(".view-options-menu > summary").click();
+  await page.getByRole("button", { name: "紧凑" }).click();
   await page.getByRole("button", { name: "下一页" }).click();
   expect(await page.evaluate(() => history.length)).toBe(beforeReplace);
   await expect(page).toHaveURL(/q=CRM/);
@@ -118,15 +118,15 @@ test("search, filters, sort, page, and viewMode replace history while navigation
 
 test("issue page and compact viewMode change the real issue list", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/?qa=bulk&view=project&project=crm&tab=Sprint&page=2&viewMode=compact", { waitUntil: "networkidle" });
+  await page.goto("/?qa=bulk&view=project&project=crm&tab=迭代&page=2&viewMode=compact", { waitUntil: "networkidle" });
 
   await expect(page.locator(".issue-table")).toHaveClass(/density-compact/);
   await expect(page.locator(".issue-table-row")).toHaveCount(10);
   await expect(page.locator(".pagination-bar")).toContainText("第 2 /");
 
   const pageTwoFirstTitle = await page.locator(".issue-table-row .issue-title-cell strong").first().innerText();
-  await page.locator(".view-toolbar .toolbar-menu").filter({ hasText: "显示" }).locator("summary").click();
-  await page.getByRole("button", { name: "舒适密度" }).click();
+  await page.locator(".view-options-menu > summary").click();
+  await page.getByRole("button", { name: "舒适" }).click();
   await expect(page.locator(".issue-table")).toHaveClass(/density-comfortable/);
   await expect(page.locator(".issue-table-row")).toHaveCount(6);
   await expect(page.locator(".pagination-bar")).toContainText("第 1 /");

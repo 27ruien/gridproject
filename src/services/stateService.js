@@ -112,7 +112,7 @@ const seedState = {
       estimatedHours: 48,
       actualHours: 26,
       next: "完成剩余工作量统计接口",
-      description: "提供 Sprint 维度的燃尽图数据。",
+      description: "提供迭代维度的燃尽图数据。",
     },
     {
       id: "i3",

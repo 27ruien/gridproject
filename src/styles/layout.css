@@ -16,7 +16,8 @@
 .app-shell.nav-collapsed .brand strong,
 .app-shell.nav-collapsed .account-trigger strong,
 .app-shell.nav-collapsed .account-trigger > .ui-icon,
-.app-shell.nav-collapsed .nav-item span:last-child {
+.app-shell.nav-collapsed .nav-item span:last-child,
+.app-shell.nav-collapsed .project-sidebar-context header > div {
   display: none;
 }
 
@@ -35,6 +36,14 @@
   border-right: 1px solid var(--line);
   background: var(--surface);
   padding: 0 var(--space-075) var(--space-100);
+}
+
+.sidebar-navigation {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--space-200);
 }
 
 .sidebar-head {

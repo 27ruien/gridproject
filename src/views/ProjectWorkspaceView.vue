@@ -1,5 +1,5 @@
 <template>
-  <section class="view-stack">
+  <section class="view-stack project-workspace">
     <ProjectContextHeader
       :project="project"
       :summary="summary"
@@ -174,6 +174,7 @@ const props = defineProps({
   sort: { type: String, default: "" },
   page: { type: String, default: "" },
   viewMode: { type: String, default: "" },
+  visualReviewMode: { type: String, default: "" },
 });
 
 const activeView = defineModel("activeView", { type: String, required: true });
@@ -200,7 +201,7 @@ const filteredIssues = computed(() => sortIssues(filterIssues(props.issues, filt
 const filteredVisibleIssues = computed(() => sortIssues(filterIssues(props.visibleIssues, filters)));
 const availableViews = computed(() => props.template.views.filter((view) => props.permissions.canViewBoard || !["看板", "阶段计划"].includes(view)));
 const normalizedViewMode = computed(() => issueViewMode.value === "compact" ? "compact" : "comfortable");
-const pageSize = computed(() => pageSizes[normalizedViewMode.value]);
+const pageSize = computed(() => props.visualReviewMode === "plane-r1-list-dense" ? 24 : pageSizes[normalizedViewMode.value]);
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredVisibleIssues.value.length / pageSize.value)));
 const currentPage = computed(() => clamp(parseInt(issuePage.value || "1", 10) || 1, 1, totalPages.value));
 const paginatedVisibleIssues = computed(() => {

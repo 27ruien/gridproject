@@ -1,67 +1,79 @@
 <template>
   <section class="view-toolbar" aria-label="项目视图工具栏">
     <div class="view-toolbar-main">
-      <details class="toolbar-menu view-switcher">
+      <details class="toolbar-menu view-options-menu">
         <summary class="toolbar-button">
           <Icon :name="activeView === '看板' || activeView === '阶段计划' ? 'board' : 'list'" />
           <span>{{ activeView }}</span>
           <Icon name="chevronDown" />
         </summary>
-        <div class="toolbar-popover toolbar-option-list">
-          <button
-            v-for="view in views"
-            :key="view"
-            type="button"
-            :class="{ active: activeView === view }"
-            @click="selectView(view, $event)"
-          >
-            <Icon :name="view === '看板' || view === '阶段计划' ? 'board' : 'list'" />
-            <span>{{ view }}</span>
-          </button>
+        <div class="toolbar-popover view-options-popover">
+          <section class="toolbar-option-section">
+            <strong>切换视图</strong>
+            <div class="toolbar-option-list">
+              <button
+                v-for="view in views"
+                :key="view"
+                type="button"
+                :class="{ active: activeView === view }"
+                @click="selectView(view, $event)"
+              >
+                <Icon :name="view === '看板' || view === '阶段计划' ? 'board' : 'list'" />
+                <span>{{ view }}</span>
+                <Icon v-if="activeView === view" name="check" />
+              </button>
+            </div>
+          </section>
+
+          <section class="toolbar-option-section">
+            <strong>排序</strong>
+            <div class="toolbar-option-list">
+              <button v-for="option in sortOptions" :key="option.value" type="button" :class="{ active: sort === option.value }" @click="setOption('sort', option.value, $event)">
+                <span>{{ option.label }}</span>
+                <Icon v-if="sort === option.value" name="check" />
+              </button>
+            </div>
+          </section>
+
+          <section class="toolbar-option-section">
+            <strong>显示密度</strong>
+            <div class="toolbar-option-list">
+              <button type="button" :class="{ active: normalizedViewMode === 'comfortable' }" @click="setOption('viewMode', '', $event)">
+                <span>舒适</span>
+                <Icon v-if="normalizedViewMode === 'comfortable'" name="check" />
+              </button>
+              <button type="button" :class="{ active: normalizedViewMode === 'compact' }" @click="setOption('viewMode', 'compact', $event)">
+                <span>紧凑</span>
+                <Icon v-if="normalizedViewMode === 'compact'" name="check" />
+              </button>
+            </div>
+          </section>
         </div>
       </details>
 
-      <label class="view-search">
+      <label class="view-search desktop-view-search">
         <Icon name="search" />
         <input v-model="filters.keyword" type="search" placeholder="搜索事项" aria-label="搜索事项" />
       </label>
 
+      <details class="toolbar-menu mobile-search-menu">
+        <summary class="toolbar-button icon-only" title="搜索事项" aria-label="搜索事项">
+          <Icon name="search" />
+        </summary>
+        <div class="toolbar-popover mobile-search-popover">
+          <label class="view-search">
+            <Icon name="search" />
+            <input v-model="filters.keyword" type="search" placeholder="搜索事项" aria-label="搜索事项" />
+          </label>
+        </div>
+      </details>
+
       <FilterPopover v-model="filters" :people="people" @reset="$emit('reset')" />
-
-      <details class="toolbar-menu">
-        <summary class="toolbar-button" :class="{ active: sort }">
-          <Icon name="sort" />
-          <span>排序</span>
-        </summary>
-        <div class="toolbar-popover toolbar-option-list align-right">
-          <button v-for="option in sortOptions" :key="option.value" type="button" :class="{ active: sort === option.value }" @click="setOption('sort', option.value, $event)">
-            <span>{{ option.label }}</span>
-            <Icon v-if="sort === option.value" name="check" />
-          </button>
-        </div>
-      </details>
-
-      <details class="toolbar-menu">
-        <summary class="toolbar-button" :class="{ active: normalizedViewMode === 'compact' }">
-          <Icon name="sliders" />
-          <span>显示</span>
-        </summary>
-        <div class="toolbar-popover toolbar-option-list align-right">
-          <button type="button" :class="{ active: normalizedViewMode === 'comfortable' }" @click="setOption('viewMode', '', $event)">
-            <span>舒适密度</span>
-            <Icon v-if="normalizedViewMode === 'comfortable'" name="check" />
-          </button>
-          <button type="button" :class="{ active: normalizedViewMode === 'compact' }" @click="setOption('viewMode', 'compact', $event)">
-            <span>紧凑密度</span>
-            <Icon v-if="normalizedViewMode === 'compact'" name="check" />
-          </button>
-        </div>
-      </details>
     </div>
 
-    <Button variant="primary" size="small" @click="$emit('create')">
+    <Button class="create-issue-button" variant="primary" size="small" title="新建事项" @click="$emit('create')">
       <Icon name="plus" />
-      新建事项
+      <span>新建事项</span>
     </Button>
 
     <div v-if="chips.length" class="view-toolbar-chips">

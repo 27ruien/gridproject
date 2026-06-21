@@ -1,14 +1,14 @@
 <template>
   <div class="issue-table" :class="`density-${density}`">
     <div class="issue-table-head">
-      <span aria-label="事项类型"></span>
-      <span>编号</span>
-      <span>事项</span>
-      <span>状态</span>
-      <span>优先级</span>
-      <span>负责人</span>
-      <span>截止日期</span>
-      <span aria-label="操作"></span>
+      <span class="issue-type-column" aria-label="事项类型"></span>
+      <span class="issue-code-column">编号</span>
+      <span class="issue-title-column">事项</span>
+      <span class="issue-status-column">状态</span>
+      <span class="issue-priority-column">优先级</span>
+      <span class="issue-owner-column">负责人</span>
+      <span class="issue-date-column">截止日期</span>
+      <span class="issue-actions-column" aria-label="操作"></span>
     </div>
     <div
       v-for="issue in issues"
@@ -22,19 +22,24 @@
       @keydown.enter.prevent="openFromRow($event, issue.id)"
       @keydown.space.prevent="openFromRow($event, issue.id)"
     >
-      <span class="issue-type-icon" :title="issue.type">{{ issue.type.slice(0, 1) }}</span>
-      <span class="issue-code">{{ issue.code }}</span>
+      <span class="issue-type-column issue-type-icon" :class="`type-${issueTypeMeta(issue.type).tone}`" :title="issue.type">
+        <Icon :name="issueTypeMeta(issue.type).icon" />
+      </span>
+      <span class="issue-code-column issue-code">{{ issue.code }}</span>
       <span class="issue-title-column">
         <button class="issue-title-cell" type="button" @click="selectAndOpen(issue.id)">
           <strong>{{ issue.title }}</strong>
         </button>
       </span>
-      <span class="issue-status-marker" :class="statusTone(issue.status)"><i></i>{{ issue.status }}</span>
-      <PriorityPill :priority="issue.priority" />
-      <span class="issue-owner-avatar" :title="`负责人：${issue.owner}`">{{ issue.owner.slice(0, 1) }}</span>
-      <span class="issue-due-date" :class="{ overdue: isOverdue(issue) }">
+      <span class="issue-status-column issue-status-marker" :class="issueStatusTone(issue.status)"><i></i>{{ issue.status }}</span>
+      <span class="issue-priority-column"><PriorityPill :priority="issue.priority" /></span>
+      <span class="issue-owner-column owner-avatar-stack" :title="ownerTitle(issue)">
+        <span v-for="owner in issueOwners(issue).slice(0, 3)" :key="owner" class="issue-owner-avatar">{{ owner.slice(0, 1) }}</span>
+        <span v-if="!issueOwners(issue).length" class="issue-owner-avatar unassigned">—</span>
+      </span>
+      <span class="issue-date-column issue-due-date" :class="{ overdue: isIssueOverdue(issue) }">
         <Icon name="calendar" />
-        {{ formatDate(issue.dueDate) }}
+        {{ formatIssueDate(issue.dueDate) }}
       </span>
       <OverflowMenu class="issue-row-menu" :label="`${issue.code} 更多操作`">
         <template #default="{ close }">
@@ -47,7 +52,7 @@
             type="button"
             @click="changeStatus(issue.id, status, close)"
           >
-            <span class="issue-status-marker" :class="statusTone(status)"><i></i>{{ status }}</span>
+            <span class="issue-status-marker" :class="issueStatusTone(status)"><i></i>{{ status }}</span>
             <Icon v-if="issue.status === status" name="check" />
           </button>
         </template>
@@ -58,21 +63,24 @@
       <article v-for="issue in issues" :key="`mobile-${issue.id}`" class="issue-mobile-card" :class="{ selected: selectedId === issue.id }">
         <button class="issue-mobile-main" type="button" @click="selectAndOpen(issue.id)">
           <span class="issue-mobile-anchor">
-            <span class="issue-type-icon">{{ issue.type.slice(0, 1) }}</span>
+            <span class="issue-type-icon" :class="`type-${issueTypeMeta(issue.type).tone}`" :title="issue.type"><Icon :name="issueTypeMeta(issue.type).icon" /></span>
             <span class="issue-code">{{ issue.code }}</span>
-            <span class="issue-status-marker" :class="statusTone(issue.status)"><i></i>{{ issue.status }}</span>
+            <span class="issue-status-marker" :class="issueStatusTone(issue.status)"><i></i>{{ issue.status }}</span>
           </span>
           <strong>{{ issue.title }}</strong>
           <span class="issue-mobile-meta">
             <PriorityPill :priority="issue.priority" />
-            <span class="issue-owner-avatar" :title="issue.owner">{{ issue.owner.slice(0, 1) }}</span>
-            <span class="issue-due-date"><Icon name="calendar" />{{ formatDate(issue.dueDate) }}</span>
+            <span class="owner-avatar-stack" :title="ownerTitle(issue)">
+              <span v-for="owner in issueOwners(issue).slice(0, 3)" :key="owner" class="issue-owner-avatar">{{ owner.slice(0, 1) }}</span>
+              <span v-if="!issueOwners(issue).length" class="issue-owner-avatar unassigned">—</span>
+            </span>
+            <span class="issue-due-date" :class="{ overdue: isIssueOverdue(issue) }"><Icon name="calendar" />{{ formatIssueDate(issue.dueDate) }}</span>
           </span>
         </button>
         <OverflowMenu :label="`${issue.code} 更多操作`">
           <template #default="{ close }">
             <button v-for="status in statuses" :key="status" class="issue-menu-option" :class="{ active: issue.status === status }" type="button" @click="changeStatus(issue.id, status, close)">
-              <span class="issue-status-marker" :class="statusTone(status)"><i></i>{{ status }}</span>
+              <span class="issue-status-marker" :class="issueStatusTone(status)"><i></i>{{ status }}</span>
               <Icon v-if="issue.status === status" name="check" />
             </button>
           </template>
@@ -87,6 +95,7 @@ import { ref } from "vue";
 import PriorityPill from "../common/PriorityPill.vue";
 import Icon from "../ui/Icon.vue";
 import OverflowMenu from "../ui/OverflowMenu.vue";
+import { formatIssueDate, isIssueOverdue, issueOwners, issueStatusTone, issueTypeMeta } from "./issuePresentation.js";
 
 defineProps({
   issues: { type: Array, required: true },
@@ -112,23 +121,8 @@ function changeStatus(issueId, status, close) {
   close();
 }
 
-function statusTone(status) {
-  if (/完成|验收/.test(status)) return "done";
-  if (/进行|开发|测试/.test(status)) return "in-progress";
-  if (/风险|阻塞/.test(status)) return "danger";
-  return "neutral";
-}
-
-function formatDate(value) {
-  if (!value) return "未设置";
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function isOverdue(issue) {
-  if (!issue.dueDate || /完成|验收/.test(issue.status)) return false;
-  const due = new Date(`${issue.dueDate}T23:59:59`);
-  return due.getTime() < Date.now();
+function ownerTitle(issue) {
+  const owners = issueOwners(issue);
+  return owners.length ? `负责人：${owners.join("、")}` : "未分配负责人";
 }
 </script>

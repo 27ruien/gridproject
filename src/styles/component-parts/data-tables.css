@@ -29,8 +29,8 @@
 
 .issue-table-head,
 .issue-table-row {
-  grid-template-columns: 28px 72px minmax(220px, 1fr) 92px 72px 48px 92px 30px;
-  min-width: 720px;
+  grid-template-columns: 28px 72px minmax(180px, 1fr) 92px 72px 74px 92px 30px;
+  min-width: 0;
 }
 
 .timesheet-head,
@@ -70,7 +70,9 @@
   min-height: 32px;
   color: var(--muted);
   font-size: var(--text-caption);
-  background: var(--surface-subtle);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   padding: 0 var(--space-100);
 }
 
@@ -87,16 +89,17 @@
 
 .issue-table {
   gap: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
+  border: 0;
+  border-radius: 0;
   background: var(--surface);
+  overflow-x: hidden;
 }
 
 .issue-table-row {
   position: relative;
   min-height: 42px;
   border: 0;
-  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: var(--surface);
   padding: 0 var(--space-100);
@@ -122,12 +125,43 @@
   width: 20px;
   height: 20px;
   border-radius: 5px;
-  background: #edf0f4;
-  color: #56606d;
   display: inline-grid;
   place-items: center;
-  font-size: 11px;
-  font-weight: 600;
+}
+
+.issue-type-icon .ui-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.issue-type-icon.type-epic,
+.issue-type-icon.type-deliverable {
+  background: #f2ecff;
+  color: #6842a8;
+}
+
+.issue-type-icon.type-requirement,
+.issue-type-icon.type-phase {
+  background: #e9f3ff;
+  color: #2565a7;
+}
+
+.issue-type-icon.type-task,
+.issue-type-icon.type-acceptance {
+  background: #e9f7ef;
+  color: #25734c;
+}
+
+.issue-type-icon.type-bug,
+.issue-type-icon.type-risk {
+  background: #fff0f0;
+  color: #bb3b3b;
+}
+
+.issue-type-icon.type-debt,
+.issue-type-icon.type-change {
+  background: #fff5e8;
+  color: #9a621e;
 }
 
 .issue-code {
@@ -150,7 +184,7 @@
 .issue-title-cell strong {
   font-size: var(--text-body);
   line-height: 20px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .issue-status-marker {
@@ -201,6 +235,22 @@
   place-items: center;
   font-size: 10px;
   font-weight: 600;
+}
+
+.owner-avatar-stack {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.owner-avatar-stack .issue-owner-avatar + .issue-owner-avatar {
+  margin-left: -7px;
+}
+
+.issue-owner-avatar.unassigned {
+  border-style: dashed;
+  background: transparent;
+  color: var(--subtle);
 }
 
 .issue-due-date {
@@ -308,12 +358,38 @@
 
 .issue-table.density-compact .issue-table-head,
 .issue-table.density-compact .issue-table-row {
-  grid-template-columns: 26px 68px minmax(220px, 1fr) 88px 68px 44px 88px 28px;
+  grid-template-columns: 26px 68px minmax(180px, 1fr) 88px 68px 70px 88px 28px;
 }
 
 .issue-table.density-compact .issue-table-row {
   min-height: 40px;
   padding: 0 var(--space-075);
+}
+
+@media (max-width: 1199px) and (min-width: 768px) {
+  .issue-table-head,
+  .issue-table-row,
+  .issue-table.density-compact .issue-table-head,
+  .issue-table.density-compact .issue-table-row {
+    grid-template-columns: 28px 68px minmax(170px, 1fr) 88px 72px 88px 30px;
+  }
+
+  .issue-priority-column {
+    display: none;
+  }
+}
+
+@media (max-width: 959px) and (min-width: 768px) {
+  .issue-table-head,
+  .issue-table-row,
+  .issue-table.density-compact .issue-table-head,
+  .issue-table.density-compact .issue-table-row {
+    grid-template-columns: 28px 64px minmax(160px, 1fr) 70px 86px 30px;
+  }
+
+  .issue-status-column {
+    display: none;
+  }
 }
 
 .issue-list-controls,

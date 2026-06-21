@@ -15,11 +15,11 @@ const browser = await chromium.launch({ headless: true });
 const report = { generatedAt: new Date().toISOString(), baseURL, captures: [] };
 
 const cases = [
-  ["project-list-1440x900.png", "/?view=project&project=crm&tab=Sprint", 1440, 900],
+  ["project-list-1440x900.png", "/?view=project&project=crm&tab=迭代", 1440, 900],
   ["project-board-1440x900.png", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", 1440, 900],
-  ["project-list-1280x800.png", "/?view=project&project=crm&tab=Sprint", 1280, 800],
+  ["project-list-1280x800.png", "/?view=project&project=crm&tab=迭代", 1280, 800],
   ["project-board-1280x800.png", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", 1280, 800],
-  ["project-list-390x844.png", "/?view=project&project=crm&tab=Sprint", 390, 844],
+  ["project-list-390x844.png", "/?view=project&project=crm&tab=迭代", 390, 844],
   ["project-board-390x844.png", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", 390, 844],
 ];
 

@@ -56,6 +56,14 @@ const icons = {
   sliders: ["M4 6h8", "M16 6h4", "M4 12h3", "M11 12h9", "M4 18h10", "M18 18h2", "M12 4v4", "M7 10v4", "M14 16v4"],
   check: ["M5 12l4 4L19 6"],
   calendar: ["M5 4v3", "M19 4v3", "M4 9h16", "M5 6h14a1 1 0 0 1 1 1v12H4V7a1 1 0 0 1 1-1Z"],
+  issueEpic: ["M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z", "M4.5 7.8 12 12l7.5-4.2", "M12 12v8.5"],
+  issueRequirement: ["M6 3.5h8l4 4V20H6V3.5Z", "M14 3.5V8h4", "M9 12h6", "M9 16h5"],
+  issueTask: ["M5 5h14v14H5V5Z", "M8 12l2.5 2.5L16 9"],
+  issueBug: ["M8 8.5h8v7a4 4 0 0 1-8 0v-7Z", "M10 8.5V6a2 2 0 0 1 4 0v2.5", "M4 10h4", "M16 10h4", "M4 15h4", "M16 15h4", "M7 19l2-2", "M17 19l-2-2"],
+  issueDebt: ["M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-3-3 2.5-2.5Z"],
+  issueRisk: ["M12 3 21 20H3L12 3Z", "M12 9v5", "M12 17h.01"],
+  issueChange: ["M7 7h11l-3-3", "M18 7l-3 3", "M17 17H6l3 3", "M6 17l3-3"],
+  milestone: ["M5 4v17", "M6 5h11l-2 4 2 4H6V5Z"],
 };
 
 const paths = computed(() => icons[props.name] || icons.more);

@@ -40,7 +40,7 @@ This review covers only the real App Shell, project context header, project tabs
 
 9. **Does the UI still depend on many borders for grouping?**
 
-   Less than the baseline. The shell and project workspace use continuous surfaces, spacing, and dividers. Borders remain where they communicate a real boundary: popovers, the list container, board cards, and focus/drop targets.
+   Less than the baseline. The shell and project workspace use continuous surfaces, spacing, and dividers. The issue list no longer has an outer card border; borders remain where they communicate a real boundary: popovers, board cards, and focus/drop targets.
 
 10. **Does the UI still rely heavily on low-contrast small text?**
 
@@ -48,15 +48,40 @@ This review covers only the real App Shell, project context header, project tabs
 
 11. **What are the three most visible remaining differences from Plane?**
 
-    - Plane has deeper workspace/project navigation and more project-specific sections in the Sidebar; GridProject retains its smaller global product navigation because no new business modules were allowed.
-    - Plane cards can show richer labels, real member photos, and more expressive item-type icons. GridProject's current data model provides names and types but no label collection or avatar media, so R1 uses initials and restrained generated marks.
-    - Plane exposes richer layout/grouping/display controls and a mature command-search experience. GridProject preserves its existing view, sort, filter, and density capabilities rather than inventing unsupported grouping rules.
+    - Plane has deeper workspace/project navigation. GridProject now provides both an optional compact current-project Sidebar and a Tabs-only variant, but the final navigation choice remains pending user review.
+    - Plane cards use richer production labels, member photos, and more varied work-item metadata. GridProject R1 keeps real data fields and initials; labels in the dense screenshot scenario are local visual-review data only.
+    - Plane exposes mature grouping, saved views, layout controls, and command actions. GridProject R1 combines view, sort, and density controls without inventing unsupported grouping or business rules.
 
 12. **Which pages should a later round extend to?**
 
     Dashboard modules, project library rows, issue detail drawer, Gantt chrome, time entry, cost, people, and settings can be reviewed in later rounds. They were intentionally left outside R1 except for inheriting the new App Shell.
 
-## Screenshot Evidence
+## Revision Evidence
+
+The revision measurements are recorded in `artifacts/plane-r1-revision/report.json`:
+
+- Desktop project header: 80px.
+- Mobile project header: 74px before Tabs.
+- Mobile Toolbar: one 45px action row when no filters are active.
+- Dense list: 24 local-only visual-review issues.
+- Dense board: 16 local-only cards distributed 6 / 5 / 3 / 2.
+- All revision captures: zero page-level horizontal overflow, console errors, or page errors.
+
+Sidebar choice remains open:
+
+- A: `artifacts/plane-r1-revision/sidebar-a-project-nav-1440x900.png`
+- B: `artifacts/plane-r1-revision/sidebar-b-tabs-only-1440x900.png`
+
+Component comparisons:
+
+- `artifacts/plane-r1-revision/comparison/sidebar-comparison.png`
+- `artifacts/plane-r1-revision/comparison/project-header-comparison.png`
+- `artifacts/plane-r1-revision/comparison/toolbar-comparison.png`
+- `artifacts/plane-r1-revision/comparison/issue-row-comparison.png`
+- `artifacts/plane-r1-revision/comparison/kanban-column-comparison.png`
+- `artifacts/plane-r1-revision/comparison/kanban-card-comparison.png`
+
+## Original R1 Evidence
 
 - `artifacts/plane-r1/after/project-list-1440x900.png`
 - `artifacts/plane-r1/after/project-board-1440x900.png`
@@ -68,4 +93,4 @@ This review covers only the real App Shell, project context header, project tabs
 - `artifacts/plane-r1/comparison/project-board-comparison.png`
 - `artifacts/plane-r1/comparison/shell-comparison.png`
 
-The original automated capture report is `artifacts/plane-r1/report.json`. The visual-acceptance revision produces new evidence under `artifacts/plane-r1-revision/`; neither report marks visual alignment as accepted.
+The original automated capture report is `artifacts/plane-r1/report.json`. The revision report is `artifacts/plane-r1-revision/report.json`; neither report marks visual alignment as accepted.

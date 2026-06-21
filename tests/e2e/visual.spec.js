@@ -19,7 +19,7 @@ const visualCases = [
     await page.getByRole("button", { name: "新建事项" }).click();
   }],
   ["filters-expanded", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", async (page) => {
-    await page.getByRole("button", { name: "更多筛选" }).click();
+    await page.locator(".filter-popover > summary").click();
   }],
   ["board", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF"],
   ["gantt", "/?view=project&project=crm&tab=%E7%94%98%E7%89%B9%E5%9B%BE"],
@@ -37,7 +37,7 @@ const zoomCases = [
   ["dashboard", "/?view=dashboard", "查看全部"],
   ["project-overview", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88", "新建事项"],
   ["issue-detail", "/?view=project&project=crm&tab=%E6%A6%82%E8%A7%88&issue=i1", "保存事项"],
-  ["board", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", "select"],
+  ["board", "/?view=project&project=crm&tab=%E7%9C%8B%E6%9D%BF", "board-menu"],
 ];
 
 const targetedScreenshotTolerance = new Map([
@@ -144,10 +144,11 @@ async function gotoAndSettle(page, url) {
 }
 
 async function assertCriticalControl(page, control) {
-  if (control === "select") {
-    const select = page.locator(".board select:visible, .board-mobile-list select:visible").first();
-    await expect(select).toBeVisible();
-    await expect(select).toBeEnabled();
+  if (control === "board-menu") {
+    const menu = page.locator(".issue-card .overflow-menu .icon-btn:visible").first();
+    await expect(menu).toBeVisible();
+    await expect(menu).toBeEnabled();
+    await expect(page.locator(".issue-card select")).toHaveCount(0);
     return;
   }
 

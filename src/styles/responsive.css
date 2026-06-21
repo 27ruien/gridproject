@@ -166,28 +166,33 @@
   }
 
   .project-context-header {
+    min-height: 0;
+    max-height: 152px;
     padding-top: 0;
   }
 
   .project-context-primary {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .project-context-title {
     min-width: 0;
-    flex: 1 1 calc(100% - 40px);
-    flex-wrap: wrap;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
   }
 
   .project-context-title h1 {
     max-width: 100%;
-    flex: 1 1 100%;
-    white-space: normal;
+    flex: 1 1 auto;
+    font-size: 18px;
+    line-height: 24px;
+    white-space: nowrap;
   }
 
   .project-context-actions {
-    width: 100%;
+    width: auto;
+    flex: 0 0 auto;
     justify-content: flex-end;
   }
 
@@ -204,15 +209,49 @@
   }
 
   .view-toolbar {
-    align-items: flex-start;
+    min-height: 44px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-050);
+    padding-block: var(--space-075);
   }
 
   .view-toolbar-main {
-    flex: 1 1 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
   }
 
-  .view-search {
-    width: min(180px, calc(100vw - 156px));
+  .desktop-view-search {
+    display: none;
+  }
+
+  .mobile-search-menu {
+    display: block;
+  }
+
+  .view-options-menu .toolbar-button > span {
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .filter-popover > summary > span {
+    display: none;
+  }
+
+  .view-toolbar > .create-issue-button {
+    width: 32px;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .view-toolbar > .create-issue-button > span {
+    display: none;
+  }
+
+  .view-toolbar-chips {
+    order: 3;
   }
 
   .filter-popover-panel {

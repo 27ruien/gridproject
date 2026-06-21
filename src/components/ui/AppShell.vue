@@ -22,21 +22,48 @@
         <IconButton class="mobile-close" icon="close" label="关闭导航" @click="mobileNavOpen = false" />
       </div>
 
-      <nav class="nav" aria-label="主导航">
-        <button
-          v-for="route in routes"
-          :key="route.key"
-          class="nav-item"
-          :class="{ active: currentView === route.key }"
-          :aria-label="route.label"
-          :data-tooltip="route.label"
-          type="button"
-          @click="navigate(route.key)"
-        >
-          <Icon :name="route.icon" />
-          <span>{{ route.label }}</span>
-        </button>
-      </nav>
+      <div class="sidebar-navigation">
+        <nav class="nav" aria-label="主导航">
+          <button
+            v-for="route in routes"
+            :key="route.key"
+            class="nav-item"
+            :class="{ active: currentView === route.key }"
+            :aria-label="route.label"
+            :data-tooltip="route.label"
+            type="button"
+            @click="navigate(route.key)"
+          >
+            <Icon :name="route.icon" />
+            <span>{{ route.label }}</span>
+          </button>
+        </nav>
+
+        <section v-if="projectContext" class="project-sidebar-context" aria-label="当前项目导航">
+          <header>
+            <span class="project-sidebar-mark" aria-hidden="true">{{ projectContext.name.slice(0, 1) }}</span>
+            <div>
+              <small>当前项目</small>
+              <strong :title="projectContext.name">{{ projectContext.name }}</strong>
+            </div>
+          </header>
+          <nav class="project-sidebar-nav" aria-label="当前项目视图">
+            <button
+              v-for="view in projectContext.views"
+              :key="view"
+              class="nav-item project-nav-item"
+              :class="{ active: projectContext.activeView === view }"
+              :aria-label="view"
+              :data-tooltip="view"
+              type="button"
+              @click="selectProjectView(view)"
+            >
+              <Icon :name="projectViewIcon(view)" />
+              <span>{{ view }}</span>
+            </button>
+          </nav>
+        </section>
+      </div>
 
       <details class="account-menu">
         <summary class="account-trigger" :data-tooltip="manager.name">
@@ -71,9 +98,10 @@ const props = defineProps({
   manager: { type: Object, required: true },
   projectCount: { type: Number, required: true },
   showLogout: { type: Boolean, default: false },
+  projectContext: { type: Object, default: null },
 });
 
-const emit = defineEmits(["navigate", "logout"]);
+const emit = defineEmits(["navigate", "logout", "project-view"]);
 const mobileNavOpen = ref(false);
 const navCollapsed = ref(false);
 const navPreference = "gridproject.navCollapsed";
@@ -95,6 +123,20 @@ onBeforeUnmount(() => {
 function navigate(routeKey) {
   emit("navigate", routeKey);
   mobileNavOpen.value = false;
+}
+
+function selectProjectView(view) {
+  emit("project-view", view);
+  mobileNavOpen.value = false;
+}
+
+function projectViewIcon(view) {
+  if (view === "概览") return "dashboard";
+  if (view === "看板") return "board";
+  if (view === "甘特图") return "calendar";
+  if (view === "版本") return "issueEpic";
+  if (view === "复盘") return "check";
+  return "list";
 }
 
 function toggleCollapsed() {

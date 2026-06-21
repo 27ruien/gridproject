@@ -8,13 +8,14 @@
   overflow-x: auto;
   padding-bottom: var(--space-100);
   overscroll-behavior-x: contain;
+  min-height: calc(100dvh - 246px);
 }
 
 .board-column {
-  min-height: 360px;
+  min-height: calc(100dvh - 254px);
   border: 1px solid transparent;
   border-radius: var(--radius-panel);
-  background: #f1f2f4;
+  background: #f3f4f6;
   padding: var(--space-075);
   display: grid;
   align-content: start;
@@ -38,7 +39,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-100);
-  background: #f1f2f4;
+  background: #f3f4f6;
   padding: var(--space-025) var(--space-050) var(--space-075);
 }
 
@@ -208,7 +209,27 @@
   -webkit-line-clamp: 2;
   font-size: var(--text-body);
   line-height: 20px;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.issue-card-labels {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-050);
+  overflow: hidden;
+}
+
+.issue-card-labels span {
+  max-width: 112px;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding: 2px var(--space-075);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .issue-card-footer {
@@ -218,11 +239,15 @@
 }
 
 .issue-card-footer .issue-owner-avatar {
+  margin-left: 0;
+}
+
+.issue-card-footer .owner-avatar-stack {
   margin-left: auto;
 }
 
 .board-empty-note {
-  min-height: 36px;
+  min-height: 32px;
   border: 1px dashed #d5dae1;
   border-radius: var(--radius-control);
   color: var(--subtle);

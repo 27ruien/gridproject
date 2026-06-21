@@ -54,7 +54,74 @@ export function applyVisualScenario(state, scenario) {
         updatedAt: new Date().toISOString(),
       };
     });
+    return;
   }
+
+  if (["plane-r1-list-dense", "plane-r1-board-dense"].includes(scenario)) {
+    const project = state.projects.find((entry) => entry.id === "crm") || state.projects[0];
+    if (!project) return;
+    const count = scenario === "plane-r1-list-dense" ? 24 : 16;
+    state.issues = createPlaneReviewIssues(project.id, count, scenario === "plane-r1-board-dense");
+  }
+}
+
+function createPlaneReviewIssues(projectId, count, boardMode) {
+  const statusSequence = boardMode
+    ? ["未开始", "未开始", "未开始", "未开始", "未开始", "未开始", "进行中", "进行中", "进行中", "进行中", "进行中", "已完成", "已完成", "已完成", "已验收", "已验收"]
+    : ["未开始", "进行中", "已完成", "已验收"];
+  const titles = [
+    "完善成员邀请后的首次进入体验",
+    "修复移动端筛选弹层遮挡事项标题的问题",
+    "梳理项目权限边界并补充验收条件",
+    "优化列表在中等宽度下的字段优先级",
+    "补齐看板卡片负责人和截止日期信息",
+    "实现发布前检查结果的清晰反馈",
+    "校准跨团队协作流程中的状态变化通知",
+    "验证超长事项标题在列表和看板中都能稳定换行且不会挤压相邻操作",
+    "处理无负责人事项的视觉提示",
+    "统一项目工作区的中文视图名称",
+    "复核高优先级缺陷的响应路径",
+    "改善键盘用户打开事项详情的焦点状态",
+  ];
+  const owners = ["林夏", "周程", "韩越", "陈澈", "宋闻"];
+  const types = boardMode
+    ? ["需求", "任务", "缺陷", "技术债", "任务", "Epic"]
+    : ["需求", "任务", "缺陷", "任务", "需求", "任务"];
+  const priorities = ["P1", "P2", "P0", "P1", "P2", "P1"];
+  const labels = [["前端", "体验"], ["客户反馈"], ["权限"], ["响应式"], ["看板"], ["发布"]];
+  const now = "2026-06-21T09:00:00.000Z";
+
+  return Array.from({ length: count }, (_item, index) => {
+    const unassigned = index % 7 === 6;
+    const multipleOwners = index % 6 === 0;
+    const issueOwnerList = unassigned ? [] : multipleOwners ? [owners[index % owners.length], owners[(index + 2) % owners.length]] : [owners[index % owners.length]];
+    const duePattern = index % 5;
+    const dueDate = duePattern === 0 ? "" : duePattern === 1 ? "2026-06-18" : duePattern === 2 ? "2026-06-23" : duePattern === 3 ? "2026-06-28" : "2026-07-04";
+
+    return {
+      id: `plane-r1-review-${index + 1}`,
+      code: `CRM-${String(201 + index).padStart(3, "0")}`,
+      projectId,
+      type: types[index % types.length],
+      title: `${titles[index % titles.length]}${index >= titles.length ? ` · 第 ${index + 1} 项` : ""}`,
+      status: statusSequence[index % statusSequence.length],
+      owner: issueOwnerList[0] || "未分配",
+      owners: issueOwnerList,
+      creator: "林夏",
+      priority: priorities[index % priorities.length],
+      labels: labels[index % labels.length],
+      startDate: `2026-06-${String(1 + (index % 18)).padStart(2, "0")}`,
+      dueDate,
+      estimatedHours: 8 + (index % 4) * 4,
+      actualHours: index % 3 === 0 ? 0 : 4 + (index % 5) * 2,
+      next: "完成验收条件并同步项目成员。",
+      description: "Plane R1 本地视觉验收数据，不写入持久化存储。",
+      comments: [],
+      activity: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
 }
 
 function formatDate(date) {

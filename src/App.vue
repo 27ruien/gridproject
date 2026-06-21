@@ -19,7 +19,9 @@
     :manager="currentManager"
     :project-count="projects.length"
     :show-logout="store.apiMode"
+    :project-context="projectSidebarContext"
     @navigate="setView"
+    @project-view="selectProjectView"
     @logout="logout"
   >
       <header class="topbar">
@@ -196,6 +198,7 @@
         :sort="workspaceSort"
         :page="workspacePage"
         :view-mode="workspaceViewMode"
+        :visual-review-mode="visualReviewMode"
         @create-issue="openIssueModal"
         @import-schedule="openScheduleImport"
         @open-issue="openIssue"
@@ -304,6 +307,8 @@ const workspaceUrlFilters = ref({});
 const workspaceSort = ref("");
 const workspacePage = ref("");
 const workspaceViewMode = ref("");
+const visualReviewMode = ref("");
+const projectNavigationMode = ref("tabs");
 const searchFocused = ref(false);
 const searchExpanded = ref(false);
 const searchRoot = ref(null);
@@ -356,6 +361,14 @@ const selectedIssueTemplate = computed(() => selectedIssueProject.value ? store.
 const selectedIssueTimeEntries = computed(() => selectedIssue.value ? store.getIssueTimeEntries(selectedIssue.value.id) : []);
 const editingProject = computed(() => editingProjectId.value ? store.getProject(editingProjectId.value) : null);
 const projectPermissions = computed(() => store.getProjectPermissions(project.value.id));
+const projectSidebarContext = computed(() => {
+  if (currentView.value !== "project" || projectNavigationMode.value !== "sidebar" || !project.value) return null;
+  return {
+    name: project.value.name,
+    views: template.value.views,
+    activeView: activeView.value,
+  };
+});
 const routesForUser = computed(() => routes.filter((route) => (
   (route.key !== "costs" || projects.value.some((entry) => store.getProjectPermissions(entry.id).canViewCost)) &&
   (route.key !== "users" || store.currentContext.value.isAdmin)
@@ -400,7 +413,10 @@ const showLogin = computed(() => store.apiMode && store.auth.initialized && !sto
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
   const qaScenario = params.get("qa");
-  if (isLocalQaScenario(qaScenario)) applyVisualScenario(store.state, qaScenario);
+  if (isLocalQaScenario(qaScenario)) {
+    visualReviewMode.value = qaScenario;
+    applyVisualScenario(store.state, qaScenario);
+  }
   applyUrlState(params);
   syncUrlState("replace");
   document.addEventListener("pointerdown", handleOutsideSearch);
@@ -940,12 +956,13 @@ function applyUrlState(params) {
   workspaceSort.value = params.get("sort") || "";
   workspacePage.value = params.get("page") || "";
   workspaceViewMode.value = params.get("viewMode") || "";
+  projectNavigationMode.value = params.get("projectNav") === "sidebar" ? "sidebar" : "tabs";
   if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
   if (window.location.pathname === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
   if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) {
     currentView.value = view === "users" && !store.currentContext.value.isAdmin ? "dashboard" : view;
   }
-  if (tab) activeView.value = tab;
+  if (tab) activeView.value = normalizeProjectViewName(tab);
   selectedIssueId.value = issueId && store.getIssue(issueId) ? issueId : null;
   window.setTimeout(() => {
     isRestoringUrl.value = false;
@@ -968,6 +985,7 @@ function syncUrlState(mode = "replace") {
   if (workspaceSort.value) params.set("sort", workspaceSort.value);
   if (workspacePage.value) params.set("page", workspacePage.value);
   if (workspaceViewMode.value) params.set("viewMode", workspaceViewMode.value);
+  if (currentView.value === "project" && projectNavigationMode.value === "sidebar") params.set("projectNav", "sidebar");
   const nextUrl = `${window.location.pathname}?${params.toString()}`;
   if (nextUrl === lastUrl.value || nextUrl === `${window.location.pathname}${window.location.search}`) return;
   lastUrl.value = nextUrl;
@@ -988,5 +1006,16 @@ function parseFilters(value) {
   } catch {
     return {};
   }
+}
+
+function normalizeProjectViewName(viewName) {
+  return {
+    Backlog: "待办事项",
+    Sprint: "迭代",
+  }[viewName] || viewName;
+}
+
+function selectProjectView(view) {
+  activeView.value = view;
 }
 </script>

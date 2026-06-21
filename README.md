@@ -124,3 +124,4 @@ npm run release:check:server
 - [Permissions Matrix](docs/permissions-matrix.md)
 - [Deployment](docs/deployment.md)
 - [GitHub Actions Dev Deployment](docs/github-actions-dev-deployment.md)
+- [Plane R1 Visual Review](docs/GridProject_Plane_R1_Review.md)
