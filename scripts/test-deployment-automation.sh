@@ -44,6 +44,7 @@ assert_before() {
 
 shell_files=(
   scripts/run-pnpm.sh
+  scripts/update-dev.sh
   scripts/deploy-dev.sh
   scripts/rollback-dev.sh
   scripts/setup-deploy-user.sh
@@ -63,34 +64,26 @@ fi
 
 if command -v ruby >/dev/null 2>&1; then
   ruby -e 'require "yaml"; ARGV.each { |file| YAML.load_file(file) }' \
-    .github/workflows/deploy-dev.yml \
     .github/workflows/rollback-dev.yml \
     .github/workflows/ci.yml
 else
   fail "Ruby is required for the local Workflow YAML syntax check."
 fi
 
-assert_contains .github/workflows/deploy-dev.yml '^name: Deploy Dev$' "Deploy workflow name is missing"
-assert_contains .github/workflows/deploy-dev.yml 'workflow_dispatch:' "Deploy workflow must be manual"
-assert_contains .github/workflows/deploy-dev.yml 'confirm_environment' "Deploy confirmation input is missing"
-assert_contains .github/workflows/deploy-dev.yml 'CONFIRM_ENVIRONMENT.*!=.*dev' "Deploy must reject non-Dev confirmation"
-assert_contains .github/workflows/deploy-dev.yml 'environment: dev' "Deploy job must use the Dev environment"
-assert_contains .github/workflows/deploy-dev.yml 'group: gridproject-dev-deployment' "Deploy concurrency group is missing"
-assert_contains .github/workflows/deploy-dev.yml 'cancel-in-progress: false' "Deploy concurrency must not cancel active work"
-assert_contains .github/workflows/deploy-dev.yml 'StrictHostKeyChecking=yes' "Strict SSH host checking is required"
-assert_contains .github/workflows/deploy-dev.yml 'BatchMode=yes' "SSH password prompts must be disabled"
-assert_contains .github/workflows/deploy-dev.yml 'chmod 600.*SSH_KEY_PATH' "Temporary SSH key permissions are unsafe"
-assert_not_contains .github/workflows/deploy-dev.yml 'uses:.*(ssh|scp)' "Third-party SSH actions are forbidden"
-assert_contains .github/workflows/deploy-dev.yml 'git bundle create.*gridproject-dev\.bundle' "Deploy workflow must create a Git bundle"
-assert_contains .github/workflows/deploy-dev.yml '^[[:space:]]+scp[[:space:]]*\\' "Deploy workflow must upload the bundle with SCP"
-assert_contains .github/workflows/deploy-dev.yml 'git bundle verify.*REMOTE_BUNDLE_PATH' "Server must verify the uploaded bundle"
-assert_contains .github/workflows/deploy-dev.yml 'git fetch "\$REMOTE_BUNDLE_PATH" refs/heads/gridproject-deploy-bundle:refs/remotes/gridproject-deploy-bundle/main' "Server must fetch the target commit from the local bundle"
-assert_contains .github/workflows/deploy-dev.yml 'imported_commit.*==.*TARGET_COMMIT' "Bundle import SHA must match TARGET_COMMIT"
-assert_contains .github/workflows/deploy-dev.yml 'GRIDPROJECT_LOCAL_BUNDLE_DEPLOY=1 bash scripts/deploy-dev\.sh' "Server must run deploy-dev.sh in local bundle mode"
-assert_contains .github/workflows/deploy-dev.yml 'trap cleanup_bundle EXIT' "Remote bundle cleanup trap is missing"
-assert_contains .github/workflows/deploy-dev.yml 'rm -f --.*REMOTE_BUNDLE_PATH' "Temporary bundle cleanup is missing"
+[[ ! -e .github/workflows/deploy-dev.yml ]] || fail "Deploy Dev workflow must be removed."
+[[ -x scripts/update-dev.sh ]] || fail "scripts/update-dev.sh must exist and be executable."
+assert_contains scripts/update-dev.sh 'EUID.*-ne 0' "Dev update must require root"
+assert_contains scripts/update-dev.sh 'PROJECT_DIR="/opt/gridproject"' "Dev update must use /opt/gridproject"
+assert_contains scripts/update-dev.sh 'sudo -u "\$DEPLOY_USER" -H bash -lc' "Git and project commands must run as deploy"
+assert_contains scripts/update-dev.sh 'git fetch origin main' "Dev update must use the configured origin"
+assert_not_contains scripts/update-dev.sh '(github\.com|gitclone\.com|git[[:space:]]+bundle)' "Dev update must not hardcode a host or use Git bundles"
+assert_contains scripts/update-dev.sh 'bash scripts/deploy-dev\.sh.*TARGET_COMMIT.*false' "Dev update must call deploy-dev.sh with seed disabled"
+assert_contains scripts/update-dev.sh 'git status --porcelain --untracked-files=no' "Dev update must check tracked worktree changes"
+assert_contains scripts/update-dev.sh 'http://127\.0\.0\.1:3000/api/health' "Dev update must check the API on port 3000"
+assert_contains scripts/update-dev.sh 'http://127\.0\.0\.1/' "Dev update must check the frontend on port 80"
+assert_not_contains scripts/update-dev.sh '5173' "Dev update must not check the Vite port"
 
-workflow_secrets="$(grep -Eo 'secrets\.[A-Z0-9_]+' .github/workflows/deploy-dev.yml .github/workflows/rollback-dev.yml \
+workflow_secrets="$(grep -Eo 'secrets\.[A-Z0-9_]+' .github/workflows/rollback-dev.yml \
   | sed 's/.*secrets\.//' \
   | sort -u \
   | tr '\n' ' ')"
@@ -98,13 +91,13 @@ workflow_secrets="$(grep -Eo 'secrets\.[A-Z0-9_]+' .github/workflows/deploy-dev.
   || fail "Workflows may read only the four approved Dev SSH secrets."
 
 assert_contains scripts/deploy-dev.sh 'flock -n' "Deployment lock must be non-blocking"
-assert_contains scripts/deploy-dev.sh 'git status --porcelain' "Dirty worktree check is missing"
-assert_contains scripts/deploy-dev.sh 'target.*does not resolve to a commit' "Missing target commits must be rejected"
-assert_contains scripts/deploy-dev.sh 'GRIDPROJECT_LOCAL_BUNDLE_DEPLOY' "Local bundle deployment mode is missing"
-assert_contains scripts/deploy-dev.sh 'bundle deployment requires current HEAD to match target commit' "Bundle mode must verify the current HEAD"
-assert_contains scripts/deploy-dev.sh 'git fetch origin --prune --tags' "Default deployment mode must keep remote fetch validation"
-assert_contains scripts/deploy-dev.sh 'target commit is not reachable from the remote repository' "Default deployment mode must keep remote reachability validation"
-assert_before scripts/deploy-dev.sh 'GRIDPROJECT_LOCAL_BUNDLE_DEPLOY' 'git fetch origin --prune --tags' "Bundle mode must branch before any origin fetch"
+assert_contains scripts/deploy-dev.sh 'git status --porcelain --untracked-files=no' "Tracked worktree check is missing"
+assert_contains scripts/deploy-dev.sh 'git cat-file -e.*TARGET_INPUT' "Missing local target commits must be rejected"
+assert_contains scripts/deploy-dev.sh 'git cat-file -t.*TARGET_INPUT' "Target object type must be checked"
+assert_contains scripts/deploy-dev.sh '\[\[ -n.*TARGET_COMMIT' "Resolved target commit must be non-empty"
+assert_contains scripts/deploy-dev.sh 'Current HEAD does not match target commit\.' "HEAD must match the target commit"
+assert_not_contains scripts/deploy-dev.sh 'git[[:space:]]+fetch' "deploy-dev.sh must not fetch from a remote"
+assert_not_contains scripts/deploy-dev.sh '(GRIDPROJECT_LOCAL_BUNDLE_DEPLOY|git[[:space:]]+bundle)' "Bundle deployment logic must be removed"
 assert_contains scripts/deploy-dev.sh 'db:safety:dev' "Dev database safety check is missing"
 assert_contains scripts/deploy-dev.sh 'db_port.*5432' "Dev database port must be exact"
 assert_contains scripts/deploy-dev.sh '5433.*forbidden' "Production database port must be rejected"
@@ -142,6 +135,7 @@ fallback_output="$(PATH="$TEMP_DIR/bin:/usr/bin:/bin" /bin/bash scripts/run-pnpm
 
 assert_contains scripts/setup-deploy-user.sh 'NOPASSWD:.*restart gridproject-dev' "Limited service restart sudo rule is missing"
 assert_not_contains scripts/setup-deploy-user.sh 'NOPASSWD:[[:space:]]+ALL' "Full passwordless sudo is forbidden"
-assert_not_contains .github/workflows/deploy-dev.yml '(DATABASE_URL|ADMIN_PASSWORD|SESSION_SECRET|gridproject_prod)' "Deployment workflow must not contain application or database secrets"
+assert_contains scripts/setup-deploy-user.sh 'setfacl.*SERVICE_USER.*:r' "Service user must receive read access to server/.env"
+assert_contains scripts/setup-deploy-user.sh 'setfacl.*SERVICE_USER.*:x' "Service user must receive path traversal access"
 
 echo "Deployment automation static tests passed."

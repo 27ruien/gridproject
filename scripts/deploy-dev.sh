@@ -31,7 +31,7 @@ STATUS="failed"
 RECORD_FILE=""
 
 usage() {
-  echo "Usage: scripts/deploy-dev.sh <target-ref-or-sha> <run-seed:true|false>" >&2
+  echo "Usage: scripts/deploy-dev.sh <target-commit> <run-seed:true|false>" >&2
 }
 
 fail() {
@@ -98,35 +98,6 @@ run_pnpm() {
   else
     fail "pnpm is unavailable and npx fallback is not installed."
   fi
-}
-
-resolve_target_commit() {
-  local candidate
-  for candidate in "$TARGET_INPUT" "origin/$TARGET_INPUT" "refs/remotes/origin/$TARGET_INPUT" "refs/tags/$TARGET_INPUT"; do
-    if git rev-parse --verify --quiet "${candidate}^{commit}" >/dev/null; then
-      git rev-parse "${candidate}^{commit}"
-      return 0
-    fi
-  done
-  return 1
-}
-
-is_remote_commit() {
-  local commit="$1"
-  local remote_ref
-  while IFS= read -r remote_ref; do
-    if git merge-base --is-ancestor "$commit" "$remote_ref"; then
-      return 0
-    fi
-  done < <(git for-each-ref --format='%(refname)' refs/remotes/origin)
-
-  git ls-remote origin 'refs/tags/*' 'refs/tags/*^{}' 2>/dev/null \
-    | awk '{print $1}' \
-    | grep -Fxq "$commit"
-}
-
-resolve_local_bundle_target() {
-  git rev-parse --verify "${TARGET_INPUT}^{commit}"
 }
 
 validate_database_url() {
@@ -280,7 +251,7 @@ RECORD_FILE="$STATE_DIR/deploy-$(date -u +%Y%m%d-%H%M%S)-$$.record"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 cd "$PROJECT_DIR"
-[[ -z "$(git status --porcelain)" ]] || fail "Git worktree is dirty; no reset or cleanup was performed."
+[[ -z "$(git status --porcelain --untracked-files=no)" ]] || fail "tracked Git worktree changes are present; no reset or cleanup was performed."
 CURRENT_COMMIT="$(git rev-parse HEAD)"
 FINAL_COMMIT="$CURRENT_COMMIT"
 ENV_HASH="$(sha256sum "$ENV_FILE" | awk '{print $1}')"
@@ -289,14 +260,11 @@ echo "Deployment started at $START_TIME by $RUN_USER."
 echo "Current commit: $CURRENT_COMMIT"
 echo "Requested target: $TARGET_INPUT"
 
-if [[ "${GRIDPROJECT_LOCAL_BUNDLE_DEPLOY:-0}" == "1" ]]; then
-  TARGET_COMMIT="$(resolve_local_bundle_target)" || fail "target '$TARGET_INPUT' does not resolve to a commit."
-  [[ "$CURRENT_COMMIT" == "$TARGET_COMMIT" ]] || fail "bundle deployment requires current HEAD to match target commit."
-else
-  git fetch origin --prune --tags
-  TARGET_COMMIT="$(resolve_target_commit)" || fail "target '$TARGET_INPUT' does not resolve to a commit."
-  is_remote_commit "$TARGET_COMMIT" || fail "target commit is not reachable from the remote repository."
-fi
+git cat-file -e "$TARGET_INPUT" 2>/dev/null || fail "target '$TARGET_INPUT' does not exist in the local repository."
+[[ "$(git cat-file -t "$TARGET_INPUT")" == "commit" ]] || fail "target '$TARGET_INPUT' is not a commit."
+TARGET_COMMIT="$(git rev-parse "$TARGET_INPUT")"
+[[ -n "$TARGET_COMMIT" ]] || fail "target commit is empty."
+[[ "$CURRENT_COMMIT" == "$TARGET_COMMIT" ]] || fail "Current HEAD does not match target commit."
 echo "Target commit: $TARGET_COMMIT"
 
 set -a
@@ -321,9 +289,8 @@ fi
 BACKUP_RESULT="success"
 retain_recent_backups
 
-git checkout --detach "$TARGET_COMMIT"
-[[ -r "$ENV_FILE" ]] || fail "server/.env disappeared after checkout."
-[[ "$(sha256sum "$ENV_FILE" | awk '{print $1}')" == "$ENV_HASH" ]] || fail "server/.env changed during checkout."
+[[ -r "$ENV_FILE" ]] || fail "server/.env disappeared before deployment."
+[[ "$(sha256sum "$ENV_FILE" | awk '{print $1}')" == "$ENV_HASH" ]] || fail "server/.env changed before deployment."
 
 npm ci
 run_pnpm --dir server install --frozen-lockfile

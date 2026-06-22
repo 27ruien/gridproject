@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 readonly DEPLOY_USER="deploy"
 readonly DEPLOY_GROUP="deploy"
+readonly SERVICE_USER="gridproject"
 PUBLIC_KEY_FILE=""
 
 usage() {
@@ -31,6 +32,7 @@ done
 [[ "$(id -u)" == "0" ]] || fail "this script must be run as root through sudo."
 [[ -n "$PUBLIC_KEY_FILE" && -r "$PUBLIC_KEY_FILE" ]] || fail "a readable public key file is required."
 command -v setfacl >/dev/null 2>&1 || fail "setfacl is required for scoped file and /var/www access."
+id "$SERVICE_USER" >/dev/null 2>&1 || fail "$SERVICE_USER service user does not exist."
 
 PUBLIC_KEY="$(tr -d '\r\n' < "$PUBLIC_KEY_FILE")"
 [[ "$PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521))[[:space:]] ]] \
@@ -60,7 +62,9 @@ fi
 [[ -d /opt/gridproject/.git ]] || fail "/opt/gridproject must already be a Git repository."
 find /opt/gridproject -path /opt/gridproject/server/.env -prune -o -exec chown "$DEPLOY_USER:$DEPLOY_GROUP" {} +
 if [[ -e /opt/gridproject/server/.env ]]; then
-  setfacl -m "u:${DEPLOY_USER}:r" /opt/gridproject/server/.env
+  chmod o-rwx /opt/gridproject/server/.env
+  setfacl -m "u:${DEPLOY_USER}:r,u:${SERVICE_USER}:r" /opt/gridproject/server/.env
+  setfacl -m "u:${SERVICE_USER}:x" /opt/gridproject /opt/gridproject/server
 fi
 
 install -d -m 750 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" \
