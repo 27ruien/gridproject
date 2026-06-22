@@ -63,8 +63,14 @@
   .create-layout,
   .schedule-import-layout,
   .project-form-content,
-  .settings-form {
+  .settings-form,
+  .platform-settings-shell {
     grid-template-columns: 1fr;
+  }
+
+  .platform-settings-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
   }
 
   .drawer,
@@ -184,6 +190,24 @@
   .timeline-behavior,
   .key-date-editor-grid {
     grid-template-columns: 1fr;
+  }
+
+  .platform-settings-shell {
+    min-height: 0;
+  }
+
+  .platform-settings-sidebar {
+    padding: var(--space-150);
+  }
+
+  .platform-settings-form {
+    padding: var(--space-200) var(--space-150) max(var(--space-400), env(safe-area-inset-bottom));
+  }
+
+  .platform-settings-form > header,
+  .platform-brand-preview {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .project-overview-main {

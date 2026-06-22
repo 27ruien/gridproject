@@ -621,23 +621,120 @@
   font-size: var(--text-caption);
 }
 
-.settings-panel {
-  max-width: 780px;
+.platform-settings-view {
+  min-width: 0;
 }
 
-.settings-form {
+.platform-settings-shell {
+  min-height: min(720px, calc(100vh - var(--topbar-height) - var(--space-400)));
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-200);
+  grid-template-columns: 260px minmax(0, 860px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  overflow: hidden;
 }
 
-.brand-preview {
-  min-height: 140px;
+.platform-settings-sidebar {
+  border-right: 1px solid var(--line);
+  background: var(--surface-subtle);
+  padding: var(--space-200);
+  display: grid;
+  align-content: start;
+  gap: var(--space-150);
+}
+
+.platform-settings-sidebar nav {
+  display: grid;
+  gap: var(--space-050);
+}
+
+.platform-settings-sidebar button {
+  min-height: 52px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  padding: var(--space-075) var(--space-100);
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-100);
+  text-align: left;
+}
+
+.platform-settings-sidebar button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--brand);
+}
+
+.platform-settings-sidebar button > span:last-child,
+.platform-brand-preview > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-025);
+}
+
+.platform-settings-sidebar small,
+.platform-brand-preview small {
+  color: var(--subtle);
+}
+
+.platform-settings-form {
+  width: min(860px, 100%);
+  padding: var(--space-400) clamp(28px, 5vw, 72px);
+  align-content: start;
+}
+
+.platform-settings-form > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-150);
+}
+
+.platform-settings-form > header p:last-child {
+  color: var(--muted);
+}
+
+.platform-save-state {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding: 3px var(--space-100);
+  font-size: var(--text-caption);
+}
+
+.platform-save-state.dirty {
+  border-color: color-mix(in srgb, var(--amber) 42%, var(--line));
+  background: #fffaf0;
+  color: #8a5a10;
+}
+
+.platform-brand-row {
+  display: grid;
+  gap: var(--space-100);
+}
+
+.platform-brand-preview {
+  min-height: 96px;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--surface-subtle);
-  display: grid;
-  place-items: center;
+  padding: var(--space-200);
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+}
+
+.platform-brand-preview .brand-mark {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  font-size: 18px;
 }
 
 .toast {
