@@ -33,6 +33,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .people-directory-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .cost-overview-band {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -168,6 +172,7 @@
   .cost-week-filter,
   .cost-toolbar,
   .user-toolbar,
+  .people-directory-bar,
   .timesheet-toolbar,
   .missing-dates-panel {
     align-items: stretch;
@@ -403,7 +408,8 @@
   }
 
   .cost-toolbar,
-  .user-toolbar {
+  .user-toolbar,
+  .people-directory-bar {
     grid-template-columns: 1fr;
   }
 
@@ -453,6 +459,8 @@
   .timesheet-week-table,
   .cost-table-head,
   .cost-table-row,
+  .user-table-head,
+  .user-table-row,
   .board,
   .gantt-workspace {
     display: none;
@@ -462,6 +470,7 @@
   .issue-mobile-list,
   .timesheet-mobile-list,
   .cost-mobile-list,
+  .people-mobile-list,
   .board-mobile-list,
   .gantt-mobile-list {
     display: grid;

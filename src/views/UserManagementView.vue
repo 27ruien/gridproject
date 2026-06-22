@@ -1,96 +1,164 @@
 <template>
-  <section class="view-stack">
-    <div class="panel">
+  <section class="view-stack people-view">
+    <div class="panel people-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">人员管理</p>
           <h2>组织人员</h2>
-          <p>{{ filteredRows.length }} / {{ users.length }} 人</p>
+          <p>{{ activeCount }} 位活跃成员 · {{ adminCount }} 位管理员 · {{ filteredRows.length }} / {{ users.length }} 人</p>
         </div>
-        <Button variant="primary" size="small" @click="openCreate">新增人员</Button>
+        <Button icon="plus" variant="primary" size="small" @click="openCreate">邀请成员</Button>
       </div>
 
-      <div class="user-toolbar">
+      <div class="people-directory-bar">
         <label>
           <span>搜索</span>
           <input v-model="search" type="search" placeholder="姓名或邮箱" />
         </label>
         <label>
-          <span>状态</span>
-          <select v-model="statusFilter">
-            <option value="">全部状态</option>
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
+          <span>执行团队</span>
+          <select v-model="teamFilter">
+            <option value="">全部团队</option>
+            <option v-for="team in teamOptions" :key="team" :value="team">{{ team }}</option>
           </select>
         </label>
         <label>
           <span>角色</span>
           <select v-model="roleFilter">
             <option value="">全部角色</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="MEMBER">MEMBER</option>
+            <option value="ADMIN">管理员</option>
+            <option value="MEMBER">成员</option>
+          </select>
+        </label>
+        <label>
+          <span>状态</span>
+          <select v-model="statusFilter">
+            <option value="">全部状态</option>
+            <option value="ACTIVE">活跃</option>
+            <option value="INACTIVE">停用</option>
           </select>
         </label>
         <label>
           <span>排序</span>
           <select v-model="sort">
             <option value="updatedAt:desc">最近更新</option>
-            <option value="createdAt:desc">最近创建</option>
+            <option value="activity:desc">最近活动</option>
+            <option value="projects:desc">项目数量</option>
             <option value="name:asc">姓名 A-Z</option>
             <option value="role:asc">角色</option>
           </select>
         </label>
       </div>
 
-      <div class="user-table">
-        <div class="user-table-head">
-          <span>姓名</span><span>邮箱</span><span>角色</span><span>状态</span><span>负责项目</span><span>参与项目</span><span>创建时间</span><span>最后更新</span><span>操作</span>
+      <div class="user-table people-table">
+        <div class="user-table-head people-table-head">
+          <span>成员</span><span>角色</span><span>状态</span><span>执行团队</span><span>当前项目</span><span>最近活动</span><span>操作</span>
         </div>
         <div
           v-for="row in pagedRows"
           :key="row.id"
-          class="user-table-row"
+          class="user-table-row people-table-row"
           role="button"
           tabindex="0"
           @click="selectedUserId = row.id"
           @keydown.enter.prevent="selectedUserId = row.id"
           @keydown.space.prevent="selectedUserId = row.id"
         >
-          <span>
-            <strong>{{ row.name }}</strong>
-            <small>{{ row.deletedAt ? "已软删除" : "组织成员" }}</small>
+          <span class="people-identity">
+            <span class="people-avatar" aria-hidden="true">{{ initials(row.name) }}</span>
+            <span>
+              <strong>{{ row.name }}</strong>
+              <small>{{ row.email }}</small>
+            </span>
           </span>
-          <span>{{ row.email }}</span>
-          <span>{{ row.role }}</span>
-          <span>
-            <span class="status-lozenge" :class="row.status === 'ACTIVE' ? 'success' : 'neutral'">{{ row.status }}</span>
+          <span><StatusLozenge :label="roleLabel(row.role)" :tone="roleTone(row.role)" /></span>
+          <span><StatusLozenge :label="statusLabel(row.status)" :tone="row.status === 'ACTIVE' ? 'success' : 'neutral'" /></span>
+          <span class="people-team-tags">
+            <span v-for="team in visibleTeams(row)" :key="team">{{ team }}</span>
+            <small v-if="!row.executionTeams.length">未设置</small>
           </span>
-          <span>{{ row.stats.ownerProjectCount }}</span>
-          <span>{{ row.stats.participantProjectCount }}</span>
-          <span>{{ dateOnly(row.createdAt) }}</span>
-          <span>{{ dateOnly(row.updatedAt) }}</span>
-          <span class="user-actions">
-            <Button variant="ghost" size="tiny" @click.stop="selectedUserId = row.id">查看</Button>
-            <Button variant="ghost" size="tiny" @click.stop="openEdit(row)">编辑</Button>
-            <Button variant="ghost" size="tiny" @click.stop="openReset(row)">重置密码</Button>
-            <Button
-              variant="ghost"
-              size="tiny"
-              :disabled="row.id === context.userId"
-              @click.stop="row.status === 'ACTIVE' ? suspendUser(row) : restoreUser(row)"
-            >
-              {{ row.status === "ACTIVE" ? "停用" : "恢复" }}
-            </Button>
-            <Button variant="ghost" size="tiny" :disabled="row.id === context.userId" @click.stop="deleteUser(row)">删除</Button>
+          <span class="people-project-counts">
+            <strong>{{ row.stats.activeProjectCount }}</strong>
+            <small>负责 {{ row.stats.ownerProjectCount }} · 参与 {{ row.stats.participantProjectCount }}</small>
+          </span>
+          <span class="people-activity">
+            <strong>{{ row.recentActivity.primary }}</strong>
+            <small>{{ row.recentActivity.secondary }}</small>
+          </span>
+          <span class="people-actions" @click.stop>
+            <OverflowMenu label="人员操作">
+              <template #default="{ close }">
+                <button class="user-menu-option" type="button" @click="close(); selectedUserId = row.id">查看详情</button>
+                <button class="user-menu-option" type="button" @click="close(); openEdit(row)">编辑资料</button>
+                <button class="user-menu-option" type="button" @click="close(); openReset(row)">重置密码</button>
+                <button
+                  class="user-menu-option"
+                  type="button"
+                  :disabled="row.id === context.userId"
+                  @click="close(); requestStatusChange(row)"
+                >
+                  {{ row.status === "ACTIVE" ? "停用成员" : "恢复成员" }}
+                </button>
+                <button class="user-menu-option danger" type="button" :disabled="row.id === context.userId" @click="close(); requestDelete(row)">删除成员</button>
+              </template>
+            </OverflowMenu>
           </span>
         </div>
 
-        <div v-if="loading" class="data-table-empty">正在加载人员列表...</div>
-        <div v-else-if="errorText" class="data-table-empty">{{ errorText }}</div>
+        <div class="people-mobile-list">
+          <article
+            v-for="row in pagedRows"
+            :key="`mobile-${row.id}`"
+            class="people-mobile-card"
+            role="button"
+            tabindex="0"
+            @click="selectedUserId = row.id"
+            @keydown.enter.prevent="selectedUserId = row.id"
+            @keydown.space.prevent="selectedUserId = row.id"
+          >
+            <header>
+              <span class="people-identity">
+                <span class="people-avatar" aria-hidden="true">{{ initials(row.name) }}</span>
+                <span>
+                  <strong>{{ row.name }}</strong>
+                  <small>{{ row.email }}</small>
+                </span>
+              </span>
+              <span class="people-card-actions" @click.stop>
+                <OverflowMenu label="人员操作">
+                  <template #default="{ close }">
+                    <button class="user-menu-option" type="button" @click="close(); openEdit(row)">编辑资料</button>
+                    <button class="user-menu-option" type="button" @click="close(); openReset(row)">重置密码</button>
+                    <button
+                      class="user-menu-option"
+                      type="button"
+                      :disabled="row.id === context.userId"
+                      @click="close(); requestStatusChange(row)"
+                    >
+                      {{ row.status === "ACTIVE" ? "停用成员" : "恢复成员" }}
+                    </button>
+                    <button class="user-menu-option danger" type="button" :disabled="row.id === context.userId" @click="close(); requestDelete(row)">删除成员</button>
+                  </template>
+                </OverflowMenu>
+              </span>
+            </header>
+            <div class="people-mobile-meta">
+              <StatusLozenge :label="roleLabel(row.role)" :tone="roleTone(row.role)" />
+              <StatusLozenge :label="statusLabel(row.status)" :tone="row.status === 'ACTIVE' ? 'success' : 'neutral'" />
+              <span>{{ row.teamLabel }}</span>
+            </div>
+            <div class="people-mobile-metrics">
+              <span>负责 {{ row.stats.ownerProjectCount }}</span>
+              <span>参与 {{ row.stats.participantProjectCount }}</span>
+              <span>{{ row.recentActivity.primary }}</span>
+            </div>
+          </article>
+        </div>
+
         <EmptyState
-          v-else-if="!pagedRows.length"
+          v-if="!pagedRows.length"
           title="暂无匹配人员"
-          description="调整搜索、状态或角色筛选后再试。"
+          description="调整搜索、团队、状态或角色筛选后再试。"
         />
       </div>
 
@@ -110,30 +178,45 @@
       trap-focus
       @close="selectedUserId = ''"
     >
+      <template #actions>
+        <Button variant="ghost" size="small" @click="openEdit(selectedUser)">编辑</Button>
+        <Button variant="ghost" size="small" @click="openReset(selectedUser)">重置密码</Button>
+      </template>
+
       <div v-if="selectedUser" class="user-detail-stack">
+        <section class="people-profile-strip">
+          <span class="people-avatar large" aria-hidden="true">{{ initials(selectedUser.name) }}</span>
+          <span>
+            <strong>{{ selectedUser.name }}</strong>
+            <small>{{ selectedUser.email }}</small>
+          </span>
+          <StatusLozenge :label="roleLabel(selectedUser.role)" :tone="roleTone(selectedUser.role)" />
+          <StatusLozenge :label="statusLabel(selectedUser.status)" :tone="selectedUser.status === 'ACTIVE' ? 'success' : 'neutral'" />
+        </section>
+
         <section class="user-summary-grid">
           <article>
-            <span>姓名</span>
-            <strong>{{ selectedUser.name }}</strong>
+            <span>执行团队</span>
+            <strong>{{ selectedUser.teamLabel }}</strong>
           </article>
           <article>
-            <span>邮箱</span>
-            <strong>{{ selectedUser.email }}</strong>
-          </article>
-          <article>
-            <span>角色</span>
-            <strong>{{ selectedUser.role }}</strong>
-          </article>
-          <article>
-            <span>状态</span>
-            <strong>{{ selectedUser.status }}</strong>
+            <span>当前项目</span>
+            <strong>{{ selectedUser.stats.activeProjectCount }} 个</strong>
           </article>
           <article>
             <span>累计填报工时</span>
             <strong>{{ selectedUser.stats.totalHours }} 小时</strong>
           </article>
           <article>
-            <span>最近填报时间</span>
+            <span>最近活动</span>
+            <strong>{{ selectedUser.recentActivity.primary }}</strong>
+          </article>
+          <article>
+            <span>最近登录</span>
+            <strong>{{ dateOnly(selectedUser.lastLoginAt) || "暂无" }}</strong>
+          </article>
+          <article>
+            <span>最近填报</span>
             <strong>{{ selectedUser.stats.lastTimeEntryAt || "暂无" }}</strong>
           </article>
           <article>
@@ -141,7 +224,7 @@
             <strong>{{ dateOnly(selectedUser.createdAt) }}</strong>
           </article>
           <article>
-            <span>最后更新时间</span>
+            <span>最后更新</span>
             <strong>{{ dateOnly(selectedUser.updatedAt) }}</strong>
           </article>
         </section>
@@ -176,7 +259,7 @@
 
     <Modal
       :open="createOpen"
-      title="新增人员"
+      title="邀请成员"
       eyebrow="人员管理"
       size="large"
       @close="createOpen = false"
@@ -201,15 +284,15 @@
         <label>
           <span>角色</span>
           <select v-model="createForm.role">
-            <option value="MEMBER">MEMBER</option>
-            <option value="ADMIN">ADMIN</option>
+            <option value="MEMBER">成员</option>
+            <option value="ADMIN">管理员</option>
           </select>
         </label>
         <label>
           <span>状态</span>
           <select v-model="createForm.status">
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
+            <option value="ACTIVE">活跃</option>
+            <option value="INACTIVE">停用</option>
           </select>
         </label>
       </div>
@@ -240,15 +323,15 @@
         <label>
           <span>角色</span>
           <select v-model="editForm.role">
-            <option value="MEMBER">MEMBER</option>
-            <option value="ADMIN">ADMIN</option>
+            <option value="MEMBER">成员</option>
+            <option value="ADMIN">管理员</option>
           </select>
         </label>
         <label>
           <span>状态</span>
-          <select v-model="editForm.status">
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
+          <select v-model="editForm.status" :disabled="activeUserId === context.userId">
+            <option value="ACTIVE">活跃</option>
+            <option value="INACTIVE">停用</option>
           </select>
         </label>
       </div>
@@ -284,6 +367,15 @@
         <Button variant="primary" @click="submitReset">重置密码</Button>
       </template>
     </Modal>
+
+    <ConfirmDialog
+      :open="Boolean(confirmAction)"
+      :title="confirmAction?.title || '确认操作'"
+      :message="confirmAction?.message || ''"
+      :confirm-text="confirmAction?.confirmText || '确认'"
+      @cancel="confirmAction = null"
+      @confirm="runConfirmAction"
+    />
   </section>
 </template>
 
@@ -291,9 +383,12 @@
 import { computed, reactive, ref, watch } from "vue";
 import { getUserStats } from "../services/userService.js";
 import Button from "../components/ui/Button.vue";
+import ConfirmDialog from "../components/ui/ConfirmDialog.vue";
 import DetailPanel from "../components/ui/DetailPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import Modal from "../components/ui/Modal.vue";
+import OverflowMenu from "../components/ui/OverflowMenu.vue";
+import StatusLozenge from "../components/ui/StatusLozenge.vue";
 
 const props = defineProps({
   users: { type: Array, required: true },
@@ -308,43 +403,76 @@ const emit = defineEmits(["create", "update", "delete", "reset-password"]);
 const search = ref("");
 const roleFilter = ref("");
 const statusFilter = ref("");
+const teamFilter = ref("");
 const sort = ref("updatedAt:desc");
 const page = ref(1);
 const pageSize = 8;
-const loading = ref(false);
-const errorText = ref("");
 const selectedUserId = ref("");
 const activeUserId = ref("");
 const createOpen = ref(false);
 const editOpen = ref(false);
 const resetOpen = ref(false);
+const confirmAction = ref(null);
 const formError = ref("");
 const createForm = reactive(defaultCreateForm());
 const editForm = reactive({ name: "", email: "", role: "MEMBER", status: "ACTIVE" });
 const resetForm = reactive({ newPassword: "", confirmNewPassword: "" });
 
 const users = computed(() => props.users.filter((user) => user.organizationId === props.context.organizationId));
-const userRows = computed(() => users.value.map((user) => ({
-  ...safeUser(user),
-  stats: getUserStats(user.id, {
-    projects: props.projects,
-    projectMembers: props.projectMembers,
-    timeEntries: props.timeEntries,
-  }),
-})));
+const userRows = computed(() => users.value.map((user) => enrichUser(user)));
+const activeCount = computed(() => userRows.value.filter((user) => user.status === "ACTIVE" && !user.deletedAt).length);
+const adminCount = computed(() => userRows.value.filter((user) => user.role === "ADMIN" && user.status === "ACTIVE" && !user.deletedAt).length);
+const teamOptions = computed(() => [...new Set(userRows.value.flatMap((user) => user.executionTeams))].sort((a, b) => a.localeCompare(b, "zh-CN")));
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLowerCase();
   const rows = userRows.value
     .filter((user) => !keyword || `${user.name}${user.email}`.toLowerCase().includes(keyword))
     .filter((user) => !roleFilter.value || user.role === roleFilter.value)
-    .filter((user) => !statusFilter.value || user.status === statusFilter.value);
+    .filter((user) => !statusFilter.value || user.status === statusFilter.value)
+    .filter((user) => !teamFilter.value || user.executionTeams.includes(teamFilter.value));
   return sortUsers(rows);
 });
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRows.value.length / pageSize)));
 const pagedRows = computed(() => filteredRows.value.slice((page.value - 1) * pageSize, page.value * pageSize));
 const selectedUser = computed(() => userRows.value.find((user) => user.id === selectedUserId.value) || null);
 
-watch([search, roleFilter, statusFilter, sort], () => { page.value = 1; });
+watch([search, roleFilter, statusFilter, teamFilter, sort], () => { page.value = 1; });
+
+function enrichUser(user) {
+  const safe = safeUser(user);
+  const stats = getUserStats(user.id, {
+    projects: props.projects,
+    projectMembers: props.projectMembers,
+    timeEntries: props.timeEntries,
+  });
+  const executionTeams = deriveExecutionTeams(stats);
+  const activeProjectIds = new Set([...stats.ownerProjects, ...stats.participantProjects].map((project) => project.id));
+  return {
+    ...safe,
+    stats: {
+      ...stats,
+      activeProjectCount: activeProjectIds.size,
+    },
+    executionTeams,
+    teamLabel: executionTeams.length ? executionTeams.join("、") : "未设置",
+    recentActivity: recentActivity(safe, stats),
+  };
+}
+
+function deriveExecutionTeams(stats) {
+  const projectMap = new Map([...stats.ownerProjects, ...stats.participantProjects].map((project) => [project.id, project]));
+  return [...new Set([...projectMap.values()].flatMap((project) => project.executionTeams || []).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+}
+
+function visibleTeams(user) {
+  return user.executionTeams.slice(0, 3);
+}
+
+function recentActivity(user, stats) {
+  if (stats.lastTimeEntryAt) return { primary: stats.lastTimeEntryAt, secondary: "最近填报" };
+  if (user.lastLoginAt) return { primary: dateOnly(user.lastLoginAt), secondary: "最近登录" };
+  return { primary: "暂无", secondary: "活动记录" };
+}
 
 function openCreate() {
   Object.assign(createForm, defaultCreateForm());
@@ -353,6 +481,7 @@ function openCreate() {
 }
 
 function openEdit(user) {
+  if (!user) return;
   activeUserId.value = user.id;
   Object.assign(editForm, {
     name: user.name,
@@ -365,6 +494,7 @@ function openEdit(user) {
 }
 
 function openReset(user) {
+  if (!user) return;
   activeUserId.value = user.id;
   Object.assign(resetForm, { newPassword: "", confirmNewPassword: "" });
   formError.value = "";
@@ -396,16 +526,30 @@ function submitReset() {
   resetOpen.value = false;
 }
 
-function suspendUser(user) {
-  emit("update", user.id, { status: "INACTIVE" });
+function requestStatusChange(user) {
+  if (user.id === props.context.userId) return;
+  const inactive = user.status === "ACTIVE";
+  confirmAction.value = {
+    title: inactive ? "停用成员" : "恢复成员",
+    message: inactive ? `停用 ${user.name} 后，该成员将不能继续登录或填报工时。` : `恢复 ${user.name} 后，该成员可以重新参与项目协作。`,
+    confirmText: inactive ? "确认停用" : "确认恢复",
+    run: () => emit("update", user.id, { status: inactive ? "INACTIVE" : "ACTIVE" }),
+  };
 }
 
-function restoreUser(user) {
-  emit("update", user.id, { status: "ACTIVE" });
+function requestDelete(user) {
+  if (user.id === props.context.userId) return;
+  confirmAction.value = {
+    title: "删除成员",
+    message: `删除 ${user.name} 会将成员软删除并停用，历史项目和工时记录仍会保留。`,
+    confirmText: "确认删除",
+    run: () => emit("delete", user.id),
+  };
 }
 
-function deleteUser(user) {
-  emit("delete", user.id);
+function runConfirmAction() {
+  confirmAction.value?.run();
+  confirmAction.value = null;
 }
 
 function validatePasswordPair(password, confirmPassword, mismatchMessage) {
@@ -418,8 +562,31 @@ function validatePasswordPair(password, confirmPassword, mismatchMessage) {
 function sortUsers(rows) {
   if (sort.value === "name:asc") return [...rows].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
   if (sort.value === "role:asc") return [...rows].sort((a, b) => a.role.localeCompare(b.role));
-  if (sort.value === "createdAt:desc") return [...rows].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  if (sort.value === "projects:desc") return [...rows].sort((a, b) => b.stats.activeProjectCount - a.stats.activeProjectCount);
+  if (sort.value === "activity:desc") return [...rows].sort((a, b) => activityValue(b).localeCompare(activityValue(a)));
   return [...rows].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+function activityValue(user) {
+  return user.stats.lastTimeEntryAt || user.lastLoginAt || user.updatedAt || "";
+}
+
+function roleLabel(role) {
+  return role === "ADMIN" ? "管理员" : "成员";
+}
+
+function roleTone(role) {
+  return role === "ADMIN" ? "info" : "neutral";
+}
+
+function statusLabel(status) {
+  return status === "ACTIVE" ? "活跃" : "停用";
+}
+
+function initials(name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return "?";
+  return trimmed.length <= 2 ? trimmed : trimmed.slice(0, 2);
 }
 
 function safeUser(user) {
