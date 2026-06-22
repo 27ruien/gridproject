@@ -118,7 +118,7 @@
     </section>
 
     <section v-else-if="activeView === '甘特图'" :id="tabPanelId('甘特图')" class="panel" role="tabpanel" :aria-labelledby="tabId('甘特图')">
-      <GanttChart :issues="filteredVisibleIssues" @open="$emit('open-issue', $event)" />
+      <GanttChart :issues="filteredVisibleIssues" :project="project" @open="$emit('open-issue', $event)" />
     </section>
 
     <section v-else :id="tabPanelId(activeView)" class="workspace-view-surface issue-list-panel" :class="`is-${normalizedViewMode}`" role="tabpanel" :aria-labelledby="tabId(activeView)">
