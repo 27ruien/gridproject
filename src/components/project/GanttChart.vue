@@ -1,6 +1,6 @@
 <template>
   <section class="gantt">
-    <div class="gantt-head">
+    <div class="gantt-head gantt-desktop-head">
       <div>
         <h2>甘特图</h2>
         <p>任务身份固定在左侧，时间轴仅在内部横向浏览。</p>
@@ -8,7 +8,7 @@
       <span class="pill neutral">{{ filteredRows.length }} / {{ schedulableIssues.length }} 个任务</span>
     </div>
 
-    <div class="gantt-toolbar" aria-label="甘特图工具栏">
+    <div class="gantt-toolbar gantt-desktop-toolbar" aria-label="甘特图工具栏">
       <div class="segmented-control" role="group" aria-label="时间尺度">
         <button
           v-for="option in scaleOptions"
@@ -38,6 +38,68 @@
       </label>
       <Button variant="ghost" size="small" @click="setAllCollapsed(true)">折叠阶段</Button>
       <Button variant="ghost" size="small" @click="setAllCollapsed(false)">展开阶段</Button>
+    </div>
+
+    <div class="gantt-mobile-controls" aria-label="移动端排期工具栏">
+      <div class="gantt-mobile-controls-top">
+        <div>
+          <strong>排期列表</strong>
+          <span>{{ filteredRows.length }} / {{ schedulableIssues.length }} 个任务</span>
+        </div>
+        <FilterSurface
+          title="甘特筛选"
+          description="收窄移动排期列表并调整阶段展开"
+          aria-label="甘特筛选"
+          :active-count="ganttFilterCount"
+          @reset="resetGanttFilters"
+        >
+          <div class="filter-surface-group">
+            <strong>任务条件</strong>
+            <SelectField v-model="statusFilter" label="状态" :options="statusFilterOptions" />
+            <label class="gantt-sheet-check">
+              <input v-model="overdueOnly" type="checkbox" />
+              <span>仅看逾期</span>
+            </label>
+          </div>
+          <div class="filter-surface-group">
+            <strong>阶段展开</strong>
+            <div class="filter-surface-actions">
+              <Button variant="ghost" size="small" @click="setAllCollapsed(true)">折叠全部</Button>
+              <Button variant="ghost" size="small" @click="setAllCollapsed(false)">展开全部</Button>
+            </div>
+          </div>
+        </FilterSurface>
+      </div>
+
+      <div class="gantt-mobile-controls-row">
+        <div class="segmented-control" role="group" aria-label="移动端时间尺度">
+          <button
+            v-for="option in scaleOptions"
+            :key="`mobile-${option.value}`"
+            type="button"
+            :class="{ active: timeScale === option.value }"
+            @click="timeScale = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+        <Button variant="ghost" size="small" @click="jumpToday">今天</Button>
+        <Button
+          class="gantt-mobile-icon-button"
+          icon="search"
+          variant="ghost"
+          size="small"
+          :aria-label="mobileSearchOpen ? '收起甘特搜索' : '展开甘特搜索'"
+          @click="mobileSearchOpen = !mobileSearchOpen"
+        />
+      </div>
+
+      <label v-if="mobileSearchOpen" class="gantt-mobile-search">
+        <span class="sr-only">搜索排期</span>
+        <input v-model="search" data-autofocus type="search" placeholder="任务、编号、负责人" />
+      </label>
+
+      <FilterChips class="gantt-filter-hints" :chips="ganttFilterChips" @remove="clearGanttFilter" @clear-all="clearAllGanttFilters" />
     </div>
 
     <div v-if="loading" class="gantt-state-row">正在加载排期...</div>
@@ -117,7 +179,6 @@
     </div>
 
     <div v-if="!loading && !error && filteredRows.length" class="gantt-mobile-list">
-      <p class="gantt-mobile-note">移动端以排期列表查看；桌面甘特图请在更宽屏幕中打开。</p>
       <section v-for="group in visibleGroups" :key="`mobile-${group.key}`" class="gantt-mobile-group">
         <header>
           <strong>{{ group.label }}</strong>
@@ -148,6 +209,9 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import Button from "../ui/Button.vue";
+import FilterChips from "../ui/FilterChips.vue";
+import FilterSurface from "../ui/FilterSurface.vue";
+import SelectField from "../ui/SelectField.vue";
 import StatusLozenge from "../ui/StatusLozenge.vue";
 import EmptyState from "../common/EmptyState.vue";
 
@@ -169,11 +233,16 @@ const timeScale = ref("day");
 const search = ref("");
 const statusFilter = ref("");
 const overdueOnly = ref(false);
+const mobileSearchOpen = ref(false);
 const collapsedGroups = ref(new Set());
 const timelineScroll = ref(null);
 
 const schedulableIssues = computed(() => props.issues.filter((issue) => issue.startDate || issue.dueDate));
 const statusOptions = computed(() => [...new Set(schedulableIssues.value.map((issue) => issue.status).filter(Boolean))]);
+const statusFilterOptions = computed(() => [
+  { value: "", label: "全部状态" },
+  ...statusOptions.value.map((status) => ({ value: status, label: status })),
+]);
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLowerCase();
   return schedulableIssues.value
@@ -211,6 +280,14 @@ const timelineStyle = computed(() => ({
   "--gantt-tick-count": ticks.value.length,
   "--gantt-timeline-width": `${Math.max(760, ticks.value.length * tickWidth(timeScale.value))}px`,
 }));
+const ganttFilterCount = computed(() => Number(Boolean(statusFilter.value)) + Number(overdueOnly.value));
+const ganttFilterChips = computed(() => {
+  const chips = [];
+  if (search.value.trim()) chips.push({ key: "search", label: `搜索：${search.value.trim()}` });
+  if (statusFilter.value) chips.push({ key: "status", label: `状态：${statusFilter.value}` });
+  if (overdueOnly.value) chips.push({ key: "overdue", label: "仅看逾期" });
+  return chips;
+});
 
 watch([timeScale, filteredRows], () => {
   collapsedGroups.value = new Set([...collapsedGroups.value].filter((key) => visibleGroups.value.some((group) => group.key === key)));
@@ -225,6 +302,23 @@ function toggleGroup(key) {
 
 function setAllCollapsed(collapsed) {
   collapsedGroups.value = collapsed ? new Set(visibleGroups.value.map((group) => group.key)) : new Set();
+}
+
+function resetGanttFilters() {
+  statusFilter.value = "";
+  overdueOnly.value = false;
+  setAllCollapsed(false);
+}
+
+function clearGanttFilter(key) {
+  if (key === "search") search.value = "";
+  if (key === "status") statusFilter.value = "";
+  if (key === "overdue") overdueOnly.value = false;
+}
+
+function clearAllGanttFilters() {
+  search.value = "";
+  resetGanttFilters();
 }
 
 function jumpToday() {

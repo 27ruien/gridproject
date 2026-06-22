@@ -306,6 +306,26 @@
   font-size: var(--text-control);
 }
 
+.gantt-mobile-controls {
+  display: none;
+}
+
+.gantt-sheet-check {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  padding: 0 var(--space-100);
+  display: flex;
+  align-items: center;
+  gap: var(--space-075);
+}
+
+.gantt-sheet-check input {
+  width: 16px;
+  min-height: 16px;
+}
+
 .gantt-state-row {
   min-height: 96px;
   border: 1px dashed var(--line-strong);
@@ -597,4 +617,111 @@
   display: grid;
   gap: var(--space-075);
   text-align: left;
+}
+
+@media (max-width: 767px) {
+  .gantt {
+    gap: var(--space-100);
+  }
+
+  .gantt-desktop-head,
+  .gantt-desktop-toolbar {
+    display: none;
+  }
+
+  .gantt-mobile-controls {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    padding: var(--space-075);
+    display: grid;
+    gap: var(--space-075);
+  }
+
+  .gantt-mobile-controls-top,
+  .gantt-mobile-controls-row {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-075);
+  }
+
+  .gantt-mobile-controls-top > div {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-075);
+  }
+
+  .gantt-mobile-controls-top strong {
+    font-size: var(--text-section);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .gantt-mobile-controls-top span {
+    color: var(--muted);
+    font-size: var(--text-caption);
+    white-space: nowrap;
+  }
+
+  .gantt-mobile-controls-top .filter-surface {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .gantt-mobile-controls-top .filter-surface-trigger {
+    width: auto;
+    min-height: 32px;
+  }
+
+  .gantt-mobile-controls-row {
+    justify-content: flex-start;
+  }
+
+  .gantt-mobile-controls-row .segmented-control {
+    flex: 0 0 auto;
+  }
+
+  .gantt-mobile-controls-row .segmented-control button {
+    min-height: 28px;
+    padding: 0 var(--space-075);
+  }
+
+  .gantt-mobile-icon-button {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+  }
+
+  .gantt-mobile-search {
+    display: grid;
+  }
+
+  .gantt-mobile-search input {
+    width: 100%;
+    min-height: 34px;
+  }
+
+  .gantt-filter-hints {
+    margin: 0;
+  }
+
+  .gantt-mobile-list {
+    gap: var(--space-075);
+  }
+
+  .gantt-mobile-group {
+    gap: var(--space-075);
+  }
+
+  .gantt-mobile-group > header {
+    min-height: 30px;
+  }
+
+  .gantt-mobile-card {
+    border-radius: var(--radius-control);
+    padding: var(--space-100);
+  }
 }
