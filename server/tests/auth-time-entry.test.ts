@@ -137,14 +137,16 @@ test("personal profile, preferences and password updates are persisted safely", 
     assert.equal(preferences.json().user.preferences.homeDueRange, "others");
     assert.equal(preferences.body.includes("passwordHash"), false);
 
-    const wrongCurrent = await app.inject({
-      method: "PATCH",
-      url: "/api/auth/password",
-      headers: { cookie: firstCookie },
-      payload: { currentPassword: "WrongPassword99", newPassword: "AnotherPass123", confirmPassword: "AnotherPass123" },
-    });
-    assert.equal(wrongCurrent.statusCode, 400);
-    assert.equal(wrongCurrent.json().error.message, "当前密码不正确。");
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const wrongCurrent = await app.inject({
+        method: "PATCH",
+        url: "/api/auth/password",
+        headers: { cookie: firstCookie },
+        payload: { currentPassword: "WrongPassword99", newPassword: "AnotherPass123", confirmPassword: "AnotherPass123" },
+      });
+      assert.equal(wrongCurrent.statusCode, 400);
+      assert.equal(wrongCurrent.json().error.message, "当前密码不正确。");
+    }
 
     const samePassword = await app.inject({
       method: "PATCH",
@@ -183,11 +185,47 @@ test("personal profile, preferences and password updates are persisted safely", 
     const newPasswordLogin = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: data.owner.email, password: newPassword } });
     assert.equal(newPasswordLogin.statusCode, 200, newPasswordLogin.body);
 
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const failed = await app.inject({
+        method: "PATCH",
+        url: "/api/auth/password",
+        headers: { cookie: firstCookie },
+        payload: { currentPassword: data.password, newPassword: "FuturePass123", confirmPassword: "FuturePass123" },
+      });
+      assert.equal(failed.statusCode, 400, failed.body);
+    }
+    const limited = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      headers: { cookie: firstCookie },
+      payload: { currentPassword: data.password, newPassword: "FuturePass123", confirmPassword: "FuturePass123" },
+    });
+    assert.equal(limited.statusCode, 429, limited.body);
+
+    const memberCookie = await login(app, data.member.email, data.password);
+    const isolatedMemberFailure = await app.inject({
+      method: "PATCH",
+      url: "/api/auth/password",
+      headers: { cookie: memberCookie },
+      payload: { currentPassword: "WrongPassword99", newPassword: "MemberPass123", confirmPassword: "MemberPass123" },
+    });
+    assert.equal(isolatedMemberFailure.statusCode, 400, isolatedMemberFailure.body);
+
     const persisted = await data.prisma.user.findUniqueOrThrow({ where: { id: data.owner.id } });
     assert.equal(persisted.name, "Owner QA");
     assert.equal((persisted.preferences as any).dateFormat, "dd-mm-yyyy");
-    const auditActions = await data.prisma.auditLog.findMany({ where: { actorId: data.owner.id }, select: { action: true } });
-    assert.deepEqual(new Set(auditActions.map((entry) => entry.action)), new Set(["user.profile_update", "user.preferences_update", "user.password_update"]));
+    const auditActions = await data.prisma.auditLog.findMany({ where: { actorId: data.owner.id }, select: { action: true, data: true } });
+    assert.deepEqual(new Set(auditActions.map((entry) => entry.action)), new Set([
+      "user.profile_update",
+      "user.preferences_update",
+      "user.password_update",
+      "user.password_verification_failed",
+      "user.password_rate_limited",
+    ]));
+    const auditData = JSON.stringify(auditActions.map((entry) => entry.data));
+    for (const secret of [data.password, newPassword, "WrongPassword99", "AnotherPass123", "FuturePass123"]) {
+      assert.equal(auditData.includes(secret), false);
+    }
   } finally {
     await app.close();
     await data.prisma.$disconnect();

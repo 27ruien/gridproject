@@ -48,7 +48,7 @@ test("project library handles empty and long content", async ({ page }) => {
 
 test("account menu and personal settings support keyboard, persistence and URL history", async ({ page }) => {
   await page.goto("/?view=projects", { waitUntil: "networkidle" });
-  const trigger = page.locator(".account-trigger");
+  const trigger = page.locator(".desktop-account-menu .account-trigger");
   await trigger.focus();
   await trigger.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "个人资料" })).toBeFocused();
@@ -68,7 +68,7 @@ test("account menu and personal settings support keyboard, persistence and URL h
   await page.getByRole("button", { name: /偏好设置/ }).click();
   await page.getByText("紧凑").click();
   await page.getByLabel("默认导航状态").selectOption("collapsed");
-  await page.getByLabel("主页到期事项默认范围").selectOption("others");
+  await page.getByLabel("主页待关注事项默认范围").selectOption("others");
   await page.getByRole("button", { name: "保存偏好" }).click();
   await expect(page.locator(".app-shell")).toHaveClass(/density-compact/);
   await expect(page.locator(".app-shell")).toHaveClass(/nav-collapsed/);
@@ -106,9 +106,10 @@ test("home uses 主页 and separates all, mine and other members by accessible p
 test("mobile account opens as a bottom sheet and exposes logout", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/?view=projects", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "打开导航" }).click();
-  await page.locator(".account-trigger").click();
+  await page.locator(".mobile-account-menu .account-trigger").click();
   await expect(page.locator(".account-sheet")).toBeVisible();
+  await expect(page.locator(".sidebar")).not.toHaveClass(/open/);
+  await expect(page.locator(".sidebar-scrim")).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "退出登录" })).toBeVisible();
   await page.getByRole("menuitem", { name: "退出登录" }).click();
   await expect(page.getByText("本地演示模式无需退出登录")).toBeVisible();
