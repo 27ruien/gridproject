@@ -35,6 +35,7 @@
     "capture:plane-r2": "node scripts/capture-plane-r2.mjs",
     "capture:plane-r2-1": "node scripts/capture-plane-r2-1.mjs",
     "capture:plane-r3": "node scripts/capture-plane-r3.mjs",
+    "capture:plane-r3-1": "node scripts/capture-plane-r3-1.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

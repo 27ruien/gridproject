@@ -1,0 +1,238 @@
+{
+  "generatedAt": "2026-06-22T05:37:52.695Z",
+  "baseURL": "http://127.0.0.1:5173",
+  "captures": [
+    {
+      "filename": "cost-management-1440x900.png",
+      "route": "/?qa=plane-r3&view=costs",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "cost-management-390x844.png",
+      "route": "/?qa=plane-r3&view=costs",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "cost-filter-desktop-open.png",
+      "route": "/?qa=plane-r3&view=costs",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "cost-filter-mobile-open.png",
+      "route": "/?qa=plane-r3&view=costs",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "people-management-1440x900.png",
+      "route": "/?qa=plane-r3&view=users",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "people-management-390x844.png",
+      "route": "/?qa=plane-r3&view=users",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "people-filter-desktop-open.png",
+      "route": "/?qa=plane-r3&view=users",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "people-filter-mobile-open.png",
+      "route": "/?qa=plane-r3&view=users",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "gantt-1440x900-regression.png",
+      "route": "/?qa=plane-r3&view=project&project=crm&tab=甘特图",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "gantt-390x844.png",
+      "route": "/?qa=plane-r3&view=project&project=crm&tab=甘特图",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "gantt-mobile-filter-open.png",
+      "route": "/?qa=plane-r3&view=project&project=crm&tab=甘特图",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "timesheet-1440x900.png",
+      "route": "/?qa=plane-r3&view=timesheets",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "timesheet-390x844.png",
+      "route": "/?qa=plane-r3&view=timesheets",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-regression.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-regression.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "board-regression.png",
+      "route": "/?qa=plane-r1-board-dense&view=project&project=crm&tab=看板",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    {
+      "name": "cost-mobile-first-record",
+      "visible": true,
+      "top": 474,
+      "inViewport": true,
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "people-mobile-first-record",
+      "visible": true,
+      "top": 279,
+      "inViewport": true,
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "gantt-mobile-compact-controls",
+      "controlsVisible": true,
+      "firstCardVisible": true,
+      "internalHeight": 134,
+      "desktopDescriptionVisible": false,
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "timesheet-localized-statuses",
+      "hasEnglishStatus": false,
+      "hasChineseSummary": true,
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "desktop-gantt-regression",
+      "desktopGanttVisible": true,
+      "mobileControlsVisible": false,
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "passed": true
+    }
+  ],
+  "notes": [
+    "R3.1 only covers UI acceptance fixes for filters, mobile Gantt controls, and timesheet status display.",
+    "Origin/CSRF remains an independent security branch task."
+  ],
+  "passed": true
+}
