@@ -125,6 +125,10 @@ is_remote_commit() {
     | grep -Fxq "$commit"
 }
 
+resolve_local_bundle_target() {
+  git rev-parse --verify "${TARGET_INPUT}^{commit}"
+}
+
 validate_database_url() {
   local parsed
   parsed=$(node -e '
@@ -285,9 +289,14 @@ echo "Deployment started at $START_TIME by $RUN_USER."
 echo "Current commit: $CURRENT_COMMIT"
 echo "Requested target: $TARGET_INPUT"
 
-git fetch origin --prune --tags
-TARGET_COMMIT="$(resolve_target_commit)" || fail "target '$TARGET_INPUT' does not resolve to a commit."
-is_remote_commit "$TARGET_COMMIT" || fail "target commit is not reachable from the remote repository."
+if [[ "${GRIDPROJECT_LOCAL_BUNDLE_DEPLOY:-0}" == "1" ]]; then
+  TARGET_COMMIT="$(resolve_local_bundle_target)" || fail "target '$TARGET_INPUT' does not resolve to a commit."
+  [[ "$CURRENT_COMMIT" == "$TARGET_COMMIT" ]] || fail "bundle deployment requires current HEAD to match target commit."
+else
+  git fetch origin --prune --tags
+  TARGET_COMMIT="$(resolve_target_commit)" || fail "target '$TARGET_INPUT' does not resolve to a commit."
+  is_remote_commit "$TARGET_COMMIT" || fail "target commit is not reachable from the remote repository."
+fi
 echo "Target commit: $TARGET_COMMIT"
 
 set -a

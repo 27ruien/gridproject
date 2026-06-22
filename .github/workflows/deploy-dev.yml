@@ -90,6 +90,14 @@ jobs:
           echo "TARGET_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "DEPLOY_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
+      - name: Create deployment bundle
+        run: |
+          target_commit="$(git rev-parse HEAD)"
+          git update-ref refs/heads/gridproject-deploy-bundle "$target_commit"
+          git bundle create "$RUNNER_TEMP/gridproject-dev.bundle" refs/heads/gridproject-deploy-bundle
+          echo "BUNDLE_PATH=$RUNNER_TEMP/gridproject-dev.bundle" >> "$GITHUB_ENV"
+          echo "REMOTE_BUNDLE_PATH=/tmp/gridproject-dev-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bundle" >> "$GITHUB_ENV"
+
       - name: Configure SSH
         env:
           SSH_KEY_PATH: ${{ runner.temp }}/gridproject-dev-deploy-key
@@ -118,6 +126,17 @@ jobs:
           echo "SSH_HOST=$DEV_SSH_HOST" >> "$GITHUB_ENV"
           echo "SSH_USER=$DEV_SSH_USER" >> "$GITHUB_ENV"
 
+      - name: Upload deployment bundle
+        run: |
+          scp \
+            -i "$SSH_KEY_PATH" \
+            -P "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            "$BUNDLE_PATH" \
+            "$SSH_USER@$SSH_HOST:$REMOTE_BUNDLE_PATH"
+
       - name: Run server deployment
         id: server-deploy
         env:
@@ -133,11 +152,49 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o IdentitiesOnly=yes \
             "$SSH_USER@$SSH_HOST" \
-            "cd /opt/gridproject && bash scripts/deploy-dev.sh '$TARGET_COMMIT' '$RUN_SEED'" \
-            | tee "$DEPLOY_OUTPUT"
+            "bash -s" -- "$TARGET_COMMIT" "$RUN_SEED" "$REMOTE_BUNDLE_PATH" <<'REMOTE_DEPLOY' | tee "$DEPLOY_OUTPUT"
+          set -Eeuo pipefail
+
+          TARGET_COMMIT="$1"
+          RUN_SEED="$2"
+          REMOTE_BUNDLE_PATH="$3"
+
+          fail() {
+            echo "Deployment failed: $*" >&2
+            exit 1
+          }
+
+          cleanup_bundle() {
+            rm -f -- "$REMOTE_BUNDLE_PATH"
+          }
+          trap cleanup_bundle EXIT
+
+          cd /opt/gridproject
+          [[ -r "$REMOTE_BUNDLE_PATH" ]] || fail "deployment bundle is missing or unreadable."
+          git bundle verify "$REMOTE_BUNDLE_PATH"
+          git fetch "$REMOTE_BUNDLE_PATH" refs/heads/gridproject-deploy-bundle:refs/remotes/gridproject-deploy-bundle/main
+          imported_commit="$(git rev-parse refs/remotes/gridproject-deploy-bundle/main^{commit})"
+          [[ "$imported_commit" == "$TARGET_COMMIT" ]] || fail "bundle import SHA does not match target commit."
+          git cat-file -e "${TARGET_COMMIT}^{commit}" || fail "target commit is not a valid commit."
+          [[ -z "$(git status --porcelain --untracked-files=no)" ]] || fail "tracked worktree changes are present; no checkout was performed."
+          git switch -C main "$TARGET_COMMIT"
+          GRIDPROJECT_LOCAL_BUNDLE_DEPLOY=1 bash scripts/deploy-dev.sh "$TARGET_COMMIT" "$RUN_SEED"
+          REMOTE_DEPLOY
           deploy_status=${PIPESTATUS[0]}
           printf '%s\n' "$deploy_status" > "$DEPLOY_EXIT"
           exit 0
+
+      - name: Remove deployment bundle
+        if: always()
+        run: |
+          ssh \
+            -i "$SSH_KEY_PATH" \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "rm -f -- '$REMOTE_BUNDLE_PATH'" || true
 
       - name: Write deployment summary
         if: always()

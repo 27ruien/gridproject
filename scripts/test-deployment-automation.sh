@@ -81,6 +81,14 @@ assert_contains .github/workflows/deploy-dev.yml 'StrictHostKeyChecking=yes' "St
 assert_contains .github/workflows/deploy-dev.yml 'BatchMode=yes' "SSH password prompts must be disabled"
 assert_contains .github/workflows/deploy-dev.yml 'chmod 600.*SSH_KEY_PATH' "Temporary SSH key permissions are unsafe"
 assert_not_contains .github/workflows/deploy-dev.yml 'uses:.*(ssh|scp)' "Third-party SSH actions are forbidden"
+assert_contains .github/workflows/deploy-dev.yml 'git bundle create.*gridproject-dev\.bundle' "Deploy workflow must create a Git bundle"
+assert_contains .github/workflows/deploy-dev.yml '^[[:space:]]+scp[[:space:]]*\\' "Deploy workflow must upload the bundle with SCP"
+assert_contains .github/workflows/deploy-dev.yml 'git bundle verify.*REMOTE_BUNDLE_PATH' "Server must verify the uploaded bundle"
+assert_contains .github/workflows/deploy-dev.yml 'git fetch "\$REMOTE_BUNDLE_PATH" refs/heads/gridproject-deploy-bundle:refs/remotes/gridproject-deploy-bundle/main' "Server must fetch the target commit from the local bundle"
+assert_contains .github/workflows/deploy-dev.yml 'imported_commit.*==.*TARGET_COMMIT' "Bundle import SHA must match TARGET_COMMIT"
+assert_contains .github/workflows/deploy-dev.yml 'GRIDPROJECT_LOCAL_BUNDLE_DEPLOY=1 bash scripts/deploy-dev\.sh' "Server must run deploy-dev.sh in local bundle mode"
+assert_contains .github/workflows/deploy-dev.yml 'trap cleanup_bundle EXIT' "Remote bundle cleanup trap is missing"
+assert_contains .github/workflows/deploy-dev.yml 'rm -f --.*REMOTE_BUNDLE_PATH' "Temporary bundle cleanup is missing"
 
 workflow_secrets="$(grep -Eo 'secrets\.[A-Z0-9_]+' .github/workflows/deploy-dev.yml .github/workflows/rollback-dev.yml \
   | sed 's/.*secrets\.//' \
@@ -92,6 +100,11 @@ workflow_secrets="$(grep -Eo 'secrets\.[A-Z0-9_]+' .github/workflows/deploy-dev.
 assert_contains scripts/deploy-dev.sh 'flock -n' "Deployment lock must be non-blocking"
 assert_contains scripts/deploy-dev.sh 'git status --porcelain' "Dirty worktree check is missing"
 assert_contains scripts/deploy-dev.sh 'target.*does not resolve to a commit' "Missing target commits must be rejected"
+assert_contains scripts/deploy-dev.sh 'GRIDPROJECT_LOCAL_BUNDLE_DEPLOY' "Local bundle deployment mode is missing"
+assert_contains scripts/deploy-dev.sh 'bundle deployment requires current HEAD to match target commit' "Bundle mode must verify the current HEAD"
+assert_contains scripts/deploy-dev.sh 'git fetch origin --prune --tags' "Default deployment mode must keep remote fetch validation"
+assert_contains scripts/deploy-dev.sh 'target commit is not reachable from the remote repository' "Default deployment mode must keep remote reachability validation"
+assert_before scripts/deploy-dev.sh 'GRIDPROJECT_LOCAL_BUNDLE_DEPLOY' 'git fetch origin --prune --tags' "Bundle mode must branch before any origin fetch"
 assert_contains scripts/deploy-dev.sh 'db:safety:dev' "Dev database safety check is missing"
 assert_contains scripts/deploy-dev.sh 'db_port.*5432' "Dev database port must be exact"
 assert_contains scripts/deploy-dev.sh '5433.*forbidden' "Production database port must be rejected"
