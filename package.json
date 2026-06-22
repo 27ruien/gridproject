@@ -33,6 +33,7 @@
     "capture:plane-r1": "node scripts/capture-plane-r1.mjs",
     "capture:plane-r1-revision": "node scripts/capture-plane-r1-revision.mjs",
     "capture:plane-r2": "node scripts/capture-plane-r2.mjs",
+    "capture:plane-r2-1": "node scripts/capture-plane-r2-1.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

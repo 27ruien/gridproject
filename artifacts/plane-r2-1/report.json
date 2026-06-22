@@ -1,0 +1,246 @@
+{
+  "generatedAt": "2026-06-22T00:48:07.558Z",
+  "baseURL": "http://127.0.0.1:5174",
+  "captures": [
+    {
+      "filename": "projects-1440x900.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-1728x1117.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1728,
+        "height": 1117
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-390x844.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-1440x900.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-390x844.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "profile-settings-desktop.png",
+      "route": "/settings/profile",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "preference-settings-desktop.png",
+      "route": "/settings/preferences",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "security-settings-desktop.png",
+      "route": "/settings/security",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "personal-settings-mobile.png",
+      "route": "/settings/profile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "projects-filter-open.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-overdue.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-due-next-seven-days.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "home-due-others.png",
+      "route": "/?qa=plane-r2-home&view=dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "account-menu-desktop.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "account-menu-mobile.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "filename": "account-menu-mobile-overlay-check.png",
+      "route": "/?qa=plane-r2-projects-20&view=projects",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    {
+      "name": "project-layout-1440",
+      "expectedColumns": 3,
+      "columns": 3,
+      "visibleCreateEntries": 1,
+      "minimumCardWidth": 382.65625,
+      "passed": true
+    },
+    {
+      "name": "project-layout-1728",
+      "expectedColumns": 4,
+      "columns": 4,
+      "visibleCreateEntries": 1,
+      "minimumCardWidth": 356,
+      "passed": true
+    },
+    {
+      "name": "project-layout-390",
+      "expectedColumns": 1,
+      "columns": 1,
+      "visibleCreateEntries": 1,
+      "minimumCardWidth": 366,
+      "passed": true
+    },
+    {
+      "name": "mobile-home-hierarchy",
+      "visibleProjectCards": 2,
+      "dueSectionTop": 728,
+      "passed": true
+    },
+    {
+      "name": "mobile-account-overlay",
+      "sheetVisible": true,
+      "drawerOpen": false,
+      "drawerScrims": 0,
+      "accountScrims": 1,
+      "passed": true
+    },
+    {
+      "name": "desktop-settings-layout",
+      "view": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "sidebarWidth": 260,
+      "contentWidth": 800,
+      "passed": true
+    },
+    {
+      "name": "due-semantics",
+      "title": "待关注事项",
+      "overdueCount": 2,
+      "upcomingCount": 11,
+      "oldTitlePresent": false,
+      "passed": true
+    }
+  ],
+  "releaseBlockers": [
+    "全局写请求 Origin/CSRF 校验尚未实现；CORS allowlist 与 SameSite=Lax 不能替代服务端写请求校验。"
+  ],
+  "passed": true
+}
