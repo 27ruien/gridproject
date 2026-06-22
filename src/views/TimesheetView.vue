@@ -34,7 +34,7 @@
         <div><span>本周总工时</span><strong>{{ weekTotal }}h</strong></div>
         <div><span>缺失工作日</span><strong>{{ missingWeekDates.length }} 天</strong></div>
         <div><span>异常提示</span><strong :class="{ danger: abnormalDays.length }">{{ abnormalDays.length }} 项</strong></div>
-        <div><span>审批状态</span><strong>{{ statusSummary }}</strong></div>
+        <div><span>审批状态</span><strong class="timesheet-status-summary">{{ statusSummary }}</strong></div>
       </div>
 
       <div v-if="missingWeekDates.length || abnormalDays.length" class="timesheet-alert-strip">
@@ -119,7 +119,7 @@
           <span><strong>{{ displayDate(entry) }}</strong><small>{{ entry.reporter }}</small></span>
           <span><strong>{{ projectName(entry.projectId) }}</strong><small>{{ issueName(entry.issueId) }}</small></span>
           <span>{{ entry.hours }}h</span>
-          <StatusLozenge :label="normalizedStatus(entry.status)" />
+          <StatusLozenge :label="statusDisplay(entry.status)" />
           <span class="user-actions">
             <Button v-if="canEdit(entry)" variant="ghost" size="tiny" @click="openEdit(entry)">编辑</Button>
             <Button v-if="canDelete(entry)" variant="ghost" size="tiny" @click="emit('delete', entry.id)">删除</Button>
@@ -205,6 +205,21 @@ const props = defineProps({
 
 const emit = defineEmits(["create", "update", "delete", "submit", "approve", "reject"]);
 
+const TIME_ENTRY_STATUS_ORDER = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED"];
+const TIME_ENTRY_STATUS_LABELS = {
+  DRAFT: "草稿",
+  SUBMITTED: "已提交",
+  APPROVED: "已通过",
+  REJECTED: "已驳回",
+};
+const TIME_ENTRY_STATUS_ALIASES = {
+  草稿: "DRAFT",
+  已提交: "SUBMITTED",
+  已审批: "APPROVED",
+  已通过: "APPROVED",
+  已驳回: "REJECTED",
+};
+
 const roleView = ref("submitted");
 const weekStart = ref(mondayOf(new Date()));
 const modalOpen = ref(false);
@@ -267,7 +282,12 @@ const statusSummary = computed(() => {
     map.set(status, (map.get(status) || 0) + 1);
     return map;
   }, new Map());
-  return counts.size ? [...counts.entries()].map(([status, count]) => `${status} ${count}`).join(" / ") : "暂无记录";
+  return counts.size
+    ? TIME_ENTRY_STATUS_ORDER
+      .filter((status) => counts.has(status))
+      .map((status) => `${statusDisplay(status)} ${counts.get(status)}`)
+      .join(" · ")
+    : "暂无记录";
 });
 const canSubmitModal = computed(() => Boolean(form.reporter && form.spentDate && form.projectId && form.issueId && Number(form.hours) > 0));
 
@@ -420,7 +440,7 @@ function displayDate(entry) {
 
 function canEdit(entry) {
   if (props.context.isAdmin) return true;
-  return entry.userId === props.context.userId && ["DRAFT", "REJECTED", "已驳回", "草稿"].includes(entry.status);
+  return entry.userId === props.context.userId && ["DRAFT", "REJECTED"].includes(normalizedStatus(entry.status));
 }
 
 function canDelete(entry) {
@@ -428,7 +448,7 @@ function canDelete(entry) {
 }
 
 function canSubmitEntry(entry) {
-  return entry.userId === props.context.userId && ["DRAFT", "REJECTED", "已驳回", "草稿"].includes(entry.status);
+  return entry.userId === props.context.userId && ["DRAFT", "REJECTED"].includes(normalizedStatus(entry.status));
 }
 
 function canApprove(entry) {
@@ -437,7 +457,13 @@ function canApprove(entry) {
 }
 
 function normalizedStatus(status) {
-  return ({ 草稿: "DRAFT", 已提交: "SUBMITTED", 已审批: "APPROVED", 已驳回: "REJECTED" })[status] || status || "SUBMITTED";
+  if (TIME_ENTRY_STATUS_ALIASES[status]) return TIME_ENTRY_STATUS_ALIASES[status];
+  if (TIME_ENTRY_STATUS_LABELS[status]) return status;
+  return status || "SUBMITTED";
+}
+
+function statusDisplay(status) {
+  return TIME_ENTRY_STATUS_LABELS[normalizedStatus(status)] || status || TIME_ENTRY_STATUS_LABELS.SUBMITTED;
 }
 
 function mondayOf(value) {
