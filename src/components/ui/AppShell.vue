@@ -5,7 +5,10 @@
         <span class="brand-mark">{{ settings.logoText }}</span>
         <strong>{{ settings.platformName }}</strong>
       </div>
-      <IconButton icon="menu" label="打开导航" :aria-expanded="mobileNavOpen" @click="mobileNavOpen = true" />
+      <div class="mobile-shell-actions">
+        <AccountMenu class="mobile-account-menu" :user="manager" :preferences="preferences" :show-logout="showLogout" @open="mobileNavOpen = false" @navigate="$emit('account-navigate', $event)" @logout="$emit('logout')" />
+        <IconButton icon="menu" label="打开导航" :aria-expanded="mobileNavOpen" @click="mobileNavOpen = true" />
+      </div>
     </header>
 
     <button v-if="mobileNavOpen" class="sidebar-scrim" type="button" aria-label="关闭导航" @click="mobileNavOpen = false" />
@@ -64,8 +67,6 @@
           </nav>
         </section>
       </div>
-
-      <AccountMenu :user="manager" :preferences="preferences" :show-logout="showLogout" @navigate="$emit('account-navigate', $event)" @logout="$emit('logout')" />
     </aside>
 
     <main class="workspace">

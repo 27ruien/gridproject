@@ -9,7 +9,7 @@
       <dl class="home-summary" aria-label="工作摘要">
         <div><dt>参与项目</dt><dd>{{ accessibleProjects.length }}</dd></div>
         <div><dt>开放事项</dt><dd>{{ accessibleIssues.length }}</dd></div>
-        <div><dt>七日到期</dt><dd>{{ dueIssues.all.length }}</dd></div>
+        <div><dt>待关注</dt><dd>{{ dueIssues.all.length }}</dd></div>
         <div v-if="riskIssues.length"><dt>异常</dt><dd class="danger">{{ riskIssues.length }}</dd></div>
       </dl>
     </header>
@@ -20,25 +20,30 @@
     </section>
 
     <section class="home-section due-section">
-      <div class="section-head"><div><h2>即将到期</h2><p>包含已逾期以及未来 7 天到期的未完成事项。</p></div></div>
+      <div class="section-head"><div><h2>待关注事项</h2><p>区分已逾期与未来 7 天到期的未完成事项。</p></div></div>
       <div class="segmented-control due-tabs" role="tablist" aria-label="到期事项范围">
         <button v-for="tab in dueTabs" :key="tab.key" type="button" role="tab" :aria-selected="activeDueTab === tab.key" :class="{ active: activeDueTab === tab.key }" @click="activeDueTab = tab.key">{{ tab.label }} <span>{{ tab.count }}</span></button>
       </div>
-      <div v-if="currentDueIssues.length" class="due-issue-list">
-        <button v-for="issue in currentDueIssues" :key="issue.id" class="due-issue-card" type="button" @click="$emit('open-issue', issue.id)">
-          <span class="issue-type-mark" :class="issue.type"><Icon :name="issueIcon(issue.type)" /></span>
-          <span class="due-issue-main"><strong>{{ issue.title }}</strong><small>{{ issue.code }} · {{ projectName(issue.projectId) }}</small></span>
-          <span class="due-issue-owner"><span class="avatar mini-avatar">{{ ownerName(issue).slice(0, 1) || "未" }}</span>{{ ownerName(issue) }}</span>
-          <PriorityPill :priority="issue.priority" />
-          <StatusLozenge :label="issue.status" />
-          <span class="due-date" :class="dueTone(issue)"><strong>{{ dueRelative(issue) }}</strong><small>{{ formatPreferenceDate(issue.dueDate, preferences.dateFormat) }}</small></span>
-        </button>
+      <div v-if="currentDueIssues.length" class="due-groups">
+        <section v-for="group in currentDueGroups" :key="group.key" class="due-group" :class="group.key">
+          <header><strong>{{ group.label }}</strong><span>{{ group.issues.length }}</span><small>{{ group.hint }}</small></header>
+          <div class="due-issue-list">
+            <button v-for="issue in group.issues" :key="issue.id" class="due-issue-card" type="button" @click="$emit('open-issue', issue.id)">
+              <span class="issue-type-mark" :class="issue.type"><Icon :name="issueIcon(issue.type)" /></span>
+              <span class="due-issue-main"><strong>{{ issue.title }}</strong><small>{{ issue.code }} · {{ projectName(issue.projectId) }}</small></span>
+              <span class="due-issue-owner"><span class="avatar mini-avatar">{{ ownerName(issue).slice(0, 1) || "未" }}</span>{{ ownerName(issue) }}</span>
+              <PriorityPill :priority="issue.priority" />
+              <StatusLozenge :label="issue.status" />
+              <span class="due-date" :class="dueTone(issue)"><strong>{{ dueRelative(issue) }}</strong><small>{{ formatPreferenceDate(issue.dueDate, preferences.dateFormat) }}</small></span>
+            </button>
+          </div>
+        </section>
       </div>
       <div v-else class="home-empty"><Icon name="check" /><span><strong>{{ dueEmptyText }}</strong><small>当前范围内没有需要处理的到期事项。</small></span></div>
     </section>
 
     <section v-if="riskIssues.length" class="home-section risk-section">
-      <div class="section-head"><div><h2>需要关注</h2><p>来自可访问项目的风险和逾期事项。</p></div></div>
+      <div class="section-head"><div><h2>风险信号</h2><p>来自可访问项目的高优先级风险与异常。</p></div></div>
       <div class="risk-strip">
         <button v-for="issue in riskIssues.slice(0, 6)" :key="issue.id" type="button" @click="$emit('open-issue', issue.id)"><Icon name="issueRisk" /><span><strong>{{ issue.title }}</strong><small>{{ projectName(issue.projectId) }} · {{ dueRelative(issue) }}</small></span></button>
       </div>
@@ -88,8 +93,16 @@ const dueIssues = computed(() => {
 });
 const dueTabs = computed(() => [{ key: "all", label: "全部", count: dueIssues.value.all.length }, { key: "mine", label: "我的", count: dueIssues.value.mine.length }, { key: "others", label: "其他成员", count: dueIssues.value.others.length }]);
 const currentDueIssues = computed(() => dueIssues.value[activeDueTab.value] || dueIssues.value.all);
+const currentDueGroups = computed(() => {
+  const overdue = currentDueIssues.value.filter((issue) => daysUntil(issue.dueDate) < 0);
+  const upcoming = currentDueIssues.value.filter((issue) => daysUntil(issue.dueDate) >= 0);
+  return [
+    { key: "overdue", label: "已逾期", hint: "优先处理逾期时间最长和高优先级事项", issues: overdue },
+    { key: "upcoming", label: "未来 7 天", hint: "按今天、明天和剩余天数排序", issues: upcoming },
+  ].filter((group) => group.issues.length);
+});
 const riskIssues = computed(() => sortDue(accessibleIssues.value.filter((issue) => issue.type === "风险" || issue.priority === "P0" || daysUntil(issue.dueDate) < 0)));
-const dueEmptyText = computed(() => activeDueTab.value === "mine" ? "我的事项已安排妥当" : activeDueTab.value === "others" ? "其他成员暂无临期事项" : "未来七天暂无临期事项");
+const dueEmptyText = computed(() => activeDueTab.value === "mine" ? "我的事项已安排妥当" : activeDueTab.value === "others" ? "其他成员暂无待关注事项" : "当前没有待关注事项");
 
 function projectName(id) { return props.projects.find((project) => project.id === id)?.name || "未知项目"; }
 function ownerName(issue) { return issue.owner || props.users.find((user) => user.id === issue.ownerId)?.name || "未分配"; }

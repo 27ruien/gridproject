@@ -31,7 +31,8 @@
           <Icon v-if="currentView === 'project'" name="chevronRight" />
           <strong>{{ currentView === "project" ? project.name : pageTitle }}</strong>
         </div>
-        <div ref="searchRoot" class="search-combobox" :class="{ expanded: searchExpanded || rawSearchText }" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
+        <div class="topbar-tools">
+          <div ref="searchRoot" class="search-combobox" :class="{ expanded: searchExpanded || rawSearchText }" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
           <button v-if="!searchExpanded && !rawSearchText" class="command-search-trigger" type="button" aria-label="打开全局搜索" @click="expandSearch">
             <Icon name="search" />
             <span>搜索</span>
@@ -86,6 +87,8 @@
             </div>
             <p v-if="!flatSearchResults.length" class="quiet-text">没有找到匹配结果。</p>
           </div>
+          </div>
+          <AccountMenu class="desktop-account-menu" :user="currentManager" :preferences="preferences" show-logout @navigate="openPersonalSettings" @logout="logout" />
         </div>
       </header>
 
@@ -105,34 +108,15 @@
         @open-issue="openIssue"
       />
 
-      <section v-else-if="currentView === 'projects'" class="view-stack">
-        <PageHeader title="项目库" description="按负责人、执行团队、当前阶段和上线风险管理项目。">
-          <template #actions>
-            <Button variant="ghost" size="small" @click="setView('trash')">回收站</Button>
-            <Button variant="primary" size="small" @click="openProjectModal()">创建项目</Button>
-          </template>
-        </PageHeader>
-        <ProjectLibraryToolbar
-          v-model:search="projectLibrarySearch"
-          v-model:sort="projectLibrarySort"
-          :filters="projectLibraryFilters"
-          :options="projectFilterOptions"
-          @update:filters="projectLibraryFilters = $event"
-          @clear-filters="clearProjectFilters"
-          @remove-filter="removeProjectFilter"
-          @create="openProjectModal()"
-        />
-        <ProjectCardGrid
-          :projects="filteredProjectRows"
-          :date-format="preferences.dateFormat"
-          :empty-title="projectLibraryHasQuery ? '没有符合条件的项目' : '还没有项目'"
-          :empty-text="projectLibraryHasQuery ? '调整搜索或筛选条件后再试。' : '创建第一个项目，开始组织工作。'"
-          :show-create="!projectLibraryHasQuery"
-          @open="openProject"
-          @edit="openProjectEditModal"
-          @create="openProjectModal()"
-        />
-      </section>
+      <ProjectLibraryView
+        v-else-if="currentView === 'projects'"
+        :project-rows="projectRows"
+        :date-format="preferences.dateFormat"
+        @create="openProjectModal()"
+        @trash="setView('trash')"
+        @open="openProject"
+        @edit="openProjectEditModal"
+      />
 
       <TimesheetView
         v-else-if="currentView === 'timesheets'"
@@ -288,13 +272,13 @@ import { ROUTES } from "./router/routes";
 import { useProjects } from "./composables/useProjects";
 import { useProjectWorkspace } from "./composables/useProjectWorkspace";
 import AppShell from "./components/ui/AppShell.vue";
-import Button from "./components/ui/Button.vue";
 import Icon from "./components/ui/Icon.vue";
-import PageHeader from "./components/ui/PageHeader.vue";
 import Toast from "./components/ui/Toast.vue";
 import ConfirmDialog from "./components/ui/ConfirmDialog.vue";
+import AccountMenu from "./components/account/AccountMenu.vue";
 import { applyVisualScenario } from "./qa/visualScenarios.js";
 import DashboardView from "./views/DashboardView.vue";
+import ProjectLibraryView from "./views/ProjectLibraryView.vue";
 import ProjectWorkspaceView from "./views/ProjectWorkspaceView.vue";
 import ProjectCreateView from "./views/ProjectCreateView.vue";
 import TimesheetView from "./views/TimesheetView.vue";
@@ -303,13 +287,10 @@ import UserManagementView from "./views/UserManagementView.vue";
 import TrashView from "./views/TrashView.vue";
 import PlatformSettingsView from "./views/PlatformSettingsView.vue";
 import LoginView from "./views/LoginView.vue";
-import ProjectCardGrid from "./components/project/ProjectCardGrid.vue";
-import ProjectLibraryToolbar from "./components/project/ProjectLibraryToolbar.vue";
 import PersonalSettingsView from "./views/PersonalSettingsView.vue";
 import ScheduleImportModal from "./components/project/ScheduleImportModal.vue";
 import IssueDrawer from "./components/issue/IssueDrawer.vue";
 import IssueCreateModal from "./components/issue/IssueCreateModal.vue";
-import { PROJECT_STATUS_OPTIONS } from "./domain/project.js";
 
 const routes = ROUTES;
 const store = useProjects();
@@ -336,13 +317,8 @@ const searchRoot = ref(null);
 const searchInput = ref(null);
 const selectedSearchIndex = ref(0);
 const toastMessage = ref("");
-const projectLibrarySearch = ref("");
-const projectLibrarySort = ref("updated");
-const projectLibraryFilters = ref(emptyProjectFilters());
 const personalSettingsSection = ref("");
 const personalSettingsReturnUrl = ref("");
-const executionTeamOptions = ["商务", "设计", "开发", "特效"];
-const projectStatusOptions = PROJECT_STATUS_OPTIONS;
 const isRestoringUrl = ref(false);
 const lastUrl = ref("");
 const searchPanelId = `search-results-${Math.random().toString(36).slice(2)}`;
@@ -419,33 +395,6 @@ const searchResults = computed(() => {
   return { projects: projectsResult, issues: issuesResult };
 });
 const flatSearchResults = computed(() => [...searchResults.value.projects, ...searchResults.value.issues]);
-const filteredProjectRows = computed(() => {
-  const keyword = projectLibrarySearch.value.trim().toLowerCase();
-  const filters = projectLibraryFilters.value;
-  const rows = projectRows.value.filter((entry) => {
-    const searchable = `${entry.name} ${entry.description} ${entry.owner} ${(entry.executionTeams || []).join(" ")}`.toLowerCase();
-    if (keyword && !searchable.includes(keyword)) return false;
-    const phase = currentProjectPhase(entry);
-    if (filters.team && !(entry.executionTeams || []).includes(filters.team)) return false;
-    if (filters.status && entry.status !== filters.status) return false;
-    if (filters.owner && entry.owner !== filters.owner) return false;
-    if (filters.phase && phase !== filters.phase) return false;
-    if (filters.releaseFrom && (!entry.releaseDate || entry.releaseDate < filters.releaseFrom)) return false;
-    if (filters.releaseTo && (!entry.releaseDate || entry.releaseDate > filters.releaseTo)) return false;
-    if (filters.risk === "risk" && !entry.summary.riskCount) return false;
-    if (filters.risk === "overdue" && !entry.summary.overdueCount) return false;
-    if (filters.risk === "clear" && (entry.summary.riskCount || entry.summary.overdueCount)) return false;
-    return true;
-  });
-  return rows.sort(projectLibrarySortFunction(projectLibrarySort.value));
-});
-const projectLibraryHasQuery = computed(() => Boolean(projectLibrarySearch.value.trim() || Object.values(projectLibraryFilters.value).some(Boolean)));
-const projectFilterOptions = computed(() => ({
-  statuses: projectStatusOptions,
-  teams: executionTeamOptions,
-  owners: [...new Set(projectRows.value.map((entry) => entry.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")),
-  phases: [...new Set(projectRows.value.map(currentProjectPhase).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")),
-}));
 const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
 const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
 const workspaceFilterParam = computed(() => encodeFilters(workspaceUrlFilters.value));
@@ -1070,29 +1019,6 @@ function syncUrlState(mode = "replace") {
   lastUrl.value = nextUrl;
   if (mode === "push") window.history.pushState({}, "", nextUrl);
   else window.history.replaceState({}, "", nextUrl);
-}
-
-function emptyProjectFilters() {
-  return { status: "", team: "", owner: "", phase: "", releaseFrom: "", releaseTo: "", risk: "" };
-}
-
-function clearProjectFilters() {
-  projectLibraryFilters.value = emptyProjectFilters();
-}
-
-function removeProjectFilter(key) {
-  projectLibraryFilters.value = { ...projectLibraryFilters.value, [key]: "" };
-}
-
-function currentProjectPhase(entry) {
-  return entry.milestones?.find((milestone) => milestone.status !== "已完成")?.name || entry.status || "未设置";
-}
-
-function projectLibrarySortFunction(sort) {
-  if (sort === "name") return (a, b) => a.name.localeCompare(b.name, "zh-CN");
-  if (sort === "release") return (a, b) => String(a.releaseDate || "9999").localeCompare(String(b.releaseDate || "9999"));
-  if (sort === "risk") return (a, b) => (b.summary.overdueCount - a.summary.overdueCount) || (b.summary.riskCount - a.summary.riskCount) || String(b.updatedAt).localeCompare(String(a.updatedAt));
-  return (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt));
 }
 
 function encodeFilters(filters = {}) {

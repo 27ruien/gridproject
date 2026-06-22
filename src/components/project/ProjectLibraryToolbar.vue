@@ -3,7 +3,7 @@
     <label class="search project-library-search"><Icon name="search" /><input :value="search" type="search" placeholder="搜索项目" aria-label="搜索项目" @input="$emit('update:search', $event.target.value)" /></label>
     <label class="project-sort-control"><Icon name="sort" /><select :value="sort" aria-label="项目排序" @change="$emit('update:sort', $event.target.value)"><option value="updated">最近更新</option><option value="risk">风险优先</option><option value="release">上线日期</option><option value="name">项目名称</option></select></label>
     <ProjectFilterPopover :filters="filters" :options="options" @change="$emit('update:filters', $event)" @clear="$emit('clear-filters')" />
-    <Button variant="primary" size="small" icon="plus" aria-label="从工具栏新建" @click="$emit('create')"><span>创建项目</span></Button>
+    <Button variant="primary" size="small" icon="plus" aria-label="创建项目" @click="$emit('create')"><span>创建项目</span></Button>
     <div v-if="chips.length" class="project-filter-chips">
       <button v-for="chip in chips" :key="chip.key" type="button" @click="$emit('remove-filter', chip.key)">{{ chip.label }}<Icon name="close" /></button>
       <button class="clear-all" type="button" @click="$emit('clear-filters')">清除全部</button>

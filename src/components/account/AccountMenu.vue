@@ -5,6 +5,7 @@
       class="account-trigger"
       type="button"
       aria-haspopup="menu"
+      :aria-label="`打开账户菜单：${user.name}`"
       :aria-expanded="open"
       :data-tooltip="user.name"
       @click="toggle"
@@ -40,7 +41,7 @@ const props = defineProps({
   preferences: { type: Object, required: true },
   showLogout: { type: Boolean, default: false },
 });
-const emit = defineEmits(["navigate", "logout"]);
+const emit = defineEmits(["navigate", "logout", "open"]);
 const root = ref(null);
 const trigger = ref(null);
 const popover = ref(null);
@@ -54,11 +55,13 @@ onMounted(() => {
   syncViewport();
   window.addEventListener("resize", syncViewport);
   document.addEventListener("pointerdown", onOutsidePointer);
+  window.addEventListener("keydown", onWindowKeydown);
   window.addEventListener("popstate", close);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("resize", syncViewport);
   document.removeEventListener("pointerdown", onOutsidePointer);
+  window.removeEventListener("keydown", onWindowKeydown);
   window.removeEventListener("popstate", close);
 });
 
@@ -67,6 +70,7 @@ function toggle() {
   else openAndFocus(-1);
 }
 function openAndFocus(index) {
+  emit("open");
   open.value = true;
   items.value = [];
   placePopover();
@@ -118,13 +122,20 @@ function placePopover() {
     const rect = trigger.value?.getBoundingClientRect();
     if (!rect) return;
     const width = 248;
-    const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
-    popoverStyle.value = { width: `${width}px`, left: `${left}px`, bottom: `${Math.max(8, window.innerHeight - rect.top + 6)}px` };
+    const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+    const top = Math.min(rect.bottom + 6, window.innerHeight - 300);
+    popoverStyle.value = { width: `${width}px`, left: `${left}px`, top: `${Math.max(8, top)}px` };
   });
 }
 function onOutsidePointer(event) {
   if (!open.value) return;
   if (root.value?.contains(event.target) || popover.value?.contains(event.target) || event.target.closest?.(".account-sheet")) return;
   close({ restoreFocus: false });
+}
+function onWindowKeydown(event) {
+  if (open.value && event.key === "Escape") {
+    event.preventDefault();
+    close();
+  }
 }
 </script>

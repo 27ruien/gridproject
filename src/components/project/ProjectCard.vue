@@ -7,13 +7,12 @@
           <strong :title="project.name">{{ project.name }}</strong>
           <small>{{ project.code }}</small>
         </span>
-        <StatusLozenge :label="project.status" />
+        <StatusLozenge :label="currentPhase" />
       </span>
       <span v-if="!compact" class="project-card-description">{{ project.description || "暂无项目概述。" }}</span>
       <span class="project-card-meta">
         <span><span class="avatar mini-avatar">{{ project.owner?.slice(0, 1) || "未" }}</span>{{ project.owner || "未指定" }}</span>
         <span v-if="!compact">{{ teamText }}</span>
-        <span>{{ currentPhase }}</span>
       </span>
       <span class="project-card-progress">
         <span><strong>{{ project.summary.progress }}%</strong><small>完成进度</small></span>
