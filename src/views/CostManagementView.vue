@@ -1,13 +1,13 @@
 <template>
   <section class="view-stack">
     <div class="panel">
-      <div class="panel-head">
+      <div class="panel-head cost-page-head">
         <div>
           <p class="eyebrow">成本管理</p>
           <h2>项目人天投入</h2>
-          <p>本模块中的成本指项目人力投入，不包含人员薪资、单价或任何货币金额。</p>
+          <p>项目人力投入统计，不包含薪资、单价或货币金额。</p>
         </div>
-        <Button variant="primary" size="small" :disabled="!eligibleProjects.length" @click="openCreate">新建成本管理记录</Button>
+        <Button class="mobile-head-action" icon="plus" variant="primary" size="small" :disabled="!eligibleProjects.length" @click="openCreate">新建记录</Button>
       </div>
 
       <div class="cost-overview-band" aria-label="成本摘要">
@@ -15,60 +15,42 @@
         <div><span>已发生成本</span><strong>{{ costOverview.actualPersonDays }} 人天</strong></div>
         <div><span>预计成本</span><strong>{{ costOverview.forecastPersonDays }} 人天</strong></div>
         <div><span>剩余预算</span><strong :class="{ danger: costOverview.remainingPersonDays < 0 }">{{ costOverview.remainingPersonDays }} 人天</strong></div>
-        <div><span>超预算风险</span><strong :class="{ danger: costOverview.riskCount }">{{ costOverview.riskCount }} 个</strong></div>
+        <p class="cost-risk-hint" :class="{ danger: costOverview.riskCount }">
+          超预算风险：{{ costOverview.riskCount ? `${costOverview.riskCount} 个项目需要关注` : "暂无项目超出预算" }}
+        </p>
       </div>
 
-      <div class="cost-toolbar">
-        <label>
+      <div class="cost-toolbar r3-filter-toolbar" aria-label="成本筛选工具栏">
+        <label class="r3-toolbar-search">
           <span>搜索</span>
           <input v-model="search" type="search" placeholder="项目名称或项目代码" />
         </label>
-        <label>
-          <span>项目</span>
-          <select v-model="projectFilter">
-            <option value="">全部项目</option>
-            <option v-for="row in recordRows" :key="row.project.id" :value="row.project.id">{{ row.project.name }}</option>
-          </select>
-        </label>
-        <label>
-          <span>团队</span>
-          <select v-model="teamFilter">
-            <option value="">全部团队</option>
-            <option v-for="team in teamOptions" :key="team" :value="team">{{ team }}</option>
-          </select>
-        </label>
-        <label>
-          <span>人员</span>
-          <select v-model="ownerFilter">
-            <option value="">全部 Owner</option>
-            <option v-for="owner in ownerOptions" :key="owner" :value="owner">{{ owner }}</option>
-          </select>
-        </label>
-        <label>
-          <span>成本类型</span>
-          <select v-model="costTypeFilter">
-            <option value="person-days">人天投入</option>
-          </select>
-        </label>
-        <label>
-          <span>风险</span>
-          <select v-model="riskFilter">
-            <option value="">全部</option>
-            <option value="overrun">仅超预算</option>
-            <option value="normal">预算内</option>
-          </select>
-        </label>
-        <label>
-          <span>排序</span>
-          <select v-model="sort">
-            <option value="updatedAt:desc">最近更新</option>
-            <option value="burnRate:desc">人天消耗率最高</option>
-            <option value="actualHours:desc">实际总工时最高</option>
-            <option value="remaining:asc">剩余人天最少</option>
-            <option value="project:asc">项目名称 A-Z</option>
-          </select>
-        </label>
+        <SelectField class="desktop-quick-filter" v-model="projectFilter" label="项目" :options="projectFilterOptions" />
+        <SelectField class="desktop-quick-filter" v-model="riskFilter" label="风险" :options="riskFilterOptions" />
+        <FilterSurface
+          title="成本筛选"
+          description="按项目参与关系收窄成本记录"
+          aria-label="成本筛选"
+          :active-count="costFilterChips.length"
+          @reset="clearAllCostFilters"
+        >
+          <div class="filter-surface-group">
+            <strong>项目范围</strong>
+            <SelectField class="filter-field-mobile-only" v-model="projectFilter" label="项目" :options="projectFilterOptions" />
+            <SelectField v-model="teamFilter" label="团队" :options="teamFilterOptions" />
+            <SelectField v-model="ownerFilter" label="人员" :options="ownerFilterOptions" />
+          </div>
+          <div class="filter-surface-group">
+            <strong>成本条件</strong>
+            <SelectField v-model="costTypeFilter" label="成本类型" :options="costTypeOptions" />
+            <SelectField class="filter-field-mobile-only" v-model="riskFilter" label="风险" :options="riskFilterOptions" />
+          </div>
+        </FilterSurface>
+        <SelectField class="r3-toolbar-sort" v-model="sort" label="排序" :options="costSortOptions" />
+        <Button class="desktop-toolbar-action" icon="plus" variant="primary" size="small" :disabled="!eligibleProjects.length" @click="openCreate">新建记录</Button>
       </div>
+
+      <FilterChips :chips="costFilterChips" @remove="clearCostFilter" @clear-all="clearAllCostFilters" />
 
       <div class="cost-table">
         <div class="cost-table-head">
@@ -344,7 +326,10 @@ import { CostAccessPolicy } from "../server/policies/costAccessPolicy.js";
 import Button from "../components/ui/Button.vue";
 import DetailPanel from "../components/ui/DetailPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
+import FilterChips from "../components/ui/FilterChips.vue";
+import FilterSurface from "../components/ui/FilterSurface.vue";
 import Modal from "../components/ui/Modal.vue";
+import SelectField from "../components/ui/SelectField.vue";
 import StatusLozenge from "../components/ui/StatusLozenge.vue";
 
 const props = defineProps({
@@ -378,6 +363,21 @@ const editForm = reactive({
   standardHoursPerDay: 8,
   notes: "",
 });
+const riskFilterOptions = [
+  { value: "", label: "全部风险" },
+  { value: "overrun", label: "仅超预算" },
+  { value: "normal", label: "预算内" },
+];
+const costTypeOptions = [
+  { value: "person-days", label: "人天投入" },
+];
+const costSortOptions = [
+  { value: "updatedAt:desc", label: "最近更新" },
+  { value: "burnRate:desc", label: "人天消耗率最高" },
+  { value: "actualHours:desc", label: "实际总工时最高" },
+  { value: "remaining:asc", label: "剩余人天最少" },
+  { value: "project:asc", label: "项目名称 A-Z" },
+];
 
 const projectMap = computed(() => new Map(props.projects.map((project) => [project.id, project])));
 const recordRows = computed(() => props.costRecords
@@ -396,6 +396,18 @@ const recordRows = computed(() => props.costRecords
   }));
 const ownerOptions = computed(() => [...new Set(recordRows.value.map((row) => row.summary.ownerName).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")));
 const teamOptions = computed(() => [...new Set(recordRows.value.flatMap((row) => row.project.executionTeams || []).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+const projectFilterOptions = computed(() => [
+  { value: "", label: "全部项目" },
+  ...recordRows.value.map((row) => ({ value: row.project.id, label: row.project.name })),
+]);
+const ownerFilterOptions = computed(() => [
+  { value: "", label: "全部人员" },
+  ...ownerOptions.value.map((owner) => ({ value: owner, label: owner })),
+]);
+const teamFilterOptions = computed(() => [
+  { value: "", label: "全部团队" },
+  ...teamOptions.value.map((team) => ({ value: team, label: team })),
+]);
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLowerCase();
   const rows = recordRows.value
@@ -446,6 +458,16 @@ const weekRangeLabel = computed(() => {
   const range = normalizeWeekFilter(weekStart.value);
   return range ? `${range.start} 至 ${range.end}` : "未筛选，展示全周期可计入工时";
 });
+const costFilterChips = computed(() => {
+  const chips = [];
+  if (search.value.trim()) chips.push({ key: "search", label: `搜索：${search.value.trim()}` });
+  if (projectFilter.value) chips.push({ key: "project", label: `项目：${optionLabel(projectFilterOptions.value, projectFilter.value)}` });
+  if (riskFilter.value) chips.push({ key: "risk", label: `风险：${optionLabel(riskFilterOptions, riskFilter.value)}` });
+  if (teamFilter.value) chips.push({ key: "team", label: `团队：${teamFilter.value}` });
+  if (ownerFilter.value) chips.push({ key: "owner", label: `人员：${ownerFilter.value}` });
+  if (costTypeFilter.value !== "person-days") chips.push({ key: "costType", label: `成本类型：${optionLabel(costTypeOptions, costTypeFilter.value)}` });
+  return chips;
+});
 
 watch([search, projectFilter, ownerFilter, teamFilter, riskFilter, costTypeFilter, sort], () => { page.value = 1; });
 watch(selectedRow, (row) => {
@@ -480,6 +502,24 @@ function saveSelectedRecord() {
 function emitExport() {
   if (!selectedRow.value) return;
   emit("export", selectedRow.value.id, { weekStart: weekStart.value });
+}
+
+function clearCostFilter(key) {
+  if (key === "search") search.value = "";
+  if (key === "project") projectFilter.value = "";
+  if (key === "risk") riskFilter.value = "";
+  if (key === "team") teamFilter.value = "";
+  if (key === "owner") ownerFilter.value = "";
+  if (key === "costType") costTypeFilter.value = "person-days";
+}
+
+function clearAllCostFilters() {
+  search.value = "";
+  projectFilter.value = "";
+  ownerFilter.value = "";
+  teamFilter.value = "";
+  riskFilter.value = "";
+  costTypeFilter.value = "person-days";
 }
 
 function setThisWeek() {
@@ -517,6 +557,10 @@ function forecastPersonDays(summary) {
 
 function formatDays(value) {
   return Number(Number(value || 0).toFixed(2));
+}
+
+function optionLabel(options, value) {
+  return options.find((option) => option.value === value)?.label || value;
 }
 
 function defaultCreateForm() {

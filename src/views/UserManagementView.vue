@@ -1,54 +1,39 @@
 <template>
   <section class="view-stack people-view">
     <div class="panel people-panel">
-      <div class="panel-head">
+      <div class="panel-head people-page-head">
         <div>
           <p class="eyebrow">人员管理</p>
           <h2>组织人员</h2>
-          <p>{{ activeCount }} 位活跃成员 · {{ adminCount }} 位管理员 · {{ filteredRows.length }} / {{ users.length }} 人</p>
+          <p>活跃 {{ activeCount }} · 管理员 {{ adminCount }} · {{ filteredRows.length }}/{{ users.length }} 人</p>
         </div>
-        <Button icon="plus" variant="primary" size="small" @click="openCreate">邀请成员</Button>
+        <Button class="mobile-head-action" icon="plus" variant="primary" size="small" @click="openCreate">邀请成员</Button>
       </div>
 
-      <div class="people-directory-bar">
-        <label>
+      <div class="people-directory-bar r3-filter-toolbar" aria-label="人员筛选工具栏">
+        <label class="r3-toolbar-search">
           <span>搜索</span>
           <input v-model="search" type="search" placeholder="姓名或邮箱" />
         </label>
-        <label>
-          <span>执行团队</span>
-          <select v-model="teamFilter">
-            <option value="">全部团队</option>
-            <option v-for="team in teamOptions" :key="team" :value="team">{{ team }}</option>
-          </select>
-        </label>
-        <label>
-          <span>角色</span>
-          <select v-model="roleFilter">
-            <option value="">全部角色</option>
-            <option value="ADMIN">管理员</option>
-            <option value="MEMBER">成员</option>
-          </select>
-        </label>
-        <label>
-          <span>状态</span>
-          <select v-model="statusFilter">
-            <option value="">全部状态</option>
-            <option value="ACTIVE">活跃</option>
-            <option value="INACTIVE">停用</option>
-          </select>
-        </label>
-        <label>
-          <span>排序</span>
-          <select v-model="sort">
-            <option value="updatedAt:desc">最近更新</option>
-            <option value="activity:desc">最近活动</option>
-            <option value="projects:desc">项目数量</option>
-            <option value="name:asc">姓名 A-Z</option>
-            <option value="role:asc">角色</option>
-          </select>
-        </label>
+        <FilterSurface
+          title="人员筛选"
+          description="按执行团队、角色和成员状态筛选"
+          aria-label="人员筛选"
+          :active-count="peopleFilterChips.length"
+          @reset="clearAllPeopleFilters"
+        >
+          <div class="filter-surface-group">
+            <strong>组织条件</strong>
+            <SelectField v-model="teamFilter" label="执行团队" :options="teamFilterOptions" />
+            <SelectField v-model="roleFilter" label="角色" :options="roleFilterOptions" />
+            <SelectField v-model="statusFilter" label="状态" :options="statusFilterOptions" />
+          </div>
+        </FilterSurface>
+        <SelectField class="r3-toolbar-sort" v-model="sort" label="排序" :options="peopleSortOptions" />
+        <Button class="desktop-toolbar-action" icon="plus" variant="primary" size="small" @click="openCreate">邀请成员</Button>
       </div>
+
+      <FilterChips :chips="peopleFilterChips" @remove="clearPeopleFilter" @clear-all="clearAllPeopleFilters" />
 
       <div class="user-table people-table">
         <div class="user-table-head people-table-head">
@@ -386,8 +371,11 @@ import Button from "../components/ui/Button.vue";
 import ConfirmDialog from "../components/ui/ConfirmDialog.vue";
 import DetailPanel from "../components/ui/DetailPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
+import FilterChips from "../components/ui/FilterChips.vue";
+import FilterSurface from "../components/ui/FilterSurface.vue";
 import Modal from "../components/ui/Modal.vue";
 import OverflowMenu from "../components/ui/OverflowMenu.vue";
+import SelectField from "../components/ui/SelectField.vue";
 import StatusLozenge from "../components/ui/StatusLozenge.vue";
 
 const props = defineProps({
@@ -417,12 +405,33 @@ const formError = ref("");
 const createForm = reactive(defaultCreateForm());
 const editForm = reactive({ name: "", email: "", role: "MEMBER", status: "ACTIVE" });
 const resetForm = reactive({ newPassword: "", confirmNewPassword: "" });
+const roleFilterOptions = [
+  { value: "", label: "全部角色" },
+  { value: "ADMIN", label: "管理员" },
+  { value: "MEMBER", label: "成员" },
+];
+const statusFilterOptions = [
+  { value: "", label: "全部状态" },
+  { value: "ACTIVE", label: "活跃" },
+  { value: "INACTIVE", label: "停用" },
+];
+const peopleSortOptions = [
+  { value: "updatedAt:desc", label: "最近更新" },
+  { value: "activity:desc", label: "最近活动" },
+  { value: "projects:desc", label: "项目数量" },
+  { value: "name:asc", label: "姓名 A-Z" },
+  { value: "role:asc", label: "角色" },
+];
 
 const users = computed(() => props.users.filter((user) => user.organizationId === props.context.organizationId));
 const userRows = computed(() => users.value.map((user) => enrichUser(user)));
 const activeCount = computed(() => userRows.value.filter((user) => user.status === "ACTIVE" && !user.deletedAt).length);
 const adminCount = computed(() => userRows.value.filter((user) => user.role === "ADMIN" && user.status === "ACTIVE" && !user.deletedAt).length);
 const teamOptions = computed(() => [...new Set(userRows.value.flatMap((user) => user.executionTeams))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+const teamFilterOptions = computed(() => [
+  { value: "", label: "全部团队" },
+  ...teamOptions.value.map((team) => ({ value: team, label: team })),
+]);
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLowerCase();
   const rows = userRows.value
@@ -435,6 +444,14 @@ const filteredRows = computed(() => {
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRows.value.length / pageSize)));
 const pagedRows = computed(() => filteredRows.value.slice((page.value - 1) * pageSize, page.value * pageSize));
 const selectedUser = computed(() => userRows.value.find((user) => user.id === selectedUserId.value) || null);
+const peopleFilterChips = computed(() => {
+  const chips = [];
+  if (search.value.trim()) chips.push({ key: "search", label: `搜索：${search.value.trim()}` });
+  if (teamFilter.value) chips.push({ key: "team", label: `团队：${teamFilter.value}` });
+  if (roleFilter.value) chips.push({ key: "role", label: `角色：${optionLabel(roleFilterOptions, roleFilter.value)}` });
+  if (statusFilter.value) chips.push({ key: "status", label: `状态：${optionLabel(statusFilterOptions, statusFilter.value)}` });
+  return chips;
+});
 
 watch([search, roleFilter, statusFilter, teamFilter, sort], () => { page.value = 1; });
 
@@ -499,6 +516,20 @@ function openReset(user) {
   Object.assign(resetForm, { newPassword: "", confirmNewPassword: "" });
   formError.value = "";
   resetOpen.value = true;
+}
+
+function clearPeopleFilter(key) {
+  if (key === "search") search.value = "";
+  if (key === "team") teamFilter.value = "";
+  if (key === "role") roleFilter.value = "";
+  if (key === "status") statusFilter.value = "";
+}
+
+function clearAllPeopleFilters() {
+  search.value = "";
+  roleFilter.value = "";
+  statusFilter.value = "";
+  teamFilter.value = "";
 }
 
 function submitCreate() {
@@ -596,6 +627,10 @@ function safeUser(user) {
 
 function dateOnly(value) {
   return value ? String(value).slice(0, 10) : "";
+}
+
+function optionLabel(options, value) {
+  return options.find((option) => option.value === value)?.label || value;
 }
 
 function defaultCreateForm() {

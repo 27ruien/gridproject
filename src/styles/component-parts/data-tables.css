@@ -122,6 +122,11 @@
   font-weight: 600;
 }
 
+.timesheet-status-summary {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
 .timesheet-week-summary .danger,
 .timesheet-alert-strip .danger {
   color: var(--red);
@@ -766,14 +771,29 @@
   min-width: 0;
 }
 
+.cost-page-head,
+.people-page-head {
+  align-items: flex-start;
+}
+
+.mobile-head-action {
+  display: none;
+}
+
+.desktop-toolbar-action {
+  align-self: end;
+  white-space: nowrap;
+}
+
 .cost-toolbar {
-  grid-template-columns: minmax(220px, 1fr) repeat(6, minmax(132px, 172px));
+  grid-template-columns: minmax(220px, 1fr) minmax(148px, 190px) minmax(132px, 164px) auto minmax(172px, 220px) auto;
+  align-items: end;
   margin-bottom: var(--space-150);
 }
 
 .cost-overview-band {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: var(--space-150);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
@@ -794,6 +814,17 @@
   border-left: 1px solid var(--line);
 }
 
+.cost-risk-hint {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-150);
+  font-size: var(--text-caption);
+}
+
 .cost-overview-band span {
   color: var(--muted);
   font-size: var(--text-caption);
@@ -810,8 +841,37 @@
 }
 
 .people-directory-bar {
-  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(136px, 180px));
+  grid-template-columns: minmax(240px, 1fr) auto minmax(172px, 220px) auto;
+  align-items: end;
   margin-bottom: var(--space-150);
+}
+
+.r3-filter-toolbar {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-100);
+  gap: var(--space-100);
+}
+
+.r3-toolbar-search {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-050);
+}
+
+.r3-toolbar-search input {
+  width: 100%;
+}
+
+.desktop-quick-filter,
+.r3-toolbar-sort {
+  min-width: 0;
+}
+
+.cost-toolbar + .filter-chip-row,
+.people-directory-bar + .filter-chip-row {
+  margin: calc(var(--space-100) * -1) 0 var(--space-150);
 }
 
 .cost-summary-grid,

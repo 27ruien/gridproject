@@ -19,8 +19,8 @@
     grid-template-columns: 1fr;
   }
 
-  .cost-toolbar,
-  .people-directory-bar {
+  .cost-toolbar:not(.r3-filter-toolbar),
+  .people-directory-bar:not(.r3-filter-toolbar) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -34,29 +34,33 @@
       "actions";
   }
 
-  .cost-toolbar {
+  .cost-toolbar:not(.r3-filter-toolbar) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .people-directory-bar {
+  .people-directory-bar:not(.r3-filter-toolbar) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .cost-overview-band {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .cost-overview-band > div {
-    border-top: 1px solid var(--line);
+    border-top: 0;
     border-left: 0;
   }
 
-  .cost-overview-band > div:nth-child(-n + 3) {
-    border-top: 0;
+  .cost-overview-band > div + div {
+    border-left: 1px solid var(--line);
   }
 
-  .cost-overview-band > div:not(:nth-child(3n + 1)) {
-    border-left: 1px solid var(--line);
+  .cost-toolbar.r3-filter-toolbar {
+    grid-template-columns: minmax(220px, 1fr) minmax(132px, 170px) minmax(124px, 150px) auto;
+  }
+
+  .people-directory-bar.r3-filter-toolbar {
+    grid-template-columns: minmax(220px, 1fr) auto minmax(172px, 220px) auto;
   }
 
   .people-table-head,
@@ -466,9 +470,9 @@
     border-left: 1px solid var(--line);
   }
 
-  .cost-toolbar,
+  .cost-toolbar:not(.r3-filter-toolbar),
   .user-toolbar,
-  .people-directory-bar {
+  .people-directory-bar:not(.r3-filter-toolbar) {
     grid-template-columns: 1fr;
   }
 
@@ -562,6 +566,74 @@
   .compact-search {
     width: min(220px, 48vw);
   }
+
+  .cost-page-head,
+  .people-page-head {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: var(--space-100);
+  }
+
+  .cost-page-head > div,
+  .people-page-head > div {
+    flex: 1 1 auto;
+  }
+
+  .cost-page-head h2,
+  .people-page-head h2 {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .cost-page-head p:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobile-head-action {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+
+  .desktop-toolbar-action,
+  .desktop-quick-filter {
+    display: none !important;
+  }
+
+  .cost-toolbar.r3-filter-toolbar,
+  .people-directory-bar.r3-filter-toolbar {
+    grid-template-columns: minmax(0, 1fr) 82px minmax(98px, 0.72fr);
+    align-items: end;
+    gap: var(--space-075);
+    padding: var(--space-075);
+  }
+
+  .cost-toolbar.r3-filter-toolbar .filter-surface-trigger,
+  .people-directory-bar.r3-filter-toolbar .filter-surface-trigger {
+    min-height: 36px;
+    padding: 0 var(--space-075);
+  }
+
+  .cost-toolbar.r3-filter-toolbar .filter-surface-trigger span,
+  .people-directory-bar.r3-filter-toolbar .filter-surface-trigger span {
+    display: inline;
+  }
+
+  .cost-toolbar.r3-filter-toolbar .ui-select-field,
+  .people-directory-bar.r3-filter-toolbar .ui-select-field,
+  .cost-toolbar.r3-filter-toolbar .r3-toolbar-search,
+  .people-directory-bar.r3-filter-toolbar .r3-toolbar-search {
+    gap: var(--space-025);
+  }
+
+  .cost-toolbar + .filter-chip-row,
+  .people-directory-bar + .filter-chip-row {
+    margin-top: calc(var(--space-100) * -1);
+    margin-bottom: var(--space-125);
+  }
 }
 
 @media (max-width: 479px) {
@@ -583,7 +655,7 @@
   }
 
   .cost-overview-band {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .cost-overview-band > div,
@@ -591,11 +663,15 @@
     border-left: 0;
   }
 
-  .cost-overview-band > div:nth-child(-n + 2) {
+  .cost-overview-band > div:nth-child(n + 3) {
     border-top: 1px solid var(--line);
   }
 
-  .cost-overview-band > div:first-child {
+  .cost-overview-band > div:nth-child(-n + 2) {
     border-top: 0;
+  }
+
+  .cost-overview-band > div:nth-child(even) {
+    border-left: 1px solid var(--line);
   }
 }
