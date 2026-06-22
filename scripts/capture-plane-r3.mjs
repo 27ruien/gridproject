@@ -102,9 +102,9 @@ async function checkResponsiveMatrix() {
   for (const [width, height] of viewports) {
     for (const [name, route, selector] of [
       ["gantt", routes.gantt, width < 768 ? ".gantt-mobile-list" : ".gantt-workspace"],
-      ["timesheet", routes.timesheet, width < 768 ? ".timesheet-mobile-list" : ".timesheet-week-table"],
+      ["timesheet", routes.timesheet, width < 900 ? ".timesheet-mobile-list" : ".timesheet-week-table"],
       ["cost", routes.costs, width < 768 ? ".cost-mobile-list" : ".cost-table"],
-      ["people", routes.users, width < 768 ? ".people-mobile-list" : ".people-table"],
+      ["people", routes.users, width < 1200 ? ".people-mobile-list" : ".people-table"],
       ["settings", routes.settings, ".platform-settings-shell"],
     ]) {
       checks.push(await checkPage(`${name}-${width}x${height}`, route, width, height, selector));
