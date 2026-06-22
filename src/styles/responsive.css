@@ -18,6 +18,11 @@
   .dashboard-layout {
     grid-template-columns: 1fr;
   }
+
+  .cost-toolbar,
+  .people-directory-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1199px) {
@@ -52,6 +57,36 @@
 
   .cost-overview-band > div:not(:nth-child(3n + 1)) {
     border-left: 1px solid var(--line);
+  }
+
+  .people-table-head,
+  .people-table-row {
+    display: none;
+  }
+
+  .people-mobile-list {
+    display: grid;
+    gap: var(--space-100);
+  }
+}
+
+@media (max-width: 899px) {
+  .timesheet-week-table {
+    display: none;
+  }
+
+  .timesheet-mobile-list {
+    display: grid;
+    gap: var(--space-100);
+  }
+
+  .timesheet-record-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .timesheet-record-row .user-actions {
+    justify-content: flex-start;
   }
 }
 
