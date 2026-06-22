@@ -267,10 +267,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { ROUTES } from "./router/routes";
 import { useProjects } from "./composables/useProjects";
 import { useProjectWorkspace } from "./composables/useProjectWorkspace";
+import { useGlobalSearch } from "./composables/useGlobalSearch";
+import { useOverlayState } from "./composables/useOverlayState";
+import { useRouteState } from "./composables/useRouteState";
 import AppShell from "./components/ui/AppShell.vue";
 import Icon from "./components/ui/Icon.vue";
 import Toast from "./components/ui/Toast.vue";
@@ -295,34 +298,11 @@ import IssueCreateModal from "./components/issue/IssueCreateModal.vue";
 const routes = ROUTES;
 const store = useProjects();
 
-const currentView = ref("dashboard");
-const currentProjectId = ref(store.projects.value[0]?.id || "");
-const selectedIssueId = ref(null);
 const selectedTemplateId = ref("agile");
 const editingProjectId = ref("");
 const projectModalOpen = ref(false);
 const issueModalOpen = ref(false);
 const scheduleImportOpen = ref(false);
-const rawSearchText = ref("");
-const debouncedSearchText = ref("");
-const workspaceUrlFilters = ref({});
-const workspaceSort = ref("");
-const workspacePage = ref("");
-const workspaceViewMode = ref("");
-const visualReviewMode = ref("");
-const projectNavigationMode = ref("tabs");
-const searchFocused = ref(false);
-const searchExpanded = ref(false);
-const searchRoot = ref(null);
-const searchInput = ref(null);
-const selectedSearchIndex = ref(0);
-const toastMessage = ref("");
-const personalSettingsSection = ref("");
-const personalSettingsReturnUrl = ref("");
-const isRestoringUrl = ref(false);
-const lastUrl = ref("");
-const searchPanelId = `search-results-${Math.random().toString(36).slice(2)}`;
-let searchTimer = 0;
 
 const {
   templates,
@@ -335,6 +315,62 @@ const {
 } = store;
 
 const {
+  rawSearchText,
+  debouncedSearchText,
+  searchFocused,
+  searchExpanded,
+  searchRoot,
+  searchInput,
+  searchPanelId,
+  searchResults,
+  flatSearchResults,
+  searchPanelOpen,
+  activeSearchResult,
+  moveSearch,
+  closeSearch,
+  expandSearch,
+  handleSearchInput,
+  setSearchText,
+} = useGlobalSearch({ projects, issues: store.issues, projectName });
+
+const {
+  toastMessage,
+  confirmDialog,
+  personalSettingsSection,
+  showToast,
+  requestConfirm,
+  closeConfirmDialog,
+  openPersonalSettings,
+  closePersonalSettings,
+  syncPersonalSettingsFromPath,
+} = useOverlayState();
+
+const {
+  currentView,
+  currentProjectId,
+  selectedIssueId,
+  workspaceUrlFilters,
+  workspaceSort,
+  workspacePage,
+  workspaceViewMode,
+  visualReviewMode,
+  projectNavigationMode,
+  bindActiveView,
+  mountRouteListeners,
+  updateWorkspaceUrlState,
+  applyUrlState,
+  syncUrlState,
+} = useRouteState({
+  routes,
+  projects,
+  store,
+  searchText: debouncedSearchText,
+  setSearchText,
+  personalSettingsSection,
+  syncPersonalSettingsFromPath,
+});
+
+const {
   activeView,
   project,
   template,
@@ -342,6 +378,8 @@ const {
   summary,
   visibleIssues,
 } = useProjectWorkspace(currentProjectId);
+
+bindActiveView(activeView);
 
 const pageTitle = computed(() => {
   if (currentView.value === "project") return "项目空间";
@@ -374,30 +412,6 @@ const routesForUser = computed(() => routes.filter((route) => (
   (route.key !== "costs" || projects.value.some((entry) => store.getProjectPermissions(entry.id).canViewCost)) &&
   (route.key !== "users" || store.currentContext.value.isAdmin)
 )));
-const confirmDialog = ref({
-  open: false,
-  title: "",
-  message: "",
-  confirmText: "确认删除",
-  onConfirm: () => {},
-});
-const normalizedSearch = computed(() => debouncedSearchText.value.trim().toLowerCase());
-const searchResults = computed(() => {
-  if (normalizedSearch.value.length < 2) return { projects: [], issues: [] };
-  const projectsResult = projects.value
-    .filter((entry) => `${entry.name}${entry.owner}${entry.status}${entry.description}${(entry.executionTeams || []).join("")}`.toLowerCase().includes(normalizedSearch.value))
-    .slice(0, 5)
-    .map((entry) => ({ ...entry, kind: "project" }));
-  const issuesResult = store.issues.value
-    .filter((entry) => `${entry.code}${entry.title}${entry.owner}${entry.creator}${entry.type}${entry.status}${entry.startDate}${entry.dueDate}`.toLowerCase().includes(normalizedSearch.value))
-    .slice(0, 6)
-    .map((entry) => ({ ...entry, kind: "issue" }));
-  return { projects: projectsResult, issues: issuesResult };
-});
-const flatSearchResults = computed(() => [...searchResults.value.projects, ...searchResults.value.issues]);
-const searchPanelOpen = computed(() => searchFocused.value && normalizedSearch.value.length >= 2);
-const activeSearchResult = computed(() => flatSearchResults.value[selectedSearchIndex.value] || flatSearchResults.value[0] || null);
-const workspaceFilterParam = computed(() => encodeFilters(workspaceUrlFilters.value));
 const showAuthLoading = computed(() => store.apiMode && !store.auth.initialized && store.auth.loading);
 const showLogin = computed(() => store.apiMode && store.auth.initialized && !store.auth.authenticated);
 
@@ -410,8 +424,7 @@ onMounted(() => {
   }
   applyUrlState(params);
   syncUrlState("replace");
-  document.addEventListener("pointerdown", handleOutsideSearch);
-  window.addEventListener("popstate", handlePopState);
+  mountRouteListeners();
 });
 
 watch(browserTitle, (title) => {
@@ -428,25 +441,6 @@ watch(() => store.auth.authenticated, (authenticated) => {
   }
 }, { immediate: true });
 
-watch(projects, (rows) => {
-  if (!rows.length) {
-    currentProjectId.value = "";
-    return;
-  }
-  if (!rows.some((entry) => entry.id === currentProjectId.value)) {
-    currentProjectId.value = rows[0].id;
-  }
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("pointerdown", handleOutsideSearch);
-  window.removeEventListener("popstate", handlePopState);
-  window.clearTimeout(searchTimer);
-});
-
-watch([currentView, currentProjectId, activeView, selectedIssueId], () => syncUrlState("push"));
-watch([debouncedSearchText, workspaceFilterParam, workspaceSort, workspacePage, workspaceViewMode], () => syncUrlState("replace"));
-
 function setView(view) {
   if (view === "users" && !store.currentContext.value.isAdmin) {
     currentView.value = "dashboard";
@@ -456,22 +450,6 @@ function setView(view) {
   currentView.value = view;
   selectedIssueId.value = null;
   closeSearch();
-}
-
-function openPersonalSettings(section = "profile") {
-  const normalized = ["profile", "preferences", "security"].includes(section) ? section : "profile";
-  if (!personalSettingsSection.value) personalSettingsReturnUrl.value = `${window.location.pathname}${window.location.search}`;
-  personalSettingsSection.value = normalized;
-  const path = `/settings/${normalized}`;
-  if (window.location.pathname !== path) window.history.pushState({ personalSettings: true, returnUrl: personalSettingsReturnUrl.value }, "", path);
-}
-
-function closePersonalSettings() {
-  if (!personalSettingsSection.value) return;
-  const returnUrl = personalSettingsReturnUrl.value || "/?view=dashboard";
-  personalSettingsSection.value = "";
-  personalSettingsReturnUrl.value = "";
-  window.history.replaceState({}, "", returnUrl);
 }
 
 async function saveProfile(payload, resolve) {
@@ -586,8 +564,7 @@ async function updateProject(projectId, patch) {
 async function saveProject(projectId, patch, confirmed = false) {
   const { timeline, ...projectPatch } = patch;
   if (timeline?.behavior === "replace" && !confirmed) {
-    confirmDialog.value = {
-      open: true,
+    requestConfirm({
       title: "替换已导入的 Timeline",
       message: "这会移除并重建此前由 Timeline 导入的任务。手工创建的任务会保留。",
       confirmText: "确认替换",
@@ -595,7 +572,7 @@ async function saveProject(projectId, patch, confirmed = false) {
         closeConfirmDialog();
         saveProject(projectId, patch, true);
       },
-    };
+    });
     return;
   }
   const result = await store.updateProject(projectId, projectPatch);
@@ -616,13 +593,12 @@ async function saveProject(projectId, patch, confirmed = false) {
 
 function requestDeleteProject(projectId) {
   const target = store.getProject(projectId);
-  confirmDialog.value = {
-    open: true,
+  requestConfirm({
     title: "删除项目",
     message: `确认删除“${target?.name || "该项目"}”？删除后会进入回收站，30 天内可恢复。`,
     confirmText: "删除项目",
     onConfirm: () => deleteProject(projectId),
-  };
+  });
 }
 
 async function deleteProject(projectId) {
@@ -659,8 +635,7 @@ async function createIssue(input) {
 
 async function importProjectSchedule(input, confirmed = false) {
   if (input.behavior === "replace" && !confirmed) {
-    confirmDialog.value = {
-      open: true,
+    requestConfirm({
       title: "替换已导入的 Timeline",
       message: "这会移除并重建此前由 Timeline 导入的任务。手工创建的任务会保留。",
       confirmText: "确认替换",
@@ -668,7 +643,7 @@ async function importProjectSchedule(input, confirmed = false) {
         closeConfirmDialog();
         importProjectSchedule(input, true);
       },
-    };
+    });
     return;
   }
   const dates = input.dates || {};
@@ -710,13 +685,12 @@ async function updateIssue(issueId, patch) {
 
 function requestDeleteIssue(issueId) {
   const target = store.getIssue(issueId);
-  confirmDialog.value = {
-    open: true,
+  requestConfirm({
     title: "删除任务",
     message: `确认删除“${target?.title || "该任务"}”？删除后会进入回收站，30 天内可恢复。`,
     confirmText: "删除任务",
     onConfirm: () => deleteIssue(issueId),
-  };
+  });
 }
 
 async function deleteIssue(issueId) {
@@ -897,19 +871,6 @@ async function saveSettings(patch) {
   showToast("平台设置已保存");
 }
 
-function showToast(message) {
-  toastMessage.value = message;
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => {
-    toastMessage.value = "";
-  }, 2200);
-}
-
-function moveSearch(step) {
-  if (!flatSearchResults.value.length) return;
-  selectedSearchIndex.value = (selectedSearchIndex.value + step + flatSearchResults.value.length) % flatSearchResults.value.length;
-}
-
 function openActiveSearchResult() {
   const result = activeSearchResult.value;
   if (!result) {
@@ -920,45 +881,6 @@ function openActiveSearchResult() {
   if (result.kind === "issue") openIssueFromSearch(result.id);
 }
 
-function closeSearch() {
-  searchFocused.value = false;
-  if (!rawSearchText.value.trim()) searchExpanded.value = false;
-}
-
-function expandSearch() {
-  searchExpanded.value = true;
-  nextTick(() => searchInput.value?.focus());
-}
-
-function handleSearchInput() {
-  selectedSearchIndex.value = 0;
-  window.clearTimeout(searchTimer);
-  searchTimer = window.setTimeout(() => {
-    debouncedSearchText.value = rawSearchText.value;
-  }, 200);
-}
-
-function handleOutsideSearch(event) {
-  if (!searchRoot.value?.contains(event.target)) closeSearch();
-}
-
-function closeConfirmDialog() {
-  confirmDialog.value = {
-    open: false,
-    title: "",
-    message: "",
-    confirmText: "确认删除",
-    onConfirm: () => {},
-  };
-}
-
-function updateWorkspaceUrlState({ filters = workspaceUrlFilters.value, sort = workspaceSort.value, page = workspacePage.value, viewMode = workspaceViewMode.value }) {
-  workspaceUrlFilters.value = { ...filters };
-  workspaceSort.value = sort || "";
-  workspacePage.value = page ? String(page) : "";
-  workspaceViewMode.value = viewMode || "";
-}
-
 function projectName(projectId) {
   return projects.value.find((entry) => entry.id === projectId)?.name || "未知项目";
 }
@@ -966,81 +888,6 @@ function projectName(projectId) {
 function isLocalQaScenario(qaScenario) {
   if (!qaScenario) return false;
   return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
-}
-
-function applyUrlState(params) {
-  isRestoringUrl.value = true;
-  const view = params.get("view");
-  const projectId = params.get("project");
-  const tab = params.get("tab");
-  const issueId = params.get("issue");
-  const q = params.get("q");
-  rawSearchText.value = q || "";
-  debouncedSearchText.value = q || "";
-  workspaceUrlFilters.value = parseFilters(params.get("filters"));
-  workspaceSort.value = params.get("sort") || "";
-  workspacePage.value = params.get("page") || "";
-  workspaceViewMode.value = params.get("viewMode") || "";
-  projectNavigationMode.value = params.get("projectNav") === "sidebar" ? "sidebar" : "tabs";
-  const settingsMatch = window.location.pathname.match(/^\/settings\/(profile|preferences|security)$/);
-  if (settingsMatch && !personalSettingsSection.value && !personalSettingsReturnUrl.value) personalSettingsReturnUrl.value = window.history.state?.returnUrl || "/?view=dashboard";
-  personalSettingsSection.value = settingsMatch?.[1] || "";
-  if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
-  if (window.location.pathname === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
-  if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) {
-    currentView.value = view === "users" && !store.currentContext.value.isAdmin ? "dashboard" : view;
-  }
-  if (tab) activeView.value = normalizeProjectViewName(tab);
-  selectedIssueId.value = issueId && store.getIssue(issueId) ? issueId : null;
-  window.setTimeout(() => {
-    isRestoringUrl.value = false;
-  }, 0);
-}
-
-function handlePopState() {
-  applyUrlState(new URLSearchParams(window.location.search));
-}
-
-function syncUrlState(mode = "replace") {
-  if (isRestoringUrl.value || personalSettingsSection.value) return;
-  const params = new URLSearchParams();
-  params.set("view", currentView.value);
-  if (currentProjectId.value) params.set("project", currentProjectId.value);
-  if (currentView.value === "project") params.set("tab", activeView.value);
-  if (selectedIssueId.value) params.set("issue", selectedIssueId.value);
-  if (debouncedSearchText.value.trim()) params.set("q", debouncedSearchText.value.trim());
-  if (workspaceFilterParam.value) params.set("filters", workspaceFilterParam.value);
-  if (workspaceSort.value) params.set("sort", workspaceSort.value);
-  if (workspacePage.value) params.set("page", workspacePage.value);
-  if (workspaceViewMode.value) params.set("viewMode", workspaceViewMode.value);
-  if (currentView.value === "project" && projectNavigationMode.value === "sidebar") params.set("projectNav", "sidebar");
-  const nextUrl = `${window.location.pathname}?${params.toString()}`;
-  if (nextUrl === lastUrl.value || nextUrl === `${window.location.pathname}${window.location.search}`) return;
-  lastUrl.value = nextUrl;
-  if (mode === "push") window.history.pushState({}, "", nextUrl);
-  else window.history.replaceState({}, "", nextUrl);
-}
-
-function encodeFilters(filters = {}) {
-  const compact = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== "" && value !== null && value !== undefined));
-  return Object.keys(compact).length ? JSON.stringify(compact) : "";
-}
-
-function parseFilters(value) {
-  if (!value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function normalizeProjectViewName(viewName) {
-  return {
-    Backlog: "待办事项",
-    Sprint: "迭代",
-  }[viewName] || viewName;
 }
 
 function selectProjectView(view) {
