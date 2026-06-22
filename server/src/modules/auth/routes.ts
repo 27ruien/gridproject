@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import type { ServerConfig } from "../../config/env.js";
 import { clearSessionCookie, requireAuth, setSessionCookie } from "../../middleware/auth.js";
+import { PasswordFailureLimiter, passwordFailureBucketKey } from "../../security/passwordFailureLimiter.js";
 import { sanitizeUserDto } from "../../utils/dto.js";
 import { badRequest, tooManyRequests, unauthorized } from "../../utils/errors.js";
 import { hashPassword, validatePassword, verifyPassword } from "../../utils/password.js";
@@ -43,6 +44,7 @@ type AuthRouteOptions = {
 };
 
 export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions) {
+  const passwordFailureLimiter = new PasswordFailureLimiter();
   app.post("/login", async (request, reply) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("登录参数不正确。", parsed.error.flatten());
@@ -178,10 +180,38 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
     const passwordErrors = validatePassword(parsed.data.newPassword);
     if (passwordErrors.length) throw badRequest(passwordErrors.join(""));
 
+    const bucketKey = passwordFailureBucketKey(context.userId, request.ip);
+    if (passwordFailureLimiter.isBlocked(bucketKey)) {
+      await app.prisma.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.password_rate_limited",
+          entityType: "User",
+          entityId: context.userId,
+          data: { reason: "failure_limit_reached", windowMinutes: 15 },
+          requestId: request.id,
+        },
+      });
+      throw tooManyRequests("密码验证尝试过多，请稍后再试。");
+    }
+
     const user = await app.prisma.user.findFirst({
       where: { id: context.userId, organizationId: context.organizationId, status: "ACTIVE", deletedAt: null },
     });
     if (!user || !(await verifyPassword(parsed.data.currentPassword, user.passwordHash))) {
+      const failure = passwordFailureLimiter.recordFailure(bucketKey);
+      await app.prisma.auditLog.create({
+        data: {
+          organizationId: context.organizationId,
+          actorId: context.userId,
+          action: "user.password_verification_failed",
+          entityType: "User",
+          entityId: context.userId,
+          data: { reason: "current_password_mismatch", failureCount: failure.count },
+          requestId: request.id,
+        },
+      });
       throw badRequest("当前密码不正确。");
     }
 
@@ -213,6 +243,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
       });
       return nextUser;
     });
+    passwordFailureLimiter.clear(bucketKey);
     return { requestId: request.id, user: sanitizeUserDto(updated), currentSessionKept: Boolean(currentTokenHash), otherSessionsRevoked: true };
   });
 }
