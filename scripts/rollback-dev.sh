@@ -88,7 +88,7 @@ trap finish EXIT
 
 validate_database_url() {
   local parsed
-  # JavaScript template interpolation is intentional here.
+  # Keep this JavaScript single-quoted so Node, not the shell, expands `${...}`.
   # shellcheck disable=SC2016
   parsed=$(node -e '
     const value = process.env.DATABASE_URL || "";
