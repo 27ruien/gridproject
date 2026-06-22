@@ -127,8 +127,6 @@ is_remote_commit() {
 
 validate_database_url() {
   local parsed
-  # Keep this JavaScript single-quoted so Node, not the shell, expands `${...}`.
-  # shellcheck disable=SC2016
   parsed=$(node -e '
     const value = process.env.DATABASE_URL || "";
     let url;
@@ -136,7 +134,7 @@ validate_database_url() {
     const host = url.hostname;
     const port = url.port || "5432";
     const database = url.pathname.replace(/^\/+/, "");
-    process.stdout.write(`${host}\t${port}\t${database}`);
+    process.stdout.write([host, port, database].join("\t"));
   ') || fail "DATABASE_URL in server/.env is invalid."
 
   local db_host db_port db_name
@@ -147,6 +145,17 @@ validate_database_url() {
   [[ "$db_name" == "gridproject_dev" ]] || fail "database name must be exactly gridproject_dev."
   [[ "$db_name" != *prod* ]] || fail "production-looking database names are forbidden."
   echo "Database target verified as local Dev PostgreSQL (credentials hidden)."
+}
+
+prepare_libpq_database_url() {
+  LIBPQ_DATABASE_URL=$(node -e '
+    const value = process.env.DATABASE_URL || "";
+    let url;
+    try { url = new URL(value); } catch { process.exit(2); }
+    url.searchParams.delete("schema");
+    process.stdout.write(url.toString());
+  ') || fail "DATABASE_URL in server/.env is invalid."
+  export LIBPQ_DATABASE_URL
 }
 
 retain_recent_backups() {
@@ -289,12 +298,13 @@ set +a
 
 npm run db:safety:dev
 validate_database_url
-pg_isready -d "$DATABASE_URL" >/dev/null 2>&1 || fail "Dev PostgreSQL is not reachable."
+prepare_libpq_database_url
+pg_isready -d "$LIBPQ_DATABASE_URL" >/dev/null 2>&1 || fail "Dev PostgreSQL is not reachable."
 
 SHORT_SHA="$(git rev-parse --short=12 "$TARGET_COMMIT")"
 BACKUP_PATH="$BACKUP_DIR/gridproject_dev_before_${SHORT_SHA}_$(date -u +%Y%m%d-%H%M%S).dump"
 echo "Creating pre-migration Dev backup at $BACKUP_PATH"
-if ! pg_dump -Fc --file "$BACKUP_PATH" "$DATABASE_URL"; then
+if ! pg_dump -Fc --file "$BACKUP_PATH" "$LIBPQ_DATABASE_URL"; then
   BACKUP_RESULT="failed"
   rm -f "$BACKUP_PATH"
   fail "pg_dump failed; migration and deployment were not started."

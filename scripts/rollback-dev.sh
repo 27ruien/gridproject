@@ -88,13 +88,11 @@ trap finish EXIT
 
 validate_database_url() {
   local parsed
-  # Keep this JavaScript single-quoted so Node, not the shell, expands `${...}`.
-  # shellcheck disable=SC2016
   parsed=$(node -e '
     const value = process.env.DATABASE_URL || "";
     let url;
     try { url = new URL(value); } catch { process.exit(2); }
-    process.stdout.write(`${url.hostname}\t${url.port || "5432"}\t${url.pathname.replace(/^\/+/, "")}`);
+    process.stdout.write([url.hostname, url.port || "5432", url.pathname.replace(/^\/+/, "")].join("\t"));
   ') || fail "DATABASE_URL in server/.env is invalid."
 
   local db_host db_port db_name
