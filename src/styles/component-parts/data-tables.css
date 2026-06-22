@@ -297,8 +297,8 @@
 
 .cost-table-head,
 .cost-table-row {
-  grid-template-columns: minmax(210px, 1.5fr) minmax(82px, 0.55fr) minmax(104px, 0.7fr) minmax(104px, 0.7fr) minmax(92px, 0.65fr) minmax(92px, 0.65fr) minmax(74px, 0.5fr) minmax(74px, 0.5fr) minmax(96px, 0.65fr) minmax(86px, 0.55fr);
-  min-width: 1120px;
+  grid-template-columns: minmax(210px, 1.5fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(76px, 0.5fr) minmax(82px, 0.5fr);
+  min-width: 980px;
 }
 
 .user-table-head,
@@ -748,8 +748,41 @@
 }
 
 .cost-toolbar {
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  grid-template-columns: minmax(220px, 1fr) repeat(6, minmax(132px, 172px));
   margin-bottom: var(--space-150);
+}
+
+.cost-overview-band {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: var(--space-150);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+  overflow: hidden;
+}
+
+.cost-overview-band > div {
+  min-width: 0;
+  min-height: 56px;
+  display: grid;
+  align-content: center;
+  gap: var(--space-025);
+  padding: var(--space-100) var(--space-150);
+}
+
+.cost-overview-band > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.cost-overview-band span {
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.cost-overview-band strong {
+  font-size: var(--text-section);
+  font-weight: 600;
 }
 
 .user-toolbar {
@@ -786,6 +819,13 @@
 .user-summary-grid strong {
   display: block;
   margin-top: var(--space-050);
+}
+
+.cost-overview-band .danger,
+.cost-table-row .danger,
+.cost-card-metrics .danger,
+.cost-summary-grid .danger {
+  color: var(--red);
 }
 
 .user-summary-grid strong {

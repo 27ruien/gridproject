@@ -4,16 +4,59 @@
       <div class="panel-head">
         <div>
           <p class="eyebrow">成本管理</p>
-          <h2>按项目管理计划人天与实际投入</h2>
+          <h2>项目人天投入</h2>
           <p>本模块中的成本指项目人力投入，不包含人员薪资、单价或任何货币金额。</p>
         </div>
         <Button variant="primary" size="small" :disabled="!eligibleProjects.length" @click="openCreate">新建成本管理记录</Button>
+      </div>
+
+      <div class="cost-overview-band" aria-label="成本摘要">
+        <div><span>总预算</span><strong>{{ costOverview.plannedPersonDays }} 人天</strong></div>
+        <div><span>已发生成本</span><strong>{{ costOverview.actualPersonDays }} 人天</strong></div>
+        <div><span>预计成本</span><strong>{{ costOverview.forecastPersonDays }} 人天</strong></div>
+        <div><span>剩余预算</span><strong :class="{ danger: costOverview.remainingPersonDays < 0 }">{{ costOverview.remainingPersonDays }} 人天</strong></div>
+        <div><span>超预算风险</span><strong :class="{ danger: costOverview.riskCount }">{{ costOverview.riskCount }} 个</strong></div>
       </div>
 
       <div class="cost-toolbar">
         <label>
           <span>搜索</span>
           <input v-model="search" type="search" placeholder="项目名称或项目代码" />
+        </label>
+        <label>
+          <span>项目</span>
+          <select v-model="projectFilter">
+            <option value="">全部项目</option>
+            <option v-for="row in recordRows" :key="row.project.id" :value="row.project.id">{{ row.project.name }}</option>
+          </select>
+        </label>
+        <label>
+          <span>团队</span>
+          <select v-model="teamFilter">
+            <option value="">全部团队</option>
+            <option v-for="team in teamOptions" :key="team" :value="team">{{ team }}</option>
+          </select>
+        </label>
+        <label>
+          <span>人员</span>
+          <select v-model="ownerFilter">
+            <option value="">全部 Owner</option>
+            <option v-for="owner in ownerOptions" :key="owner" :value="owner">{{ owner }}</option>
+          </select>
+        </label>
+        <label>
+          <span>成本类型</span>
+          <select v-model="costTypeFilter">
+            <option value="person-days">人天投入</option>
+          </select>
+        </label>
+        <label>
+          <span>风险</span>
+          <select v-model="riskFilter">
+            <option value="">全部</option>
+            <option value="overrun">仅超预算</option>
+            <option value="normal">预算内</option>
+          </select>
         </label>
         <label>
           <span>排序</span>
@@ -29,7 +72,7 @@
 
       <div class="cost-table">
         <div class="cost-table-head">
-          <span>项目</span><span>Owner</span><span>项目总人天</span><span>实际总工时</span><span>实际人天</span><span>剩余人天</span><span>消耗率</span><span>参与人员</span><span>更新时间</span><span>操作</span>
+          <span>项目</span><span>Owner</span><span>预算</span><span>实际</span><span>预计</span><span>偏差</span><span>风险</span><span>参与人员</span><span>操作</span>
         </div>
         <div
           v-for="row in pagedRows"
@@ -48,12 +91,11 @@
           </span>
           <span>{{ row.summary.ownerName }}</span>
           <span>{{ row.summary.plannedPersonDays }} 人天</span>
-          <span>{{ row.summary.actualHours }} 小时</span>
           <span>{{ row.summary.actualPersonDays }} 人天</span>
-          <strong>{{ row.summary.remainingPersonDays }} 人天</strong>
-          <span>{{ row.summary.personDayBurnRate }}%</span>
+          <span>{{ forecastPersonDays(row.summary) }} 人天</span>
+          <strong :class="{ danger: row.summary.remainingPersonDays < 0 }">{{ row.summary.remainingPersonDays }} 人天</strong>
+          <span><StatusLozenge :label="row.summary.remainingPersonDays < 0 ? '超预算' : '正常'" :tone="row.summary.remainingPersonDays < 0 ? 'danger' : 'neutral'" /></span>
           <span>{{ row.summary.participantCount }} 人</span>
-          <span>{{ dateOnly(row.updatedAt) }}</span>
           <span class="table-action-text">查看详情</span>
         </div>
 
@@ -66,7 +108,7 @@
             <div class="cost-card-metrics">
               <span>计划 {{ row.summary.plannedPersonDays }} 人天</span>
               <span>实际 {{ row.summary.actualPersonDays }} 人天</span>
-              <strong>{{ row.summary.personDayBurnRate }}%</strong>
+              <strong :class="{ danger: row.summary.remainingPersonDays < 0 }">{{ row.summary.remainingPersonDays }} 人天</strong>
             </div>
             <Button variant="ghost" size="small" @click="openDetail(row.id)">查看详情</Button>
           </article>
@@ -303,6 +345,7 @@ import Button from "../components/ui/Button.vue";
 import DetailPanel from "../components/ui/DetailPanel.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import Modal from "../components/ui/Modal.vue";
+import StatusLozenge from "../components/ui/StatusLozenge.vue";
 
 const props = defineProps({
   projects: { type: Array, required: true },
@@ -316,6 +359,11 @@ const props = defineProps({
 const emit = defineEmits(["create", "update", "delete", "export"]);
 
 const search = ref("");
+const projectFilter = ref("");
+const ownerFilter = ref("");
+const teamFilter = ref("");
+const riskFilter = ref("");
+const costTypeFilter = ref("person-days");
 const sort = ref("updatedAt:desc");
 const page = ref(1);
 const pageSize = 8;
@@ -346,10 +394,30 @@ const recordRows = computed(() => props.costRecords
     });
     return { ...record, project, summary };
   }));
+const ownerOptions = computed(() => [...new Set(recordRows.value.map((row) => row.summary.ownerName).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+const teamOptions = computed(() => [...new Set(recordRows.value.flatMap((row) => row.project.executionTeams || []).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN")));
 const filteredRows = computed(() => {
   const keyword = search.value.trim().toLowerCase();
-  const rows = recordRows.value.filter((row) => !keyword || `${row.project.name}${row.project.code || row.project.id}`.toLowerCase().includes(keyword));
+  const rows = recordRows.value
+    .filter((row) => !keyword || `${row.project.name}${row.project.code || row.project.id}`.toLowerCase().includes(keyword))
+    .filter((row) => !projectFilter.value || row.project.id === projectFilter.value)
+    .filter((row) => !ownerFilter.value || row.summary.ownerName === ownerFilter.value)
+    .filter((row) => !teamFilter.value || (row.project.executionTeams || []).includes(teamFilter.value))
+    .filter((row) => !riskFilter.value || (riskFilter.value === "overrun" ? Number(row.summary.remainingPersonDays) < 0 : Number(row.summary.remainingPersonDays) >= 0));
   return sortRows(rows);
+});
+const costOverview = computed(() => {
+  const rows = filteredRows.value;
+  const planned = rows.reduce((sum, row) => sum + Number(row.summary.plannedPersonDays || 0), 0);
+  const actual = rows.reduce((sum, row) => sum + Number(row.summary.actualPersonDays || 0), 0);
+  const forecast = rows.reduce((sum, row) => sum + forecastPersonDays(row.summary), 0);
+  return {
+    plannedPersonDays: formatDays(planned),
+    actualPersonDays: formatDays(actual),
+    forecastPersonDays: formatDays(forecast),
+    remainingPersonDays: formatDays(planned - actual),
+    riskCount: rows.filter((row) => Number(row.summary.remainingPersonDays) < 0).length,
+  };
 });
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRows.value.length / pageSize)));
 const pagedRows = computed(() => filteredRows.value.slice((page.value - 1) * pageSize, page.value * pageSize));
@@ -379,7 +447,7 @@ const weekRangeLabel = computed(() => {
   return range ? `${range.start} 至 ${range.end}` : "未筛选，展示全周期可计入工时";
 });
 
-watch([search, sort], () => { page.value = 1; });
+watch([search, projectFilter, ownerFilter, teamFilter, riskFilter, costTypeFilter, sort], () => { page.value = 1; });
 watch(selectedRow, (row) => {
   rawPage.value = 1;
   if (!row) return;
@@ -443,8 +511,12 @@ function sortRows(rows) {
   return [...rows].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
-function dateOnly(value) {
-  return value ? String(value).slice(0, 10) : "";
+function forecastPersonDays(summary) {
+  return formatDays(Math.max(Number(summary.plannedPersonDays || 0), Number(summary.actualPersonDays || 0)));
+}
+
+function formatDays(value) {
+  return Number(Number(value || 0).toFixed(2));
 }
 
 function defaultCreateForm() {

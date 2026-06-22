@@ -28,6 +28,27 @@
       "metrics"
       "actions";
   }
+
+  .cost-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cost-overview-band {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cost-overview-band > div {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .cost-overview-band > div:nth-child(-n + 3) {
+    border-top: 0;
+  }
+
+  .cost-overview-band > div:not(:nth-child(3n + 1)) {
+    border-left: 1px solid var(--line);
+  }
 }
 
 @media (max-width: 1023px) {
@@ -352,11 +373,33 @@
   .metrics,
   .timesheet-stats,
   .timesheet-week-summary,
+  .cost-overview-band,
   .cost-summary-grid,
   .user-summary-grid,
   .project-kpi-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-100);
+  }
+
+  .cost-overview-band {
+    gap: 0;
+  }
+
+  .cost-overview-band > div {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .cost-overview-band > div:nth-child(-n + 2) {
+    border-top: 0;
+  }
+
+  .cost-overview-band > div:not(:nth-child(3n + 1)) {
+    border-left: 0;
+  }
+
+  .cost-overview-band > div:nth-child(even) {
+    border-left: 1px solid var(--line);
   }
 
   .cost-toolbar,
@@ -464,5 +507,22 @@
 
   .compact-search {
     width: min(180px, 52vw);
+  }
+
+  .cost-overview-band {
+    grid-template-columns: 1fr;
+  }
+
+  .cost-overview-band > div,
+  .cost-overview-band > div:nth-child(even) {
+    border-left: 0;
+  }
+
+  .cost-overview-band > div:nth-child(-n + 2) {
+    border-top: 1px solid var(--line);
+  }
+
+  .cost-overview-band > div:first-child {
+    border-top: 0;
   }
 }
