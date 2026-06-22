@@ -8,13 +8,14 @@ export const DEFAULT_PREFERENCES = Object.freeze({
 });
 
 export function normalizePreferences(value = {}) {
+  const preferences = value ?? {};
   return {
-    density: ["compact", "comfortable"].includes(value.density) ? value.density : DEFAULT_PREFERENCES.density,
-    dateFormat: ["yyyy-mm-dd", "mm-dd-yyyy", "dd-mm-yyyy"].includes(value.dateFormat) ? value.dateFormat : DEFAULT_PREFERENCES.dateFormat,
-    weekStart: ["monday", "sunday"].includes(value.weekStart) ? value.weekStart : DEFAULT_PREFERENCES.weekStart,
-    defaultNav: ["expanded", "collapsed", "auto"].includes(value.defaultNav) ? value.defaultNav : DEFAULT_PREFERENCES.defaultNav,
-    homeDueRange: ["all", "mine", "others"].includes(value.homeDueRange) ? value.homeDueRange : DEFAULT_PREFERENCES.homeDueRange,
-    avatarColor: /^#[0-9a-f]{6}$/i.test(value.avatarColor || "") ? value.avatarColor : DEFAULT_PREFERENCES.avatarColor,
+    density: ["compact", "comfortable"].includes(preferences.density) ? preferences.density : DEFAULT_PREFERENCES.density,
+    dateFormat: ["yyyy-mm-dd", "mm-dd-yyyy", "dd-mm-yyyy"].includes(preferences.dateFormat) ? preferences.dateFormat : DEFAULT_PREFERENCES.dateFormat,
+    weekStart: ["monday", "sunday"].includes(preferences.weekStart) ? preferences.weekStart : DEFAULT_PREFERENCES.weekStart,
+    defaultNav: ["expanded", "collapsed", "auto"].includes(preferences.defaultNav) ? preferences.defaultNav : DEFAULT_PREFERENCES.defaultNav,
+    homeDueRange: ["all", "mine", "others"].includes(preferences.homeDueRange) ? preferences.homeDueRange : DEFAULT_PREFERENCES.homeDueRange,
+    avatarColor: /^#[0-9a-f]{6}$/i.test(preferences.avatarColor || "") ? preferences.avatarColor : DEFAULT_PREFERENCES.avatarColor,
   };
 }
 
