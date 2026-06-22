@@ -351,6 +351,7 @@
   .card-kpis,
   .metrics,
   .timesheet-stats,
+  .timesheet-week-summary,
   .cost-summary-grid,
   .user-summary-grid,
   .project-kpi-strip {
@@ -406,6 +407,7 @@
   .issue-table-row,
   .timesheet-head,
   .timesheet-row,
+  .timesheet-week-table,
   .cost-table-head,
   .cost-table-row,
   .board,
