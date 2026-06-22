@@ -290,6 +290,14 @@
   gap: var(--space-025);
 }
 
+.timesheet-day-line strong,
+.timesheet-day-line small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .timesheet-day-line input {
   width: 82px;
   flex: 0 0 82px;

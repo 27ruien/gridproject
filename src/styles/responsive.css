@@ -504,9 +504,14 @@
   .cost-person-row,
   .top-cost-row,
   .cost-raw-head,
-  .cost-raw-row {
+  .cost-raw-row,
+  .timesheet-record-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .timesheet-record-row .user-actions {
+    justify-content: flex-start;
   }
 
   .dashboard-project-row {
