@@ -61,7 +61,7 @@ systemctl is-active --quiet gridproject-dev \
   || fail "gridproject-dev is not active."
 curl -fsS --max-time 10 http://127.0.0.1:3000/api/health > /dev/null \
   || fail "API health check failed."
-curl -fsSI --max-time 10 http://127.0.0.1/ > /dev/null \
+curl -fsSI --max-time 10 -H 'Host: 101.133.150.129' http://127.0.0.1/ > /dev/null \
   || fail "frontend health check failed."
 
 echo "Dev deployment completed."

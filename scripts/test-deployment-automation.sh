@@ -81,6 +81,7 @@ assert_contains scripts/update-dev.sh 'bash scripts/deploy-dev\.sh.*TARGET_COMMI
 assert_contains scripts/update-dev.sh 'git status --porcelain --untracked-files=no' "Dev update must check tracked worktree changes"
 assert_contains scripts/update-dev.sh 'http://127\.0\.0\.1:3000/api/health' "Dev update must check the API on port 3000"
 assert_contains scripts/update-dev.sh 'http://127\.0\.0\.1/' "Dev update must check the frontend on port 80"
+assert_contains scripts/update-dev.sh 'Host: 101\.133\.150\.129' "Frontend health check must use the Dev Host header"
 assert_not_contains scripts/update-dev.sh '5173' "Dev update must not check the Vite port"
 
 workflow_secrets="$(grep -Eo 'secrets\.[A-Z0-9_]+' .github/workflows/rollback-dev.yml \
@@ -96,6 +97,7 @@ assert_contains scripts/deploy-dev.sh 'git cat-file -e.*TARGET_INPUT' "Missing l
 assert_contains scripts/deploy-dev.sh 'git cat-file -t.*TARGET_INPUT' "Target object type must be checked"
 assert_contains scripts/deploy-dev.sh '\[\[ -n.*TARGET_COMMIT' "Resolved target commit must be non-empty"
 assert_contains scripts/deploy-dev.sh 'Current HEAD does not match target commit\.' "HEAD must match the target commit"
+assert_contains scripts/deploy-dev.sh 'Host: 101\.133\.150\.129' "Nginx API health check must use the Dev Host header"
 assert_not_contains scripts/deploy-dev.sh 'git[[:space:]]+fetch' "deploy-dev.sh must not fetch from a remote"
 assert_not_contains scripts/deploy-dev.sh '(GRIDPROJECT_LOCAL_BUNDLE_DEPLOY|git[[:space:]]+bundle)' "Bundle deployment logic must be removed"
 assert_contains scripts/deploy-dev.sh 'db:safety:dev' "Dev database safety check is missing"

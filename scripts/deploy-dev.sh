@@ -151,7 +151,9 @@ check_health() {
   while ((SECONDS < deadline)); do
     local all_healthy=true
     for url in "http://127.0.0.1:3000/api/health" "http://127.0.0.1/api/health"; do
-      http_code=$(curl --silent --show-error --output "$body_file" --write-out '%{http_code}' --max-time 5 "$url" 2>/dev/null || true)
+      local -a host_header=()
+      [[ "$url" == "http://127.0.0.1/api/health" ]] && host_header=(-H 'Host: 101.133.150.129')
+      http_code=$(curl --silent --show-error --output "$body_file" --write-out '%{http_code}' --max-time 5 "${host_header[@]}" "$url" 2>/dev/null || true)
       if [[ "$http_code" != "200" ]] || ! node -e '
         const fs = require("node:fs");
         const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
