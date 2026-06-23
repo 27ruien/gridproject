@@ -38,6 +38,8 @@
 .account-popover {
   position: fixed;
   z-index: var(--z-dropdown);
+  right: auto;
+  bottom: auto;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 14px;

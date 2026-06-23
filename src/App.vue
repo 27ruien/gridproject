@@ -129,10 +129,12 @@
         :manager-name="currentManager.name"
         :context="store.currentContext.value"
         :project-members="store.projectMembers.value"
+        :start-action="timesheetStartAction"
         @create="createTimeEntry"
         @update="updateTimeEntry"
         @delete="deleteTimeEntry"
         @submit="submitTimeEntry"
+        @start-action-handled="timesheetStartAction = null"
       />
 
       <CostManagementView
@@ -268,7 +270,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { ROUTES } from "./router/routes";
 import { useProjects } from "./composables/useProjects";
 import { useProjectWorkspace } from "./composables/useProjectWorkspace";
@@ -305,6 +307,7 @@ const editingProjectId = ref("");
 const projectModalOpen = ref(false);
 const issueModalOpen = ref(false);
 const scheduleImportOpen = ref(false);
+const timesheetStartAction = ref(null);
 
 const {
   templates,
@@ -467,8 +470,18 @@ function setView(view) {
 }
 
 function handleAccountAction(action) {
-  if (action === "timesheet-week" || action === "timesheet-day") {
+  if (action === "timesheet-week") {
     setView("timesheets");
+    nextTick(() => {
+      timesheetStartAction.value = { type: "week", nonce: Date.now() };
+    });
+    return;
+  }
+  if (action === "timesheet-day") {
+    setView("timesheets");
+    nextTick(() => {
+      timesheetStartAction.value = { type: "day", nonce: Date.now() };
+    });
     return;
   }
   openPersonalSettings(action);

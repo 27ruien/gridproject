@@ -260,9 +260,10 @@ const props = defineProps({
   managerName: { type: String, required: true },
   context: { type: Object, required: true },
   projectMembers: { type: Array, default: () => [] },
+  startAction: { type: Object, default: null },
 });
 
-const emit = defineEmits(["create", "update", "delete", "submit"]);
+const emit = defineEmits(["create", "update", "delete", "submit", "start-action-handled"]);
 
 const roleView = ref("submitted");
 const weekStart = ref(mondayOf(new Date()));
@@ -331,6 +332,13 @@ const ownedPeopleOptions = computed(() => {
 
 watch(() => props.projects, () => {
   if (!props.projects.some((project) => project.id === dailyForm.projectId)) dailyForm.projectId = props.projects[0]?.id || "";
+}, { immediate: true });
+
+watch(() => props.startAction?.nonce, () => {
+  if (!props.startAction?.type) return;
+  if (props.startAction.type === "day") openDailySubmit();
+  else focusWeek();
+  emit("start-action-handled");
 }, { immediate: true });
 
 function focusWeek() {

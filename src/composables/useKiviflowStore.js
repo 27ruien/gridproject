@@ -324,14 +324,14 @@ export function useKiviflowStore() {
     if (apiMode) {
       return withApiSave(async () => {
         const { milestones, ...projectPatch } = patch;
-        let projectPayload = null;
+        let updatedProject = null;
         if (Object.keys(projectPatch).length) {
           const payload = await apiClient.projects.update(projectId, projectPayload(projectPatch, users.value, currentUser.value));
-          projectPayload = {
+          updatedProject = {
             ...payload.project,
             milestones: payload.project.milestones || getProject(projectId)?.milestones || [],
           };
-          upsertById(state.projects, projectPayload);
+          upsertById(state.projects, updatedProject);
         }
         if (Array.isArray(milestones)) {
           const currentProject = getProject(projectId);
@@ -344,7 +344,7 @@ export function useKiviflowStore() {
           }
           await loadProjectBoard(projectId).catch(() => null);
         }
-        return projectPayload || getProject(projectId);
+        return updatedProject || getProject(projectId);
       });
     }
     const index = state.projects.findIndex((project) => project.id === projectId);
