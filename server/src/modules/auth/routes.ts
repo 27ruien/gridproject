@@ -7,7 +7,7 @@ import { PasswordFailureLimiter, passwordFailureBucketKey } from "../../security
 import { sanitizeUserDto } from "../../utils/dto.js";
 import { badRequest, tooManyRequests, unauthorized } from "../../utils/errors.js";
 import { hashPassword, validatePassword, verifyPassword } from "../../utils/password.js";
-import { SESSION_COOKIE, createSessionToken, hashSessionToken, sessionExpiry } from "../../utils/session.js";
+import { createSessionToken, hashSessionToken, sessionExpiry } from "../../utils/session.js";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -93,7 +93,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
   });
 
   app.post("/logout", async (request, reply) => {
-    const token = request.cookies?.[SESSION_COOKIE];
+    const token = request.cookies?.[options.config.cookieName];
     if (token) {
       await app.prisma.session.updateMany({
         where: {
@@ -215,7 +215,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
       throw badRequest("当前密码不正确。");
     }
 
-    const currentToken = request.cookies?.[SESSION_COOKIE];
+    const currentToken = request.cookies?.[options.config.cookieName];
     const currentTokenHash = currentToken ? hashSessionToken(currentToken, options.config.sessionSecret) : "";
     const passwordHash = await hashPassword(parsed.data.newPassword);
     const now = new Date();

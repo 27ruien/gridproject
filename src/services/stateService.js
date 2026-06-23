@@ -7,9 +7,12 @@ import { getTemplateById } from "../domain/template.js";
 import { normalizeMilestones } from "../domain/milestone.js";
 import { DEMO_USERS, ORGANIZATION_ID, PROJECT_MEMBER_STATUS, ensureProjectOwnerMembership, userIdForName, userNameForId } from "../domain/access.js";
 import { normalizePreferences } from "../domain/preferences.js";
+import { hasExplicitAppEnvironment, storageKey } from "./appEnvironment.js";
 
-export const STORAGE_KEY = "kiviflow-platform-state-v1";
-const LEGACY_STORAGE_KEY = "kiviflow-vue-mvp-state";
+const UNSCOPED_STORAGE_KEY = "kiviflow-platform-state-v1";
+const UNSCOPED_LEGACY_STORAGE_KEY = "kiviflow-vue-mvp-state";
+export const STORAGE_KEY = storageKey(UNSCOPED_STORAGE_KEY);
+const LEGACY_STORAGE_KEY = storageKey(UNSCOPED_LEGACY_STORAGE_KEY);
 
 const seedState = {
   organization: {
@@ -206,7 +209,11 @@ const seedState = {
 
 export const stateService = {
   load(adapter = localStorageAdapter) {
-    const saved = adapter.read(STORAGE_KEY, null) || adapter.read(LEGACY_STORAGE_KEY, null);
+    const saved = adapter.read(STORAGE_KEY, null)
+      || adapter.read(LEGACY_STORAGE_KEY, null)
+      || (!hasExplicitAppEnvironment()
+        ? adapter.read(UNSCOPED_STORAGE_KEY, null) || adapter.read(UNSCOPED_LEGACY_STORAGE_KEY, null)
+        : null);
     if (!saved) return normalizeState(seedState);
 
     try {

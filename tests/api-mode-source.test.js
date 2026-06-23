@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const store = readFileSync(new URL("../src/composables/useKiviflowStore.js", import.meta.url), "utf8");
 const apiClient = readFileSync(new URL("../src/services/apiClient.js", import.meta.url), "utf8");
+const appEnvironment = readFileSync(new URL("../src/services/appEnvironment.js", import.meta.url), "utf8");
 const apiAdapter = readFileSync(new URL("../src/storage/apiAdapter.js", import.meta.url), "utf8");
 const app = readFileSync(new URL("../src/App.vue", import.meta.url), "utf8");
 
@@ -29,6 +30,8 @@ assert(store.includes('user.id === "user-linxia"'), "local demo should preserve 
 assert(store.includes("apiClient.me()"), "store should restore current user from /auth/me");
 assert(store.includes("apiClient.onUnauthorized"), "401 responses should be centrally handled");
 assert(apiClient.includes('credentials: "include"'), "API requests must include cookies");
+assert(apiClient.includes("apiBasePath"), "API requests must use the shared API base path helper");
+assert(appEnvironment.includes("VITE_API_BASE_PATH"), "API base path helper must read the deploy API path variable");
 [
   "projectMembers",
   "issues",

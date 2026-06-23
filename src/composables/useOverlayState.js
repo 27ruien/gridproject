@@ -1,4 +1,5 @@
 import { onBeforeUnmount, ref } from "vue";
+import { stripAppBasePath, withAppBasePath } from "../services/appEnvironment.js";
 
 export function useOverlayState() {
   const toastMessage = ref("");
@@ -49,22 +50,22 @@ export function useOverlayState() {
     const normalized = ["profile", "preferences", "security"].includes(section) ? section : "profile";
     if (!personalSettingsSection.value) personalSettingsReturnUrl.value = `${window.location.pathname}${window.location.search}`;
     personalSettingsSection.value = normalized;
-    const path = `/settings/${normalized}`;
+    const path = withAppBasePath(`/settings/${normalized}`);
     if (window.location.pathname !== path) window.history.pushState({ personalSettings: true, returnUrl: personalSettingsReturnUrl.value }, "", path);
   }
 
   function closePersonalSettings() {
     if (!personalSettingsSection.value) return;
-    const returnUrl = personalSettingsReturnUrl.value || "/?view=dashboard";
+    const returnUrl = personalSettingsReturnUrl.value || withAppBasePath("/?view=dashboard");
     personalSettingsSection.value = "";
     personalSettingsReturnUrl.value = "";
     window.history.replaceState({}, "", returnUrl);
   }
 
   function syncPersonalSettingsFromPath(pathname = window.location.pathname, historyState = window.history.state) {
-    const settingsMatch = pathname.match(/^\/settings\/(profile|preferences|security)$/);
+    const settingsMatch = stripAppBasePath(pathname).match(/^\/settings\/(profile|preferences|security)$/);
     if (settingsMatch) {
-      if (!personalSettingsSection.value && !personalSettingsReturnUrl.value) personalSettingsReturnUrl.value = historyState?.returnUrl || "/?view=dashboard";
+      if (!personalSettingsSection.value && !personalSettingsReturnUrl.value) personalSettingsReturnUrl.value = historyState?.returnUrl || withAppBasePath("/?view=dashboard");
       personalSettingsSection.value = settingsMatch[1];
       return true;
     }

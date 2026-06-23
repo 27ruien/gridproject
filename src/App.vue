@@ -294,6 +294,7 @@ import PersonalSettingsView from "./views/PersonalSettingsView.vue";
 import ScheduleImportModal from "./components/project/ScheduleImportModal.vue";
 import IssueDrawer from "./components/issue/IssueDrawer.vue";
 import IssueCreateModal from "./components/issue/IssueCreateModal.vue";
+import { isAppRoutePath, withAppBasePath } from "./services/appEnvironment.js";
 
 const routes = ROUTES;
 const store = useProjects();
@@ -433,11 +434,11 @@ watch(browserTitle, (title) => {
 
 watch(() => store.auth.authenticated, (authenticated) => {
   if (!store.apiMode) return;
-  if (!authenticated && window.location.pathname !== "/login") {
-    window.history.replaceState({}, "", "/login");
+  if (!authenticated && !isAppRoutePath(window.location.pathname, "/login")) {
+    window.history.replaceState({}, "", withAppBasePath("/login"));
   }
-  if (authenticated && window.location.pathname === "/login") {
-    window.history.replaceState({}, "", "/");
+  if (authenticated && isAppRoutePath(window.location.pathname, "/login")) {
+    window.history.replaceState({}, "", withAppBasePath("/"));
   }
 }, { immediate: true });
 
@@ -795,7 +796,7 @@ async function deleteCostRecord(recordId) {
 
 async function exportCostRecord(recordId, filter) {
   const result = await store.recordCostExport(recordId, filter);
-  showToast(result.ok ? "已记录导出请求；后端 /api/cost-records/:id/export 将生成 Excel" : "导出失败");
+  showToast(result.ok ? "已记录导出请求；后端导出接口将生成 Excel" : "导出失败");
 }
 
 async function createUser(input) {

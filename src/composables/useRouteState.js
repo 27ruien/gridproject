@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { stripAppBasePath } from "../services/appEnvironment.js";
 
 export function useRouteState({
   routes,
@@ -73,10 +74,11 @@ export function useRouteState({
     workspacePage.value = params.get("page") || "";
     workspaceViewMode.value = params.get("viewMode") || "";
     projectNavigationMode.value = params.get("projectNav") === "sidebar" ? "sidebar" : "tabs";
+    const appPath = stripAppBasePath(window.location.pathname);
     syncPersonalSettingsFromPath(window.location.pathname, window.history.state);
 
     if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
-    if (window.location.pathname === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
+    if (appPath === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
     if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) {
       currentView.value = view === "users" && !store.currentContext.value.isAdmin ? "dashboard" : view;
     }

@@ -80,6 +80,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Icon from "./Icon.vue";
 import IconButton from "./IconButton.vue";
 import AccountMenu from "../account/AccountMenu.vue";
+import { storageKey } from "../../services/appEnvironment.js";
 
 const props = defineProps({
   routes: { type: Array, required: true },
@@ -94,7 +95,7 @@ const props = defineProps({
 const emit = defineEmits(["navigate", "logout", "project-view", "account-navigate"]);
 const mobileNavOpen = ref(false);
 const navCollapsed = ref(false);
-const navPreference = "gridproject.navCollapsed";
+const navPreference = storageKey("navCollapsed");
 
 watch(() => props.currentView, () => {
   mobileNavOpen.value = false;

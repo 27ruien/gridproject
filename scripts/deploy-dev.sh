@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+normalize_public_path() {
+  local value="$1"
+  [[ "$value" == /* ]] || value="/$value"
+  [[ "$value" == */ ]] || value="$value/"
+  printf '%s' "$value"
+}
+
 readonly PROJECT_DIR="${GRIDPROJECT_PROJECT_DIR:-/opt/gridproject}"
 readonly ENV_FILE="$PROJECT_DIR/server/.env"
-readonly FRONTEND_CURRENT="${GRIDPROJECT_FRONTEND_DIR:-/var/www/gridproject-dev}"
-readonly FRONTEND_NEXT="${GRIDPROJECT_FRONTEND_NEXT_DIR:-/var/www/gridproject-dev-next}"
-readonly FRONTEND_PREVIOUS="${GRIDPROJECT_FRONTEND_PREVIOUS_DIR:-/var/www/gridproject-dev-previous}"
+readonly FRONTEND_BASE_PATH="$(normalize_public_path "${FRONTEND_BASE_PATH:-/tool/dev/project/}")"
+readonly FRONTEND_API_BASE_PATH="$(normalize_public_path "${FRONTEND_API_BASE_PATH:-/tool/dev/project/api/}")"
+readonly FRONTEND_CURRENT="${FRONTEND_DEPLOY_DIR:-${GRIDPROJECT_FRONTEND_DIR:-/var/www/gridworks/tool/dev/project}}"
+readonly FRONTEND_NEXT="${FRONTEND_NEXT_DIR:-${GRIDPROJECT_FRONTEND_NEXT_DIR:-${FRONTEND_CURRENT}-next}}"
+readonly FRONTEND_PREVIOUS="${FRONTEND_PREVIOUS_DIR:-${GRIDPROJECT_FRONTEND_PREVIOUS_DIR:-${FRONTEND_CURRENT}-previous}}"
+readonly PUBLIC_HOST="${PUBLIC_HOST:-gridworks.cn}"
 readonly BACKUP_DIR="${GRIDPROJECT_BACKUP_DIR:-/var/backups/gridproject}"
 readonly STATE_DIR="${GRIDPROJECT_STATE_DIR:-/var/lib/gridproject-dev/deployments}"
 readonly LOG_DIR="${GRIDPROJECT_LOG_DIR:-/var/log/gridproject-deploy}"
@@ -77,7 +87,7 @@ emit_summary() {
   printf 'DEPLOY_SUMMARY_BACKEND_BUILD=%s\n' "$BACKEND_BUILD_RESULT"
   printf 'DEPLOY_SUMMARY_HEALTH=%s\n' "$HEALTH_RESULT"
   printf 'DEPLOY_SUMMARY_ROLLBACK=%s\n' "$ROLLBACK_OCCURRED"
-  printf 'DEPLOY_SUMMARY_DEV_ADDRESS=%s\n' "configured Dev URL"
+  printf 'DEPLOY_SUMMARY_DEV_ADDRESS=https://%s%s\n' "$PUBLIC_HOST" "$FRONTEND_BASE_PATH"
 }
 
 finish() {
@@ -150,9 +160,9 @@ check_health() {
   body_file=$(mktemp)
   while ((SECONDS < deadline)); do
     local all_healthy=true
-    for url in "http://127.0.0.1:3000/api/health" "http://127.0.0.1/api/health"; do
+    for url in "http://127.0.0.1:3000/api/health" "http://127.0.0.1${FRONTEND_API_BASE_PATH%/}/health"; do
       local -a host_header=()
-      [[ "$url" == "http://127.0.0.1/api/health" ]] && host_header=(-H 'Host: 101.133.150.129')
+      [[ "$url" != "http://127.0.0.1:3000/api/health" ]] && host_header=(-H "Host: ${PUBLIC_HOST}")
       http_code=$(curl --silent --show-error --output "$body_file" --write-out '%{http_code}' --max-time 5 "${host_header[@]}" "$url" 2>/dev/null || true)
       if [[ "$http_code" != "200" ]] || ! node -e '
         const fs = require("node:fs");
@@ -311,7 +321,7 @@ else
   SEED_RESULT="not-requested"
 fi
 
-if VITE_DATA_SOURCE=api VITE_API_BASE_URL=/api npm run build && [[ -f dist/index.html ]]; then
+if VITE_DATA_SOURCE=api VITE_APP_ENV=dev VITE_APP_BASE_PATH="$FRONTEND_BASE_PATH" VITE_API_BASE_PATH="$FRONTEND_API_BASE_PATH" npm run build && [[ -f dist/index.html ]]; then
   FRONTEND_BUILD_RESULT="success"
 else
   FRONTEND_BUILD_RESULT="failed"

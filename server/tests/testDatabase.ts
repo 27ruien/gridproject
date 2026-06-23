@@ -42,6 +42,8 @@ export function testServerConfig() {
     sessionSecret: process.env.SESSION_SECRET || "test-session-secret",
     sessionTtlHours: 8,
     cookieSecure: false,
+    cookieName: "gridproject_test_session",
+    cookiePath: "/",
     frontendOrigins: ["http://127.0.0.1:5173"],
     appVersion: process.env.APP_VERSION || "0.1.0-dev.1",
   };

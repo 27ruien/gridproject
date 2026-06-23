@@ -27,7 +27,9 @@ DATABASE_URL="postgresql://gridproject_app:REPLACE_ME@127.0.0.1:5433/gridproject
 SESSION_SECRET="REPLACE_WITH_A_LONG_RANDOM_STRING"
 SESSION_TTL_HOURS="168"
 COOKIE_SECURE="true"
-FRONTEND_ORIGIN="https://gridproject.example.com"
+SESSION_COOKIE_NAME="gridproject_prod_session"
+SESSION_COOKIE_PATH="/tool/project/"
+FRONTEND_ORIGIN="https://gridworks.cn"
 ```
 
 Do not commit real values. The checked-in examples contain placeholders only.

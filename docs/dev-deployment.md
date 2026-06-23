@@ -34,7 +34,9 @@ NODE_ENV=development
 APP_VERSION=0.1.0-dev.1
 DATABASE_URL=postgresql://gridproject_app:REPLACE_WITH_DEV_PASSWORD@127.0.0.1:5432/gridproject_dev?schema=public
 SESSION_SECRET=REPLACE_WITH_DEV_SESSION_SECRET
-FRONTEND_ORIGIN=http://127.0.0.1:5173
+SESSION_COOKIE_NAME=gridproject_dev_session
+SESSION_COOKIE_PATH=/tool/dev/project/
+FRONTEND_ORIGIN=https://gridworks.cn
 ADMIN_EMAIL=admin@example.test
 ADMIN_PASSWORD=REPLACE_WITH_INITIAL_ADMIN_PASSWORD
 ADMIN_DISPLAY_NAME=GridProject Admin

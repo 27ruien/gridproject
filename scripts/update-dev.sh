@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+normalize_public_path() {
+  local value="$1"
+  [[ "$value" == /* ]] || value="/$value"
+  [[ "$value" == */ ]] || value="$value/"
+  printf '%s' "$value"
+}
+
 PROJECT_DIR="/opt/gridproject"
 DEPLOY_USER="deploy"
 LOCK_FILE="/var/lock/gridproject-dev-update.lock"
+FRONTEND_BASE_PATH="$(normalize_public_path "${FRONTEND_BASE_PATH:-/tool/dev/project/}")"
+FRONTEND_API_BASE_PATH="$(normalize_public_path "${FRONTEND_API_BASE_PATH:-/tool/dev/project/api/}")"
+FRONTEND_DEPLOY_DIR="${FRONTEND_DEPLOY_DIR:-/var/www/gridworks/tool/dev/project}"
+PUBLIC_HOST="${PUBLIC_HOST:-gridworks.cn}"
 
 fail() {
   echo "Dev update failed: $*" >&2
@@ -54,17 +65,21 @@ TARGET_COMMIT="$(sudo -u "$DEPLOY_USER" -H bash -lc \
   'cd /opt/gridproject && git rev-parse HEAD')"
 echo "Deploying commit: $TARGET_COMMIT"
 
-sudo -u "$DEPLOY_USER" -H bash -lc \
-  "cd /opt/gridproject && bash scripts/deploy-dev.sh '$TARGET_COMMIT' false"
+sudo -u "$DEPLOY_USER" -H env \
+  FRONTEND_BASE_PATH="$FRONTEND_BASE_PATH" \
+  FRONTEND_API_BASE_PATH="$FRONTEND_API_BASE_PATH" \
+  FRONTEND_DEPLOY_DIR="$FRONTEND_DEPLOY_DIR" \
+  PUBLIC_HOST="$PUBLIC_HOST" \
+  bash -lc "cd /opt/gridproject && bash scripts/deploy-dev.sh '$TARGET_COMMIT' false"
 
 systemctl is-active --quiet gridproject-dev \
   || fail "gridproject-dev is not active."
 curl -fsS --max-time 10 http://127.0.0.1:3000/api/health > /dev/null \
   || fail "API health check failed."
-curl -fsSI --max-time 10 -H 'Host: 101.133.150.129' http://127.0.0.1/ > /dev/null \
+curl -fsSI --max-time 10 -H "Host: ${PUBLIC_HOST}" "http://127.0.0.1${FRONTEND_BASE_PATH}" > /dev/null \
   || fail "frontend health check failed."
 
 echo "Dev deployment completed."
 echo "Commit: $TARGET_COMMIT"
-echo "Frontend: http://101.133.150.129/"
+echo "Frontend: https://${PUBLIC_HOST}${FRONTEND_BASE_PATH}"
 echo "API health: OK"

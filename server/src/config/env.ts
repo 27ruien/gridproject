@@ -9,6 +9,8 @@ export type ServerConfig = {
   sessionSecret: string;
   sessionTtlHours: number;
   cookieSecure: boolean;
+  cookieName: string;
+  cookiePath: string;
   frontendOrigins: string[];
   appVersion: string;
 };
@@ -36,9 +38,16 @@ export function getConfig(): ServerConfig {
     sessionSecret: process.env.SESSION_SECRET || (nodeEnv === "production" ? "" : "dev-only-session-secret-change-me"),
     sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 168),
     cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : nodeEnv === "production",
+    cookieName: process.env.SESSION_COOKIE_NAME || "gridproject_session",
+    cookiePath: normalizeCookiePath(process.env.SESSION_COOKIE_PATH || "/"),
     frontendOrigins: parseFrontendOrigins(nodeEnv),
     appVersion: process.env.APP_VERSION || "0.1.0-dev.1",
   };
+}
+
+function normalizeCookiePath(value: string) {
+  const path = value.trim() || "/";
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 function parseFrontendOrigins(nodeEnv: string) {

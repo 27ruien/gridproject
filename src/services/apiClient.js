@@ -1,12 +1,13 @@
-const DEFAULT_API_BASE_URL = "/api";
+import { apiBasePath, viteEnv } from "./appEnvironment.js";
+
 const unauthorizedHandlers = new Set();
 
-export function isApiDataSource() {
-  return String(import.meta.env.VITE_DATA_SOURCE || "local").toLowerCase() === "api";
+export function isApiDataSource(env = viteEnv()) {
+  return String(env.VITE_DATA_SOURCE || "local").toLowerCase() === "api";
 }
 
-export function apiBaseUrl() {
-  return String(import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, "");
+export function apiBaseUrl(env) {
+  return apiBasePath(env);
 }
 
 async function request(path, options = {}) {
