@@ -1,5 +1,5 @@
 <template>
-  <article class="project-card" :class="{ compact }">
+  <article class="project-card" :class="[{ compact }, variantClass]">
     <button class="project-card-hit" type="button" :aria-label="`打开项目 ${project.name}`" @click="$emit('open', project.id)">
       <span class="project-card-heading">
         <span class="project-card-mark" :style="markStyle">{{ project.code?.slice(0, 2) || project.name.slice(0, 1) }}</span>
@@ -40,10 +40,11 @@ import Icon from "../ui/Icon.vue";
 import StatusLozenge from "../ui/StatusLozenge.vue";
 import ProgressBar from "../common/ProgressBar.vue";
 import { formatPreferenceDate } from "../../domain/preferences.js";
-const props = defineProps({ project: { type: Object, required: true }, compact: { type: Boolean, default: false }, dateFormat: { type: String, default: "yyyy-mm-dd" } });
+const props = defineProps({ project: { type: Object, required: true }, compact: { type: Boolean, default: false }, variant: { type: String, default: "" }, dateFormat: { type: String, default: "yyyy-mm-dd" } });
 const emit = defineEmits(["open", "edit"]);
 const menuOpen = ref(false);
 const palettes = ["#315a9f", "#177565", "#8b5a18", "#7656a7", "#9b4454", "#3f6c7a"];
+const variantClass = computed(() => props.variant ? `project-card-${props.variant}` : "");
 const markStyle = computed(() => ({ "--project-mark": palettes[hash(props.project.id) % palettes.length] }));
 const currentPhase = computed(() => props.project.milestones?.find((item) => item.status !== "已完成")?.name || props.project.status || "未设置阶段");
 const teamText = computed(() => props.project.executionTeams?.length ? props.project.executionTeams.join("、") : "未指定团队");

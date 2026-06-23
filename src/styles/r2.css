@@ -577,6 +577,107 @@
 .project-card.compact .project-card-heading { padding-right: 0; }
 .project-card.compact .project-card-meta > span:not(:first-child) { display: none; }
 
+.project-card-grid-dashboard {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.project-card.project-card-dashboard {
+  min-height: 206px;
+  border-color: #e6e8ec;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.project-card.project-card-dashboard:hover,
+.project-card.project-card-dashboard:focus-within {
+  border-color: #d5d9e0;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.04);
+  transform: none;
+}
+
+.project-card-dashboard .project-card-hit {
+  gap: 14px;
+  padding: 16px;
+}
+
+.project-card-dashboard .project-card-heading {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.project-card-dashboard .project-card-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #eef3fb;
+  color: #3867a9;
+  font-size: 12px;
+}
+
+.project-card-dashboard .project-card-title strong {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 650;
+  -webkit-line-clamp: 1;
+}
+
+.project-card-dashboard .project-card-title small {
+  margin-top: 1px;
+  color: #7a8491;
+  font-size: 12px;
+}
+
+.project-card-dashboard .status-lozenge {
+  min-height: 26px;
+  border-radius: 9px;
+  background: #edf4ff;
+  color: #2f67bd;
+  padding-inline: 10px;
+  font-weight: 600;
+}
+
+.project-card-dashboard .project-card-meta {
+  color: #6f7782;
+  font-size: 13px;
+}
+
+.project-card-dashboard .mini-avatar {
+  width: 22px;
+  height: 22px;
+  background: #e8f1ff;
+  color: #3867a9;
+}
+
+.project-card-dashboard .project-card-progress {
+  gap: 8px;
+}
+
+.project-card-dashboard .project-card-progress > span strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.project-card-dashboard .project-card-progress .progress {
+  height: 4px;
+  background: #edf0f4;
+}
+
+.project-card-dashboard .project-card-progress .progress span {
+  background: #3b73df;
+}
+
+.project-card-dashboard .project-card-footer {
+  padding-top: 12px;
+  border-top-color: #edf0f4;
+  color: #697382;
+}
+
+.project-card-dashboard .project-on-track {
+  color: #16805a;
+}
+
 .project-library-empty {
   min-height: 260px;
   border: 1px dashed var(--line-strong);
@@ -590,18 +691,17 @@
 }
 
 .home-view {
+  width: min(100%, 1220px);
+  margin: 0 auto;
   display: grid;
-  gap: var(--space-300);
+  gap: 28px;
 }
 
 .home-greeting {
-  min-height: 120px;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-300);
-  padding: var(--space-100) 0 var(--space-200);
+  min-height: 0;
+  display: grid;
+  gap: 22px;
+  padding: 22px 0 0;
 }
 
 .home-greeting > div {
@@ -609,39 +709,83 @@
 }
 
 .home-greeting p {
-  color: var(--brand);
-  font-size: var(--text-control);
+  margin: 0 0 6px;
+  color: #2f6fe4;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
 }
 
 .home-greeting h1 {
-  margin: var(--space-025) 0;
-  font-size: 22px;
+  margin: 0;
+  color: #15181d;
+  font-size: clamp(26px, 2.1vw, 30px);
+  line-height: 1.25;
+  font-weight: 650;
   letter-spacing: 0;
+}
+
+.home-greeting small {
+  display: block;
+  margin-top: 10px;
+  color: #747d89;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .home-summary {
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
 }
 
-.home-summary div {
-  min-width: 88px;
-  border-left: 1px solid var(--line);
-  padding: 0 var(--space-200);
+.home-summary-card {
+  min-width: 0;
+  min-height: 118px;
+  border: 1px solid #e6e8ec;
+  border-radius: 12px;
+  background: #fff;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
 }
+
+.home-summary-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #f5f7fb;
+  color: #4f6f9f;
+  display: grid;
+  place-items: center;
+}
+
+.home-summary-icon .ui-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.home-summary-card.issues .home-summary-icon { color: #7a5fb6; }
+.home-summary-card.due .home-summary-icon { color: #bd6d19; }
+.home-summary-card.risk .home-summary-icon { color: #b35d5d; }
 
 .home-summary dt {
-  color: var(--subtle);
-  font-size: var(--text-caption);
+  margin: 0;
+  color: #7b8490;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
 }
 
 .home-summary dd {
-  margin: var(--space-025) 0 0;
-  font-size: 22px;
-  font-weight: 600;
+  margin: 4px 0 0;
+  color: #16191f;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 650;
 }
 
 .home-summary dd.danger { color: var(--red); }
@@ -649,22 +793,178 @@
 .home-section {
   min-width: 0;
   display: grid;
-  gap: var(--space-150);
+  gap: 16px;
 }
 
-.home-section .section-head { margin: 0; }
-.home-section .section-head p { font-size: var(--text-control); }
+.home-section .section-head {
+  margin: 0;
+  align-items: end;
+}
+
+.home-section .section-head h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 650;
+}
+
+.home-section .section-head p {
+  margin-top: 3px;
+  color: #6f7782;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.home-section .section-head .ui-button {
+  min-height: 34px;
+  border-color: #d8dce3;
+  border-radius: 7px;
+  background: #fff;
+  color: #2d333b;
+  box-shadow: none;
+}
 
 .home-projects-section .project-card-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
-.due-tabs { justify-self: start; }
+.timesheet-nudge-panel,
+.due-section {
+  border: 1px solid #e6e8ec;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.timesheet-nudge-section .section-head {
+  padding: 0;
+}
+
+.timesheet-nudge-panel {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.timesheet-total {
+  display: grid;
+  gap: 6px;
+}
+
+.timesheet-total > span {
+  color: #7b8490;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.timesheet-total strong {
+  color: #15181d;
+  font-size: 34px;
+  line-height: 38px;
+  font-weight: 650;
+}
+
+.timesheet-total small {
+  margin-left: 3px;
+  color: #6f7782;
+  font-size: 16px;
+}
+
+.timesheet-meter {
+  height: 4px;
+  border-radius: 999px;
+  background: #edf0f4;
+  overflow: hidden;
+}
+
+.timesheet-meter span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: #4f7fe8;
+}
+
+.timesheet-nudge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid #edf0f4;
+  padding-top: 14px;
+}
+
+.timesheet-nudge-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.timesheet-nudge-grid > div + div {
+  border-left: 1px solid #edf0f4;
+  padding-left: 16px;
+}
+
+.timesheet-nudge-grid span {
+  color: #7b8490;
+  font-size: 13px;
+}
+
+.timesheet-nudge-grid strong {
+  color: #15181d;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.timesheet-nudge-grid .missing strong { color: #9a6700; }
+.timesheet-nudge-grid .draft strong { color: #2563eb; }
+.timesheet-nudge-grid strong.danger { color: #bd4b4b; }
+
+.due-section {
+  overflow: hidden;
+}
+
+.due-section > .section-head {
+  padding: 20px 20px 14px;
+}
+
+.due-tabs {
+  width: 100%;
+  justify-self: stretch;
+  border-block: 1px solid #edf0f4;
+  border-radius: 0;
+  background: #fbfcfd;
+  padding: 0 20px;
+  gap: 18px;
+}
+
+.due-tabs button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #6f7782;
+  padding: 0 2px;
+  position: relative;
+}
+
+.due-tabs button.active {
+  background: transparent;
+  color: #245fc6;
+}
+
+.due-tabs button.active::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #2f6fe4;
+}
+
 .due-tabs button span { color: var(--subtle); }
 
 .due-groups {
   display: grid;
-  gap: var(--space-200);
+  gap: 0;
 }
 
 .due-group {
@@ -672,43 +972,62 @@
 }
 
 .due-group > header {
-  min-height: 32px;
+  min-height: 44px;
+  border-bottom: 1px solid #edf0f4;
   display: flex;
   align-items: center;
-  gap: var(--space-075);
-  color: var(--muted);
+  gap: 8px;
+  color: #6f7782;
+  padding: 0 20px;
 }
 
-.due-group > header strong { color: var(--text); font-size: var(--text-control); }
-.due-group > header span { min-width: 20px; height: 20px; border-radius: var(--radius-pill); background: var(--surface-muted); display: inline-grid; place-items: center; font-size: var(--text-caption); }
-.due-group > header small { color: var(--subtle); }
-.due-group.overdue > header strong { color: var(--red); }
+.due-group + .due-group {
+  border-top: 1px solid #edf0f4;
+}
+
+.due-group > header strong { color: #1d2026; font-size: 14px; }
+.due-group > header span { min-width: 20px; height: 20px; border-radius: 999px; background: #eef1f5; display: inline-grid; place-items: center; font-size: 12px; }
+.due-group > header small { color: #8a929e; }
+.due-group.overdue > header strong { color: #ad3f3f; }
 
 .due-issue-list {
-  border-top: 1px solid var(--line);
   display: grid;
+}
+
+.due-issue-header {
+  min-height: 36px;
+  border-bottom: 1px solid #edf0f4;
+  background: #fbfcfd;
+  color: #8a929e;
+  padding: 0 20px 0 56px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 120px 76px 88px 110px;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .due-issue-card {
   min-width: 0;
   min-height: 58px;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #edf0f4;
   background: transparent;
-  padding: var(--space-100) var(--space-075);
+  padding: 9px 20px;
   display: grid;
-  grid-template-columns: 28px minmax(220px, 1fr) 120px auto auto 98px;
+  grid-template-columns: 24px minmax(220px, 1fr) 120px 76px 88px 110px;
   align-items: center;
-  gap: var(--space-100);
+  gap: 12px;
   color: var(--text);
   text-align: left;
 }
 
-.due-issue-card:hover { background: var(--surface-subtle); }
+.due-issue-card:hover { background: #f8fafc; }
 
 .issue-type-mark {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 5px;
   display: grid;
   place-items: center;
@@ -734,27 +1053,49 @@
   white-space: nowrap;
 }
 
+.due-issue-main strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.due-issue-main small {
+  color: #7b8490;
+  font-size: 12px;
+}
+
 .due-issue-owner {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-050);
-  color: var(--muted);
-  font-size: var(--text-caption);
+  gap: 6px;
+  color: #6f7782;
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .due-date {
   justify-items: end;
 }
 
-.due-date strong { font-size: var(--text-caption); color: var(--muted); }
-.due-date.overdue strong { color: var(--red); }
-.due-date.urgent strong { color: var(--amber); }
+.due-date strong { font-size: 12px; color: #6f7782; }
+.due-date small { color: #9aa2ad; font-size: 11px; }
+.due-date.overdue strong { color: #ad3f3f; }
+.due-date.urgent strong { color: #a26200; }
+
+.due-section .pill,
+.due-section .status-lozenge {
+  min-height: 22px;
+  border-radius: 7px;
+  padding-inline: 8px;
+  font-weight: 600;
+}
 
 .home-empty {
-  min-height: 90px;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-control);
+  min-height: 92px;
+  margin: 0 20px 20px;
+  border: 1px dashed #d8dce3;
+  border-radius: 10px;
   color: var(--green);
   display: flex;
   align-items: center;
@@ -954,7 +1295,11 @@
 @media (max-width: 1279px) {
   .project-card-grid,
   .home-projects-section .project-card-grid { grid-template-columns: repeat(2, minmax(300px, 1fr)); }
-  .due-issue-card { grid-template-columns: 28px minmax(180px, 1fr) 110px auto 96px; }
+  .due-issue-header {
+    grid-template-columns: minmax(180px, 1fr) 110px 76px 96px;
+  }
+  .due-issue-header span:nth-child(4) { display: none; }
+  .due-issue-card { grid-template-columns: 24px minmax(180px, 1fr) 110px 76px 96px; }
   .due-issue-card .status-lozenge { display: none; }
   .risk-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -1018,20 +1363,23 @@
   .project-card-heading { grid-template-columns: 34px minmax(0, 1fr) auto; }
 
   .home-view { gap: var(--space-200); }
-  .home-greeting { min-height: 0; align-items: stretch; flex-direction: column; gap: var(--space-150); padding-top: 0; }
-  .home-greeting h1 { font-size: 19px; line-height: 26px; }
-  .home-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); padding-top: var(--space-100); }
-  .home-summary div { min-width: 0; border-left: 0; padding: 0 var(--space-075); }
-  .home-summary div + div { border-left: 1px solid var(--line); }
-  .home-summary dd { font-size: 18px; }
+  .home-greeting { gap: var(--space-150); padding-top: 0; }
+  .home-greeting h1 { font-size: 22px; line-height: 28px; }
+  .home-summary { grid-template-columns: 1fr; }
+  .home-summary-card { min-height: 92px; padding: 14px; grid-template-columns: 40px minmax(0, 1fr); }
+  .home-summary-icon { width: 40px; height: 40px; }
+  .home-summary dd { font-size: 24px; line-height: 30px; }
+  .timesheet-nudge-grid { grid-template-columns: 1fr; gap: 12px; }
+  .timesheet-nudge-grid > div + div { border-left: 0; border-top: 1px solid #edf0f4; padding: 12px 0 0; }
   .home-projects-section .project-card { min-height: 180px; }
-  .home-projects-section .project-card:nth-child(n + 3) { display: none; }
+  .home-projects-section .project-card:nth-child(n + 3) { display: block; }
 
-  .due-issue-card { min-height: 84px; grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-areas: "type main date" "type owner priority"; align-items: start; }
+  .due-issue-header { display: none; }
+  .due-issue-card { min-height: 84px; grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "type main date" "type owner priority"; align-items: start; }
   .due-issue-card .issue-type-mark { grid-area: type; }
   .due-issue-main { grid-area: main; }
   .due-issue-owner { grid-area: owner; }
-  .due-issue-card .priority-pill { grid-area: priority; }
+  .due-issue-card .pill { grid-area: priority; justify-self: end; }
   .due-date { grid-area: date; }
   .risk-strip { grid-template-columns: 1fr; }
 

@@ -7,16 +7,27 @@
         <small>{{ todayLabel }} · {{ weekRangeLabel }}</small>
       </div>
       <dl class="home-summary" aria-label="工作摘要">
-        <div><dt>参与项目</dt><dd>{{ accessibleProjects.length }}</dd></div>
-        <div><dt>开放事项</dt><dd>{{ accessibleIssues.length }}</dd></div>
-        <div><dt>待关注</dt><dd>{{ dueIssues.all.length }}</dd></div>
-        <div v-if="riskIssues.length"><dt>异常</dt><dd class="danger">{{ riskIssues.length }}</dd></div>
+        <div class="home-summary-card projects">
+          <span class="home-summary-icon"><Icon name="projects" /></span>
+          <dt>参与项目</dt>
+          <dd>{{ accessibleProjects.length }}</dd>
+        </div>
+        <div class="home-summary-card issues">
+          <span class="home-summary-icon"><Icon name="issueTask" /></span>
+          <dt>开放事项</dt>
+          <dd>{{ accessibleIssues.length }}</dd>
+        </div>
+        <div class="home-summary-card due">
+          <span class="home-summary-icon"><Icon name="calendar" /></span>
+          <dt>待关注</dt>
+          <dd>{{ dueIssues.all.length }}</dd>
+        </div>
       </dl>
     </header>
 
     <section class="home-section home-projects-section">
       <div class="section-head"><div><h2>我的项目</h2><p>优先显示风险、临近上线和最近更新的项目。</p></div><Button variant="ghost" size="small" @click="$emit('show-projects')">查看全部</Button></div>
-      <ProjectCardGrid :projects="homeProjects" compact :date-format="preferences.dateFormat" empty-title="暂无可访问项目" empty-text="加入项目后会在这里显示。" @open="$emit('open-project', $event)" />
+      <ProjectCardGrid :projects="homeProjects" compact variant="dashboard" :date-format="preferences.dateFormat" empty-title="暂无可访问项目" empty-text="加入项目后会在这里显示。" @open="$emit('open-project', $event)" />
     </section>
 
     <section class="home-section timesheet-nudge-section">
@@ -26,10 +37,17 @@
           <p>只统计你自己的工作日填报记录。</p>
         </div>
       </div>
-      <div class="timesheet-nudge-grid" aria-label="本周工时摘要">
-        <div><span>已填写 / 已提交</span><strong>{{ weekTimeSummary.hours }}h</strong></div>
-        <div><span>尚未填写</span><strong>{{ weekTimeSummary.missingDays }} 天</strong></div>
-        <div><span>是否有草稿</span><strong :class="{ danger: weekTimeSummary.hasDrafts }">{{ weekTimeSummary.hasDrafts ? "有" : "无" }}</strong></div>
+      <div class="timesheet-nudge-panel">
+        <div class="timesheet-total">
+          <span>已填写 / 已提交</span>
+          <strong>{{ weekTimeSummary.hours }}<small>h</small></strong>
+        </div>
+        <div class="timesheet-meter" aria-hidden="true"><span :style="{ width: weekTimeProgress }" /></div>
+        <div class="timesheet-nudge-grid" aria-label="本周工时摘要">
+          <div class="submitted"><span>已填写 / 已提交</span><strong>{{ weekTimeSummary.hours }}h</strong></div>
+          <div class="missing"><span>尚未填写</span><strong>{{ weekTimeSummary.missingDays }} 天</strong></div>
+          <div class="draft"><span>是否有草稿</span><strong :class="{ danger: weekTimeSummary.hasDrafts }">{{ weekTimeSummary.hasDrafts ? "有" : "无" }}</strong></div>
+        </div>
       </div>
     </section>
 
@@ -42,6 +60,13 @@
         <section v-for="group in currentDueGroups" :key="group.key" class="due-group" :class="group.key">
           <header><strong>{{ group.label }}</strong><span>{{ group.issues.length }}</span><small>{{ group.hint }}</small></header>
           <div class="due-issue-list">
+            <div class="due-issue-header" aria-hidden="true">
+              <span>事项</span>
+              <span>执行人</span>
+              <span>优先级</span>
+              <span>状态</span>
+              <span>到期</span>
+            </div>
             <button v-for="issue in group.issues" :key="issue.id" class="due-issue-card" type="button" @click="$emit('open-issue', issue.id)">
               <span class="issue-type-mark" :class="issue.type"><Icon :name="issueIcon(issue.type)" /></span>
               <span class="due-issue-main"><strong>{{ issue.title }}</strong><small>{{ issue.code }} · {{ projectName(issue.projectId) }}</small></span>
@@ -67,6 +92,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import Button from "../components/ui/Button.vue";
 import Icon from "../components/ui/Icon.vue";
 import StatusLozenge from "../components/ui/StatusLozenge.vue";
 import PriorityPill from "../components/common/PriorityPill.vue";
@@ -114,6 +140,10 @@ const weekTimeSummary = computed(() => {
     missingDays: weekWorkdays.value.filter((date) => !filledDates.has(date)).length,
     hasDrafts: myWeekEntries.value.some((entry) => normalizeTimeStatus(entry.status) === "DRAFT"),
   };
+});
+const weekTimeProgress = computed(() => {
+  const expectedHours = Math.max(1, weekWorkdays.value.length * 8);
+  return `${Math.min(100, Math.round((weekTimeSummary.value.hours / expectedHours) * 100))}%`;
 });
 const dueIssues = computed(() => {
   const all = sortDue(accessibleIssues.value.filter(isInDueWindow));
