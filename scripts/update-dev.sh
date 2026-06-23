@@ -10,15 +10,49 @@ normalize_public_path() {
 
 PROJECT_DIR="/opt/gridproject"
 DEPLOY_USER="deploy"
+DEPLOY_GROUP="deploy"
 LOCK_FILE="/var/lock/gridproject-dev-update.lock"
 FRONTEND_BASE_PATH="$(normalize_public_path "${FRONTEND_BASE_PATH:-/tool/dev/project/}")"
 FRONTEND_API_BASE_PATH="$(normalize_public_path "${FRONTEND_API_BASE_PATH:-/tool/dev/project/api/}")"
 FRONTEND_DEPLOY_DIR="${FRONTEND_DEPLOY_DIR:-/var/www/gridworks/tool/dev/project}"
+FRONTEND_NEXT_DIR="${FRONTEND_DEPLOY_DIR}-next"
+FRONTEND_PREVIOUS_DIR="${FRONTEND_DEPLOY_DIR}-previous"
 PUBLIC_HOST="${PUBLIC_HOST:-gridworks.cn}"
 
 fail() {
   echo "Dev update failed: $*" >&2
   exit 1
+}
+
+safe_remove_frontend_slot() {
+  local path="$1"
+  [[ "$path" == /* && "$path" != "/" ]] || fail "refusing to remove unsafe frontend path: $path"
+  [[ "$path" == "$FRONTEND_DEPLOY_DIR-"* ]] || fail "refusing to remove unrelated frontend path: $path"
+  rm -rf -- "$path"
+}
+
+prepare_frontend_directories() {
+  [[ "$FRONTEND_DEPLOY_DIR" == /* && "$FRONTEND_DEPLOY_DIR" != "/" ]] \
+    || fail "FRONTEND_DEPLOY_DIR must be an absolute non-root path."
+
+  local frontend_parent
+  frontend_parent="$(dirname "$FRONTEND_DEPLOY_DIR")"
+  [[ "$frontend_parent" == /* && "$frontend_parent" != "/" ]] \
+    || fail "FRONTEND_DEPLOY_DIR parent must be an absolute non-root path."
+
+  install -d -m 755 "$frontend_parent"
+  install -d -m 755 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$frontend_parent" "$FRONTEND_DEPLOY_DIR"
+  chown -R "$DEPLOY_USER:$DEPLOY_GROUP" "$FRONTEND_DEPLOY_DIR"
+
+  safe_remove_frontend_slot "$FRONTEND_PREVIOUS_DIR"
+  safe_remove_frontend_slot "$FRONTEND_NEXT_DIR"
+
+  sudo -u "$DEPLOY_USER" test -x "$frontend_parent" \
+    || fail "$DEPLOY_USER cannot traverse the frontend parent directory."
+  sudo -u "$DEPLOY_USER" test -w "$frontend_parent" \
+    || fail "$DEPLOY_USER cannot write to the frontend parent directory."
+  sudo -u "$DEPLOY_USER" test -w "$FRONTEND_DEPLOY_DIR" \
+    || fail "$DEPLOY_USER cannot write to FRONTEND_DEPLOY_DIR."
 }
 
 if [[ "${EUID}" -ne 0 ]]; then
@@ -27,6 +61,7 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 command -v flock >/dev/null 2>&1 || fail "flock is not installed."
+command -v install >/dev/null 2>&1 || fail "install is not installed."
 command -v sudo >/dev/null 2>&1 || fail "sudo is not installed."
 command -v systemctl >/dev/null 2>&1 || fail "systemctl is not installed."
 command -v curl >/dev/null 2>&1 || fail "curl is not installed."
@@ -37,6 +72,7 @@ flock -n 9 || fail "another GridProject Dev update is already running."
 [[ -d "$PROJECT_DIR" ]] || fail "$PROJECT_DIR does not exist."
 [[ -d "$PROJECT_DIR/.git" ]] || fail "$PROJECT_DIR is not a Git repository."
 id "$DEPLOY_USER" >/dev/null 2>&1 || fail "deploy user does not exist."
+getent group "$DEPLOY_GROUP" >/dev/null 2>&1 || fail "deploy group does not exist."
 [[ -f "$PROJECT_DIR/scripts/deploy-dev.sh" ]] || fail "scripts/deploy-dev.sh is missing."
 [[ -r "$PROJECT_DIR/server/.env" ]] || fail "server/.env is missing or unreadable."
 
@@ -64,6 +100,8 @@ sudo -u "$DEPLOY_USER" -H bash -lc \
 TARGET_COMMIT="$(sudo -u "$DEPLOY_USER" -H bash -lc \
   'cd /opt/gridproject && git rev-parse HEAD')"
 echo "Deploying commit: $TARGET_COMMIT"
+
+prepare_frontend_directories
 
 sudo -u "$DEPLOY_USER" -H env \
   FRONTEND_BASE_PATH="$FRONTEND_BASE_PATH" \
