@@ -13,8 +13,6 @@
       @keydown.up.prevent="openAndFocus(items.length - 1)"
     >
       <span class="avatar" :style="{ '--avatar-color': preferences.avatarColor }">{{ initial }}</span>
-      <strong>{{ user.name }}</strong>
-      <Icon name="chevronDown" />
     </button>
 
     <Teleport to="body">
@@ -33,7 +31,6 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
-import Icon from "../ui/Icon.vue";
 import AccountMenuContent from "./AccountMenuContent.vue";
 
 const props = defineProps({
@@ -121,7 +118,7 @@ function placePopover() {
     }
     const rect = trigger.value?.getBoundingClientRect();
     if (!rect) return;
-    const width = 360;
+    const width = 304;
     const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
     const top = Math.min(rect.bottom + 6, window.innerHeight - 300);
     popoverStyle.value = { width: `${width}px`, left: `${left}px`, top: `${Math.max(8, top)}px` };

@@ -32,62 +32,6 @@
           <strong>{{ currentView === "project" ? project.name : pageTitle }}</strong>
         </div>
         <div class="topbar-tools">
-          <div ref="searchRoot" class="search-combobox" :class="{ expanded: searchExpanded || rawSearchText }" @keydown.down.prevent="moveSearch(1)" @keydown.up.prevent="moveSearch(-1)" @keydown.enter.prevent="openActiveSearchResult" @keydown.esc="closeSearch">
-          <button v-if="!searchExpanded && !rawSearchText" class="command-search-trigger" type="button" aria-label="打开全局搜索" @click="expandSearch">
-            <Icon name="search" />
-            <span>搜索</span>
-          </button>
-          <label v-else class="search compact-search">
-            <Icon name="search" />
-            <input
-              ref="searchInput"
-              v-model="rawSearchText"
-              type="search"
-              role="combobox"
-              aria-autocomplete="list"
-              :aria-controls="searchPanelId"
-              :aria-expanded="searchPanelOpen"
-              placeholder="搜索项目、事项或负责人"
-              @focus="searchFocused = true; searchExpanded = true"
-              @input="handleSearchInput"
-            />
-          </label>
-          <div v-if="searchPanelOpen" :id="searchPanelId" class="search-panel" role="listbox" :aria-label="`搜索结果 ${flatSearchResults.length} 条`">
-            <div v-if="searchResults.projects.length" class="search-result-group">
-              <p class="eyebrow">项目</p>
-              <button
-                v-for="result in searchResults.projects"
-                :key="result.id"
-                class="search-result"
-                :class="{ active: activeSearchResult?.kind === 'project' && activeSearchResult.id === result.id }"
-                role="option"
-                :aria-selected="activeSearchResult?.kind === 'project' && activeSearchResult.id === result.id"
-                type="button"
-                @click="openProject(result.id)"
-              >
-                <strong>{{ result.name }}</strong>
-                <small>{{ result.owner }} · {{ result.status }} · 上线 {{ result.releaseDate || "未设置" }}</small>
-              </button>
-            </div>
-            <div v-if="searchResults.issues.length" class="search-result-group">
-              <p class="eyebrow">事项</p>
-              <button
-                v-for="result in searchResults.issues"
-                :key="result.id"
-                class="search-result"
-                :class="{ active: activeSearchResult?.kind === 'issue' && activeSearchResult.id === result.id }"
-                role="option"
-                :aria-selected="activeSearchResult?.kind === 'issue' && activeSearchResult.id === result.id"
-                type="button"
-                @click="openIssueFromSearch(result.id)"
-              >
-                <strong>{{ result.title }}</strong>
-                <small>{{ result.code }} · {{ projectName(result.projectId) }} · {{ result.status }}</small>
-              </button>
-            </div>
-            <p v-if="!flatSearchResults.length" class="quiet-text">没有找到匹配结果。</p>
-          </div>
-          </div>
           <AccountMenu class="desktop-account-menu" :user="currentManager" :preferences="preferences" show-logout @navigate="handleAccountAction" @logout="logout" />
         </div>
       </header>

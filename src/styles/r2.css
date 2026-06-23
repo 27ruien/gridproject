@@ -35,6 +35,13 @@
   outline-offset: 2px;
 }
 
+.desktop-account-menu .account-trigger {
+  width: 36px;
+  min-height: 36px;
+  justify-content: center;
+  padding: 0;
+}
+
 .account-popover {
   position: fixed;
   z-index: var(--z-dropdown);

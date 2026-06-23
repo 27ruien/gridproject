@@ -25,7 +25,6 @@
           <h2>本周工时</h2>
           <p>只统计你自己的工作日填报记录。</p>
         </div>
-        <Button variant="primary" size="small" @click="$emit('open-timesheets')">去填写工时</Button>
       </div>
       <div class="timesheet-nudge-grid" aria-label="本周工时摘要">
         <div><span>已填写 / 已提交</span><strong>{{ weekTimeSummary.hours }}h</strong></div>
