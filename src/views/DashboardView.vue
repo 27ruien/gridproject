@@ -67,7 +67,6 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
-import Button from "../components/ui/Button.vue";
 import Icon from "../components/ui/Icon.vue";
 import StatusLozenge from "../components/ui/StatusLozenge.vue";
 import PriorityPill from "../components/common/PriorityPill.vue";
