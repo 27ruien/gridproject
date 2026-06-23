@@ -30,6 +30,7 @@
 }
 
 .account-trigger:focus-visible {
+  border-color: var(--brand);
   outline: 2px solid color-mix(in srgb, var(--brand) 24%, transparent);
   outline-offset: 2px;
 }
@@ -37,14 +38,27 @@
 .account-popover {
   position: fixed;
   z-index: var(--z-dropdown);
-  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 18px 42px rgba(17, 24, 39, 0.14);
-  padding: var(--space-125);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  padding: 0;
+  display: grid;
+  gap: 0;
+  animation: account-menu-in 140ms ease-out;
+}
+
+.account-menu-section {
+  min-width: 0;
   display: grid;
   gap: var(--space-100);
-  animation: account-menu-in 140ms ease-out;
+  padding: var(--space-150);
+  background: #fff;
+}
+
+.account-menu-section + .account-menu-section {
+  border-top: 1px solid var(--line);
 }
 
 .account-identity {
@@ -53,8 +67,6 @@
   grid-template-columns: 36px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-100);
-  padding: var(--space-050) var(--space-075) var(--space-100);
-  border-bottom: 1px solid var(--line);
 }
 
 .account-avatar {
@@ -82,9 +94,47 @@
   color: var(--subtle);
 }
 
+.account-section-label {
+  margin: 0;
+  color: var(--subtle);
+  font-size: var(--text-caption);
+  line-height: var(--line-caption);
+  font-weight: 600;
+}
+
+.account-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-075);
+}
+
+.account-quick-action {
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--line));
+  border-radius: var(--radius-control);
+  background: var(--brand-subtle);
+  color: var(--brand-soft-text);
+  padding: 0 var(--space-100);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-075);
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+
+.account-quick-action:hover,
+.account-quick-action:focus-visible {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand-subtle) 72%, #fff);
+  outline: 2px solid color-mix(in srgb, var(--brand) 24%, transparent);
+  outline-offset: 2px;
+}
+
 .account-menu-items {
   display: grid;
-  gap: var(--space-025);
+  gap: var(--space-050);
 }
 
 .account-menu-items button {
@@ -101,20 +151,51 @@
 }
 
 .account-menu-items button:hover,
-.account-menu-items button:focus-visible {
+.account-menu-items button:focus-visible,
+.account-menu-logout:hover,
+.account-menu-logout:focus-visible {
   background: var(--surface-subtle);
   outline: 2px solid color-mix(in srgb, var(--brand) 22%, transparent);
   outline-offset: 2px;
 }
 
-.account-menu-items button.danger {
-  color: var(--red);
+.account-recent-empty {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  padding: var(--space-100);
+  display: grid;
+  gap: var(--space-025);
 }
 
-.account-menu-divider {
-  height: 1px;
-  margin: var(--space-050) 0;
-  background: var(--line);
+.account-recent-empty strong,
+.account-recent-empty small {
+  overflow-wrap: anywhere;
+}
+
+.account-recent-empty strong {
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+
+.account-logout-section {
+  padding-block: var(--space-100);
+}
+
+.account-menu-logout {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--red);
+  padding: 0 var(--space-100);
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  text-align: left;
+  font-weight: 600;
 }
 
 @keyframes account-menu-in {
@@ -161,7 +242,8 @@
 
 .project-filter-popover > .ui-button.active {
   border-color: var(--brand);
-  color: var(--brand);
+  color: var(--brand-soft-text);
+  background: var(--brand-subtle);
 }
 
 .filter-count {
@@ -620,7 +702,7 @@
 
 .issue-type-mark.缺陷 { background: #fff0f0; color: var(--red); }
 .issue-type-mark.风险 { background: #fff6e6; color: var(--amber); }
-.issue-type-mark.需求 { background: #eef4ff; color: var(--blue); }
+.issue-type-mark.需求 { background: var(--brand-subtle); color: var(--brand-soft-text); }
 .issue-type-mark .ui-icon { width: 14px; height: 14px; }
 
 .due-issue-main,
@@ -820,7 +902,7 @@
 .settings-panel-form legend { margin-bottom: var(--space-100); color: var(--muted); font-size: var(--text-caption); font-weight: 500; }
 .settings-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-100); }
 .settings-choice-grid label { min-height: 74px; border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-100); display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: var(--space-100); }
-.settings-choice-grid label.selected { border-color: var(--brand); background: var(--brand-subtle); }
+.settings-choice-grid label.selected { border-color: var(--brand); background: var(--brand-subtle); color: var(--brand-soft-text); }
 .settings-choice-grid input { width: 16px; min-height: 16px; margin-top: 2px; }
 .settings-choice-grid label > span { display: grid; }
 .settings-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-150); }
@@ -831,10 +913,10 @@
 .ui-select-control .ui-icon { position: absolute; top: 50%; right: var(--space-100); width: 14px; height: 14px; color: var(--subtle); transform: translateY(-50%); pointer-events: none; }
 
 .security-notice {
-  border: 1px solid #d7e2f3;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
   border-radius: var(--radius-control);
-  background: #f5f8fc;
-  color: var(--blue);
+  background: var(--brand-subtle);
+  color: var(--brand-soft-text);
   padding: var(--space-100);
   display: flex;
   align-items: center;

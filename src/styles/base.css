@@ -48,7 +48,8 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--brand);
-  outline: 2px solid color-mix(in srgb, var(--brand) 18%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--brand) 24%, transparent);
+  outline-offset: 1px;
 }
 
 label {

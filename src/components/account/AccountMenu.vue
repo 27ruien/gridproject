@@ -121,7 +121,7 @@ function placePopover() {
     }
     const rect = trigger.value?.getBoundingClientRect();
     if (!rect) return;
-    const width = 304;
+    const width = 360;
     const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
     const top = Math.min(rect.bottom + 6, window.innerHeight - 300);
     popoverStyle.value = { width: `${width}px`, left: `${left}px`, top: `${Math.max(8, top)}px` };

@@ -69,9 +69,9 @@
 
 .segmented-control button.active,
 .drawer-tabs button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  background: var(--brand-subtle);
+  color: var(--brand-soft-text);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
 }
 
 .toolbar,

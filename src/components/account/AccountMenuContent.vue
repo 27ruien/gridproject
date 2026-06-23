@@ -1,5 +1,5 @@
 <template>
-  <div class="account-identity">
+  <div class="account-menu-section account-identity">
     <span class="avatar account-avatar" :style="{ '--avatar-color': preferences.avatarColor }">{{ user.name?.slice(0, 1) }}</span>
     <span>
       <strong>{{ user.name }}</strong>
@@ -7,12 +7,34 @@
       <small>{{ roleLabel }}</small>
     </span>
   </div>
-  <div class="account-menu-items">
+
+  <div class="account-menu-section">
+    <p class="account-section-label">快捷操作</p>
+    <div class="account-quick-actions">
+      <button v-for="item in quickActions" :key="item.key" :ref="register" class="account-quick-action" role="menuitem" type="button" @click="$emit('action', item.key)">
+        <Icon :name="item.icon" />
+        <span>{{ item.label }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="account-menu-section account-menu-items">
+    <p class="account-section-label">资料与设置</p>
     <button v-for="item in menuItems" :key="item.key" :ref="register" role="menuitem" type="button" @click="$emit('action', item.key)">
       <Icon :name="item.icon" /><span>{{ item.label }}</span>
     </button>
-    <div v-if="showLogout" class="account-menu-divider" role="separator" />
-    <button v-if="showLogout" :ref="register" class="danger" role="menuitem" type="button" @click="$emit('action', 'logout')">
+  </div>
+
+  <div class="account-menu-section account-recent">
+    <p class="account-section-label">最近活动</p>
+    <div class="account-recent-empty">
+      <strong>暂无新的个人通知</strong>
+      <small>项目、事项和工时动态会在这里保持同步。</small>
+    </div>
+  </div>
+
+  <div v-if="showLogout" class="account-menu-section account-logout-section">
+    <button :ref="register" class="account-menu-logout danger" role="menuitem" type="button" @click="$emit('action', 'logout')">
       <Icon name="logout" /><span>退出登录</span>
     </button>
   </div>
@@ -25,6 +47,10 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps({ user: { type: Object, required: true }, preferences: { type: Object, required: true }, showLogout: { type: Boolean, default: false } });
 const emit = defineEmits(["action", "register"]);
 const roleLabel = computed(() => props.user.role === "ADMIN" ? "组织管理员" : "项目成员");
+const quickActions = [
+  { key: "timesheet-week", label: "按周填写", icon: "calendar" },
+  { key: "timesheet-day", label: "按日提交", icon: "timesheets" },
+];
 const menuItems = [
   { key: "profile", label: "个人资料", icon: "user" },
   { key: "preferences", label: "偏好设置", icon: "sliders" },

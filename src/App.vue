@@ -22,7 +22,7 @@
     :project-context="projectSidebarContext"
     @navigate="setView"
     @project-view="selectProjectView"
-    @account-navigate="openPersonalSettings"
+    @account-navigate="handleAccountAction"
     @logout="logout"
   >
       <header class="topbar">
@@ -88,7 +88,7 @@
             <p v-if="!flatSearchResults.length" class="quiet-text">没有找到匹配结果。</p>
           </div>
           </div>
-          <AccountMenu class="desktop-account-menu" :user="currentManager" :preferences="preferences" show-logout @navigate="openPersonalSettings" @logout="logout" />
+          <AccountMenu class="desktop-account-menu" :user="currentManager" :preferences="preferences" show-logout @navigate="handleAccountAction" @logout="logout" />
         </div>
       </header>
 
@@ -464,6 +464,14 @@ function setView(view) {
   currentView.value = view;
   selectedIssueId.value = null;
   closeSearch();
+}
+
+function handleAccountAction(action) {
+  if (action === "timesheet-week" || action === "timesheet-day") {
+    setView("timesheets");
+    return;
+  }
+  openPersonalSettings(action);
 }
 
 async function saveProfile(payload, resolve) {

@@ -103,7 +103,7 @@
 
 .phase-status.success { background: #edf9f3; color: var(--green); }
 .phase-status.warn { background: #fff5e8; color: var(--amber); }
-.phase-status.info { background: var(--brand-subtle); color: var(--brand); }
+.phase-status.info { background: var(--brand-subtle); color: var(--brand-soft-text); }
 
 .phase-status-actions {
   margin-top: var(--space-100);
@@ -120,7 +120,7 @@
 
 .phase-status-actions button.active {
   border-color: var(--brand);
-  color: var(--brand);
+  color: var(--brand-soft-text);
   background: var(--brand-subtle);
 }
 
@@ -149,7 +149,7 @@
   display: grid;
   place-items: center;
   background: var(--brand-subtle);
-  color: var(--brand);
+  color: var(--brand-soft-text);
   font-weight: 600;
 }
 
@@ -482,7 +482,7 @@
 .status-chip-group button.active {
   border-color: var(--brand);
   background: var(--brand-subtle);
-  color: var(--brand);
+  color: var(--brand-soft-text);
 }
 
 .project-toolbar {
@@ -549,8 +549,8 @@
   height: 28px;
   flex: 0 0 auto;
   border-radius: var(--radius-control);
-  background: #e8edf7;
-  color: #315a9f;
+  background: var(--brand-subtle);
+  color: var(--brand-soft-text);
   display: grid;
   place-items: center;
   font-size: var(--text-control);
@@ -834,8 +834,8 @@
 }
 
 .project-tab.active {
-  color: var(--text);
-  font-weight: 500;
+  color: var(--brand-soft-text);
+  font-weight: 600;
 }
 
 .project-tab.active::after {

@@ -11,6 +11,7 @@
   --space-050: 4px;
   --space-075: 6px;
   --space-100: 8px;
+  --space-125: 10px;
   --space-150: 12px;
   --space-200: 16px;
   --space-300: 24px;
@@ -48,10 +49,12 @@
 
   --brand: #2563eb;
   --brand-hover: #1d4ed8;
-  --brand-subtle: #eef4ff;
+  --brand-active: #1e40af;
+  --brand-subtle: #dbeafe;
+  --brand-soft-text: #1d4ed8;
   --accent: var(--brand);
   --blue: #2563eb;
-  --blue-soft: #eef4ff;
+  --blue-soft: #dbeafe;
   --green: #0f8f63;
   --amber: #b86b00;
   --red: #c93535;

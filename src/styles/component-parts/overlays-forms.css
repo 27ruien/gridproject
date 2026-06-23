@@ -460,7 +460,7 @@
   height: 32px;
   border-radius: var(--radius-control);
   background: var(--brand-subtle);
-  color: var(--brand);
+  color: var(--brand-soft-text);
   display: grid;
   place-items: center;
   font-weight: 600;
@@ -511,7 +511,7 @@
 
 .form-step-nav button.active {
   border-bottom-color: var(--brand);
-  color: var(--text);
+  color: var(--brand-soft-text);
   font-weight: 600;
 }
 
@@ -659,6 +659,7 @@
 .team-picker label.active {
   border-color: var(--brand);
   background: var(--brand-subtle);
+  color: var(--brand-soft-text);
 }
 
 .team-picker input,
@@ -751,6 +752,7 @@
 .timeline-behavior label.active {
   border-color: var(--brand);
   background: var(--brand-subtle);
+  color: var(--brand-soft-text);
 }
 
 .timeline-behavior label span {
@@ -858,7 +860,7 @@
 
 .timeline-import-progress li.active,
 .timeline-import-progress li.complete {
-  color: var(--text);
+  color: var(--brand-soft-text);
   font-weight: 600;
 }
 

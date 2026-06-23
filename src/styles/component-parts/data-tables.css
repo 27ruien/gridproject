@@ -468,7 +468,7 @@
 }
 
 .issue-table-row.selected {
-  background: #eef4ff;
+  background: var(--brand-subtle);
 }
 
 .issue-table-row:focus-visible {
