@@ -154,8 +154,8 @@
 .timesheet-week-row,
 .timesheet-week-total-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1.7fr) repeat(7, minmax(72px, 0.5fr)) minmax(72px, 0.5fr);
-  min-width: 900px;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(104px, 0.75fr)) minmax(72px, 0.5fr);
+  min-width: 840px;
   align-items: center;
 }
 
@@ -227,6 +227,39 @@
   padding: 0 var(--space-050);
 }
 
+.timesheet-cell-button {
+  min-height: 48px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  text-align: left;
+}
+
+.timesheet-cell-button:hover,
+.timesheet-cell-button:focus-visible {
+  background: var(--brand-subtle);
+  outline: 2px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  outline-offset: -2px;
+}
+
+.timesheet-cell-button.disabled {
+  color: var(--subtle);
+  background: var(--surface-subtle);
+  cursor: not-allowed;
+}
+
+.timesheet-cell-button small {
+  min-width: 0;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .timesheet-hour-cell input,
 .timesheet-day-line input {
   width: 100%;
@@ -249,6 +282,61 @@
   gap: var(--space-100);
   border-bottom: 1px solid var(--line);
   padding: var(--space-075) 0;
+}
+
+.timesheet-main-actions,
+.timesheet-add-project,
+.owned-timesheet-filters {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-075);
+}
+
+.timesheet-add-project select {
+  min-height: 32px;
+}
+
+.owned-timesheet-board {
+  display: grid;
+  gap: var(--space-150);
+}
+
+.owned-timesheet-filters {
+  align-items: end;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+  padding: var(--space-100);
+}
+
+.owned-timesheet-filters label {
+  min-width: min(180px, 100%);
+  display: grid;
+  gap: var(--space-050);
+}
+
+.timesheet-result {
+  display: grid;
+  gap: var(--space-075);
+}
+
+.timesheet-result p {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--space-100);
+  margin: 0;
+}
+
+.timesheet-result span {
+  color: var(--muted);
+}
+
+.timesheet-result strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .timesheet-record-row > span {

@@ -1,14 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import type { AuthContext } from "../types.js";
-import { canManageProject, canViewProject, isProjectOwner } from "../policies/access.js";
+import { canManageProject, canViewProjectWorkspace, isProjectOwner } from "../policies/access.js";
 import { badRequest, conflict, forbidden, notFound } from "../utils/errors.js";
 
 export async function requireVisibleProject(app: FastifyInstance, context: AuthContext, id: string) {
   const project = await app.prisma.project.findFirst({
     where: { id, organizationId: context.organizationId, deletedAt: null },
-    include: { owner: true },
+    include: { owner: true, members: true },
   });
-  if (!canViewProject(context, project)) throw notFound("项目不存在。");
+  if (!canViewProjectWorkspace(context, project, project?.members || [])) throw notFound("项目不存在。");
   return project!;
 }
 

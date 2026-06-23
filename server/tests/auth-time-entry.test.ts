@@ -271,7 +271,7 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
     assert.equal(memberList.statusCode, 200);
     assert.deepEqual(memberList.json().rows.map((row: any) => row.userId), [data.member.id]);
 
-    const ownerList = await app.inject({ method: "GET", url: "/api/time-entries", headers: { cookie: ownerCookie } });
+    const ownerList = await app.inject({ method: "GET", url: "/api/time-entries?scope=owned", headers: { cookie: ownerCookie } });
     assert.equal(ownerList.statusCode, 200);
     assert(ownerList.json().rows.some((row: any) => row.id === otherEntry.id));
 
@@ -298,23 +298,21 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
     assert.equal(ownerApproveOtherProject.statusCode, 404);
 
     const adminEditOtherNoReason = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2 } });
-    assert.equal(adminEditOtherNoReason.statusCode, 400);
+    assert.equal(adminEditOtherNoReason.statusCode, 403);
     const adminEditOther = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2, correctionReason: "fix wrong hours" } });
-    assert.equal(adminEditOther.statusCode, 200);
+    assert.equal(adminEditOther.statusCode, 403);
     const adminPatchProject = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { projectId: data.otherProject.id, correctionReason: "move" } });
-    assert.equal(adminPatchProject.statusCode, 422);
+    assert.equal(adminPatchProject.statusCode, 403);
     const adminMoveNoReason = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id } });
-    assert.equal(adminMoveNoReason.statusCode, 422);
+    assert.equal(adminMoveNoReason.statusCode, 403);
     const adminMoveNotMember = await app.inject({ method: "POST", url: `/api/time-entries/${entry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, correctionReason: "member is not in target project" } });
     assert.equal(adminMoveNotMember.statusCode, 403);
     const adminMoveCrossOrg = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.outsideProject.id, correctionReason: "cross org" } });
-    assert.equal(adminMoveCrossOrg.statusCode, 404);
+    assert.equal(adminMoveCrossOrg.statusCode, 403);
     const adminMoveWrongIssue = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.issue.id, correctionReason: "wrong issue" } });
-    assert.equal(adminMoveWrongIssue.statusCode, 400);
+    assert.equal(adminMoveWrongIssue.statusCode, 403);
     const adminMove = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id, correctionReason: "move to correct project" } });
-    assert.equal(adminMove.statusCode, 200, adminMove.body);
-    assert.equal(adminMove.json().entry.projectId, data.otherProject.id);
-    assert.equal(adminMove.json().entry.issueId, data.otherIssue.id);
+    assert.equal(adminMove.statusCode, 403);
 
     const crossOrg = await app.inject({ method: "POST", url: "/api/time-entries", headers: { cookie: memberCookie }, payload: { projectId: data.outsideProject.id, workDate: "2026-06-22", hours: 1 } });
     assert.equal(crossOrg.statusCode, 404);
@@ -375,6 +373,23 @@ test("business API modules persist project members, issues, comments, milestones
     assert.equal(bootstrap.statusCode, 200, bootstrap.body);
     assert.equal(bootstrap.json().settings.logoText, "QA");
 
+    const otherMemberProjects = await app.inject({ method: "GET", url: "/api/projects", headers: { cookie: otherMemberCookie } });
+    assert.equal(otherMemberProjects.statusCode, 200, otherMemberProjects.body);
+    assert.equal(otherMemberProjects.json().rows.some((project: any) => project.id === data.project.id), false);
+    assert.equal(otherMemberProjects.json().rows.some((project: any) => project.id === data.otherProject.id), true);
+
+    const otherMemberBoard = await app.inject({ method: "GET", url: `/api/projects/${data.project.id}/board`, headers: { cookie: otherMemberCookie } });
+    assert.equal(otherMemberBoard.statusCode, 404);
+    const otherMemberIssue = await app.inject({ method: "GET", url: `/api/issues/${data.issue.id}`, headers: { cookie: otherMemberCookie } });
+    assert.equal(otherMemberIssue.statusCode, 404);
+    const otherMemberTimeEntry = await app.inject({
+      method: "POST",
+      url: "/api/time-entries",
+      headers: { cookie: otherMemberCookie },
+      payload: { projectId: data.project.id, issueId: data.issue.id, workDate: "2026-07-02", hours: 1 },
+    });
+    assert.equal(otherMemberTimeEntry.statusCode, 404);
+
     const addMember = await app.inject({
       method: "POST",
       url: `/api/projects/${data.project.id}/members`,
@@ -391,6 +406,22 @@ test("business API modules persist project members, issues, comments, milestones
       payload: { userId: data.otherMember.id },
     });
     assert.equal(duplicateMember.statusCode, 409);
+
+    const projectStatus = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.project.id}`,
+      headers: { cookie: ownerCookie },
+      payload: { status: "验收阶段" },
+    });
+    assert.equal(projectStatus.statusCode, 200, projectStatus.body);
+    assert.equal(projectStatus.json().project.status, "验收阶段");
+    const invalidProjectStatus = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.project.id}`,
+      headers: { cookie: ownerCookie },
+      payload: { status: "没有这个状态" },
+    });
+    assert.equal(invalidProjectStatus.statusCode, 400);
 
     const forgedIssueCreate = await app.inject({
       method: "POST",

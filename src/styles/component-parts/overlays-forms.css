@@ -778,7 +778,7 @@
 
 .timeline-task-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
@@ -800,6 +800,66 @@
 
 .timeline-task-table input {
   min-width: 118px;
+}
+
+.timeline-task-table small,
+.row-error-text {
+  display: block;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.row-error-text:not(:empty) {
+  color: var(--red);
+}
+
+.timeline-import-progress {
+  display: grid;
+  gap: var(--space-075);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+  padding: var(--space-100);
+}
+
+.timeline-progress-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+}
+
+.timeline-progress-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width 180ms ease;
+}
+
+.timeline-import-progress ol {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-050);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.timeline-import-progress li {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-import-progress li.active,
+.timeline-import-progress li.complete {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .import-message-list {

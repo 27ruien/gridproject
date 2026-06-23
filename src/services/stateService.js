@@ -193,7 +193,7 @@ const seedState = {
       plannedPersonDays: 120,
       standardHoursPerDay: 8,
       status: "ACTIVE",
-      notes: "CRM 项目计划投入人天，默认纳入已提交和已审批工时。",
+      notes: "CRM 项目计划投入工时，默认纳入已提交工时。",
       createdById: "user-linxia",
       updatedById: "user-linxia",
       createdAt: "2026-05-01T00:00:00.000Z",

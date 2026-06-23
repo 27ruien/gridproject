@@ -5,7 +5,7 @@ export class TimeEntryRepository {
 
   async visibleProjectIds(organizationId: string, userId: string) {
     const owned = await this.prisma.project.findMany({
-      where: { organizationId, ownerId: userId, deletedAt: null },
+      where: { organizationId, deletedAt: null, OR: [{ ownerId: userId }, { createdById: userId }] },
       select: { id: true },
     });
     return owned.map((project) => project.id);

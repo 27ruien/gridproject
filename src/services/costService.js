@@ -54,7 +54,7 @@ export const costService = {
 
     const plannedPersonDays = normalizePositiveNumber(input.plannedPersonDays);
     if (!plannedPersonDays) {
-      return { ok: false, status: 400, reason: "invalid-planned-person-days", message: "项目总人天必须填写且大于 0。" };
+      return { ok: false, status: 400, reason: "invalid-planned-person-days", message: "项目总工时必须填写且大于 0。" };
     }
 
     const standardHoursPerDay = normalizeStandardHours(input.standardHoursPerDay);
@@ -93,7 +93,7 @@ export const costService = {
       ? Number(record.plannedPersonDays)
       : normalizePositiveNumber(patch.plannedPersonDays);
     if (!nextPlannedPersonDays) {
-      return { ok: false, status: 400, reason: "invalid-planned-person-days", message: "项目总人天必须大于 0。" };
+      return { ok: false, status: 400, reason: "invalid-planned-person-days", message: "项目总工时必须大于 0。" };
     }
 
     const nextStandardHours = patch.standardHoursPerDay === undefined

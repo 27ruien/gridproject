@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { PROJECT_TEMPLATES, getTemplateById } from "../src/domain/template.js";
+import { PROJECT_STATUS_OPTIONS } from "../src/domain/project.js";
 import { filterIssues } from "../src/domain/issue.js";
 import { getIssueScheduleRisks, parseScheduleText } from "../src/domain/scheduleImport.js";
 import { getNextStatus, ISSUE_STATUSES } from "../src/domain/workflow.js";
@@ -27,10 +28,12 @@ const project = projectService.createProject({
   status: "开发阶段",
 });
 assert.equal(project.status, "开发阶段");
+assert.ok(PROJECT_STATUS_OPTIONS.includes("验收阶段"));
 assert.equal(project.milestones.length, agile.milestones.length);
 assert.equal(summarizeMilestones(project.milestones).totalCount, agile.milestones.length);
 assert.equal(createProjectMilestones(waterfall, "2026-05-01")[0].dueDate, "2026-05-08");
 assert.equal(projectService.updateProject(project, { status: "测试阶段" }).status, "测试阶段");
+assert.equal(projectService.updateProject(project, { status: "不是合法状态" }).status, "开发阶段");
 assert.equal(projectService.updateProject(project, {
   milestones: project.milestones.map((milestone, index) => index === 0 ? { ...milestone, status: "已完成" } : milestone),
 }).milestones[0].status, "已完成");

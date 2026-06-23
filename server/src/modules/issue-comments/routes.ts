@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { canViewProject, isProjectOwner } from "../../policies/access.js";
+import { canViewProjectWorkspace, isProjectOwner } from "../../policies/access.js";
 import { appendIssueActivity, audit } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueCommentDto } from "../../utils/dto.js";
@@ -63,18 +63,18 @@ export async function issueCommentRoutes(app: FastifyInstance) {
 async function requireVisibleIssue(app: FastifyInstance, context: any, issueId: string) {
   const issue = await app.prisma.issue.findFirst({
     where: { id: issueId, organizationId: context.organizationId, deletedAt: null },
-    include: { project: true },
+    include: { project: { include: { members: true } } },
   });
-  if (!issue || !canViewProject(context, issue.project)) throw notFound("事项不存在。");
+  if (!issue || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
   return issue;
 }
 
 async function requireComment(app: FastifyInstance, context: any, commentId: string) {
   const comment = await app.prisma.issueComment.findFirst({
     where: { id: commentId, organizationId: context.organizationId, deletedAt: null },
-    include: { issue: { include: { project: true } } },
+    include: { issue: { include: { project: { include: { members: true } } } } },
   });
-  if (!comment || comment.issue.deletedAt || !canViewProject(context, comment.issue.project)) throw notFound("评论不存在。");
+  if (!comment || comment.issue.deletedAt || !canViewProjectWorkspace(context, comment.issue.project, comment.issue.project.members || [])) throw notFound("评论不存在。");
   return comment;
 }
 

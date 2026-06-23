@@ -4,76 +4,71 @@
       <div class="panel-head">
         <div>
           <p class="eyebrow">工时填报</p>
-          <h2>按周录入，按项目和事项归集</h2>
-          <p>桌面端以周视图快速填报；移动端按日期纵向录入，不压缩七列表格。</p>
+          <h2>按项目记录工作日投入</h2>
+          <p>按周填写用于连续补录；按日提交用于快速提交单日工时。</p>
         </div>
-        <div class="section-actions">
-          <Button variant="ghost" size="small" @click="openCreate()">添加一条</Button>
-          <Button variant="primary" size="small" :disabled="!dirtyCells.size" @click="saveWeek">保存本周</Button>
+        <div class="section-actions timesheet-main-actions">
+          <Button variant="primary" size="small" @click="focusWeek">按周填写</Button>
+          <Button variant="primary" size="small" @click="openDailySubmit()">按日提交</Button>
         </div>
       </div>
 
       <div class="timesheet-week-toolbar">
         <div class="segmented-control" role="tablist" aria-label="工时范围">
-          <button type="button" role="tab" :aria-selected="roleView === 'submitted'" :class="{ active: roleView === 'submitted' }" @click="roleView = 'submitted'">我提交的</button>
+          <button type="button" role="tab" :aria-selected="roleView === 'submitted'" :class="{ active: roleView === 'submitted' }" @click="roleView = 'submitted'">我的提交</button>
           <button type="button" role="tab" :aria-selected="roleView === 'owned'" :class="{ active: roleView === 'owned' }" @click="roleView = 'owned'">我负责的</button>
         </div>
-        <div class="week-switcher" aria-label="周切换">
+        <div v-if="roleView === 'submitted'" class="week-switcher" aria-label="周切换">
           <Button variant="ghost" size="small" @click="moveWeek(-1)">上一周</Button>
           <strong>{{ weekRangeLabel }}</strong>
-          <Button variant="ghost" size="small" @click="moveWeek(1)">下一周</Button>
+          <Button variant="ghost" size="small" :disabled="isCurrentOrFutureWeek" @click="moveWeek(1)">下一周</Button>
           <Button variant="ghost" size="small" @click="setThisWeek">回到本周</Button>
         </div>
-        <div class="timesheet-save-state">
-          <span>{{ submitStateLabel }}</span>
-          <strong>{{ dirtyCells.size ? `未保存 ${dirtyCells.size} 项` : saveState }}</strong>
+        <div v-if="roleView === 'submitted'" class="timesheet-add-project">
+          <select v-model="projectToAdd" aria-label="添加项目到本周">
+            <option value="">添加项目到本周</option>
+            <option v-for="project in addableProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
+          </select>
+          <Button variant="ghost" size="small" :disabled="!projectToAdd" @click="addProjectRow">添加项目</Button>
         </div>
       </div>
 
-      <div class="timesheet-week-summary" aria-label="本周工时摘要">
+      <div v-if="roleView === 'submitted'" class="timesheet-week-summary" aria-label="本周工时摘要">
         <div><span>本周总工时</span><strong>{{ weekTotal }}h</strong></div>
         <div><span>缺失工作日</span><strong>{{ missingWeekDates.length }} 天</strong></div>
-        <div><span>异常提示</span><strong :class="{ danger: abnormalDays.length }">{{ abnormalDays.length }} 项</strong></div>
-        <div><span>审批状态</span><strong class="timesheet-status-summary">{{ statusSummary }}</strong></div>
+        <div><span>草稿</span><strong :class="{ danger: draftEntries.length }">{{ draftEntries.length }} 条</strong></div>
+        <div><span>提交状态</span><strong class="timesheet-status-summary">{{ statusSummary }}</strong></div>
       </div>
 
-      <div v-if="missingWeekDates.length || abnormalDays.length" class="timesheet-alert-strip">
-        <span v-if="missingWeekDates.length">待补：{{ missingWeekDates.map((date) => date.slice(5)).join("、") }}</span>
-        <span v-if="abnormalDays.length" class="danger">单日超过 10h：{{ abnormalDays.map((item) => `${item.date.slice(5)} ${item.hours}h`).join("、") }}</span>
+      <div v-if="roleView === 'submitted' && missingWeekDates.length" class="timesheet-alert-strip">
+        <span>待补：{{ missingWeekDates.map((date) => date.slice(5)).join("、") }}</span>
       </div>
 
-      <div v-if="weekRows.length" class="timesheet-week-table" role="table" aria-label="周工时填报表">
+      <div v-if="roleView === 'submitted' && weekRows.length" class="timesheet-week-table" role="table" aria-label="周工时填报表">
         <div class="timesheet-week-head" role="row">
-          <span>项目 / 事项</span>
+          <span>项目</span>
           <span v-for="day in weekDays" :key="day.date">{{ day.label }}<small>{{ day.shortDate }}</small></span>
           <span>合计</span>
         </div>
-        <template v-for="group in groupedRows" :key="group.project.id">
-          <div class="timesheet-project-row">
-            <strong>{{ group.project.name }}</strong>
-            <small>{{ group.rows.length }} 个事项</small>
-          </div>
-          <div v-for="row in group.rows" :key="row.key" class="timesheet-week-row" role="row">
-            <span class="timesheet-issue-cell">
-              <strong>{{ row.issue.title }}</strong>
-              <small>{{ row.issue.code }} · {{ row.issue.owner || "未分配" }}</small>
-            </span>
-            <label v-for="day in weekDays" :key="`${row.key}-${day.date}`" class="timesheet-hour-cell">
-              <span class="sr-only">{{ row.issue.title }} {{ day.date }} 工时</span>
-              <input
-                :value="draftHours[cellKey(row, day.date)] ?? ''"
-                :disabled="!canEditCell(row, day.date)"
-                inputmode="decimal"
-                min="0"
-                max="24"
-                step="0.5"
-                type="number"
-                @input="setDraftHour(row, day.date, $event.target.value)"
-              />
-            </label>
-            <strong>{{ rowTotal(row) }}h</strong>
-          </div>
-        </template>
+        <div v-for="row in weekRows" :key="row.project.id" class="timesheet-week-row project-timesheet-row" role="row">
+          <span class="timesheet-issue-cell">
+            <strong>{{ row.project.name }}</strong>
+            <small v-if="row.project.code">项目代码：{{ row.project.code }}</small>
+          </span>
+          <button
+            v-for="day in weekDays"
+            :key="`${row.project.id}-${day.date}`"
+            class="timesheet-hour-cell timesheet-cell-button"
+            :class="{ disabled: !canEditDate(day.date), filled: dayProjectHours(row.project.id, day.date) > 0 }"
+            type="button"
+            :disabled="!canEditDate(day.date)"
+            @click="openWeekCell(row.project, day.date)"
+          >
+            <strong>{{ dayProjectHours(row.project.id, day.date) || "0" }}h</strong>
+            <small>{{ dayProjectNote(row.project.id, day.date) || "填写说明" }}</small>
+          </button>
+          <strong>{{ projectWeekTotal(row.project.id) }}h</strong>
+        </div>
         <div class="timesheet-week-total-row">
           <strong>每日合计</strong>
           <strong v-for="day in weekDays" :key="`total-${day.date}`">{{ dayTotal(day.date) }}h</strong>
@@ -81,105 +76,169 @@
         </div>
       </div>
 
-      <div class="timesheet-mobile-list">
-        <section v-for="day in weekDays" :key="`mobile-${day.date}`" class="timesheet-day-group">
-          <header>
-            <div><strong>{{ day.fullLabel }}</strong><small>{{ dayTotal(day.date) }}h</small></div>
-            <Button variant="ghost" size="tiny" @click="openCreate(day.date)">添加一条</Button>
-          </header>
-          <div class="timesheet-day-lines">
-            <label v-for="row in mobileRowsForDay(day.date)" :key="`${day.date}-${row.key}`" class="timesheet-day-line">
-              <span>
-                <strong>{{ row.issue.title }}</strong>
-                <small>{{ row.project.name }} · {{ row.issue.owner || "未分配" }}</small>
-              </span>
-              <input
-                :value="draftHours[cellKey(row, day.date)] ?? ''"
-                :disabled="!canEditCell(row, day.date)"
-                inputmode="decimal"
-                min="0"
-                max="24"
-                step="0.5"
-                type="number"
-                @input="setDraftHour(row, day.date, $event.target.value)"
-              />
-            </label>
-          </div>
-        </section>
-      </div>
-
-      <div v-if="weekEntries.length" class="timesheet-review-list">
+      <div v-if="roleView === 'submitted'" class="timesheet-review-list">
         <div class="section-head">
           <div>
-            <h3>本周记录</h3>
-            <small>保留现有单条提交、审批、驳回和删除规则。</small>
+            <h3>我的提交</h3>
+            <small>只展示当前登录用户自己的真实工时记录。</small>
           </div>
         </div>
-        <div class="timesheet-record-row" v-for="entry in weekEntries" :key="entry.id">
-          <span><strong>{{ displayDate(entry) }}</strong><small>{{ entry.reporter }}</small></span>
-          <span><strong>{{ projectName(entry.projectId) }}</strong><small>{{ issueName(entry.issueId) }}</small></span>
-          <span>{{ entry.hours }}h</span>
-          <StatusLozenge :label="statusDisplay(entry.status)" />
-          <span class="user-actions">
-            <Button v-if="canEdit(entry)" variant="ghost" size="tiny" @click="openEdit(entry)">编辑</Button>
-            <Button v-if="canDelete(entry)" variant="ghost" size="tiny" @click="emit('delete', entry.id)">删除</Button>
-            <Button v-if="canSubmitEntry(entry)" variant="ghost" size="tiny" @click="emit('submit', entry.id)">提交</Button>
-            <Button v-if="canApprove(entry)" variant="ghost" size="tiny" @click="emit('approve', entry.id)">审批</Button>
-            <Button v-if="canApprove(entry)" variant="ghost" size="tiny" @click="emit('reject', entry.id)">驳回</Button>
-          </span>
+        <div v-if="weekEntries.length">
+          <div class="timesheet-record-row" v-for="entry in weekEntries" :key="entry.id">
+            <span><strong>{{ displayDate(entry) }}</strong><small>{{ currentUserName }}</small></span>
+            <span><strong>{{ projectName(entry.projectId) }}</strong><small>{{ issueName(entry.issueId) }}</small></span>
+            <span>{{ entry.hours }}h</span>
+            <StatusLozenge :label="statusDisplay(entry.status)" />
+            <span class="user-actions">
+              <Button v-if="canEdit(entry)" variant="ghost" size="tiny" @click="openEntryEdit(entry)">编辑</Button>
+              <Button v-if="canDelete(entry)" variant="ghost" size="tiny" @click="emit('delete', entry.id)">删除</Button>
+              <Button v-if="canSubmitEntry(entry)" variant="ghost" size="tiny" @click="emit('submit', entry.id)">提交</Button>
+            </span>
+          </div>
         </div>
+        <p v-else class="quiet-text">本周暂无工时记录。添加项目后即可开始填写。</p>
       </div>
 
+      <section v-if="roleView === 'owned'" class="owned-timesheet-board">
+        <div class="section-head">
+          <div>
+            <h3>项目工时看板</h3>
+            <small>管理员可查看全部项目；项目负责人只查看自己创建或负责的项目。</small>
+          </div>
+        </div>
+        <div class="owned-timesheet-filters">
+          <label><span>项目</span><select v-model="ownedFilters.projectId"><option value="">全部项目</option><option v-for="project in managedProjects" :key="project.id" :value="project.id">{{ project.name }}</option></select></label>
+          <label><span>人员</span><select v-model="ownedFilters.userId"><option value="">全部人员</option><option v-for="user in ownedPeopleOptions" :key="user.id" :value="user.id">{{ user.name }}</option></select></label>
+          <label><span>开始</span><input v-model="ownedFilters.dateFrom" type="date" /></label>
+          <label><span>结束</span><input v-model="ownedFilters.dateTo" type="date" /></label>
+        </div>
+        <div v-if="ownedRows.length" class="timesheet-review-list">
+          <div class="timesheet-record-row" v-for="entry in ownedRows" :key="entry.id">
+            <span><strong>{{ displayDate(entry) }}</strong><small>{{ entry.reporter || userName(entry.userId) }}</small></span>
+            <span><strong>{{ projectName(entry.projectId) }}</strong><small>{{ issueName(entry.issueId) }}</small></span>
+            <span>{{ entry.hours }}h</span>
+            <StatusLozenge :label="statusDisplay(entry.status)" />
+            <span>{{ entry.note || entry.description || "无说明" }}</span>
+          </div>
+        </div>
+        <EmptyState
+          v-else
+          title="暂无可查看工时"
+          description="当前筛选范围内没有项目工时记录。"
+        />
+      </section>
+
       <EmptyState
-        v-if="!weekRows.length"
-        title="暂无可填报事项"
-        description="当前范围内没有可关联的项目事项，或你还没有可访问的项目。"
-        action="添加一条"
-        @action="openCreate"
+        v-if="roleView === 'submitted' && !weekRows.length"
+        title="本周暂无项目工时"
+        description="不会自动从项目事项生成工时行。请选择项目后开始填写。"
+        action="按日提交"
+        @action="openDailySubmit"
       />
     </div>
 
     <Modal
-      :open="modalOpen"
-      :title="editingId ? '编辑单条工时' : '添加一条工时'"
+      :open="cellModalOpen"
+      title="填写工作日工时"
+      eyebrow="按周填写"
+      size="small"
+      @close="closeCellModal"
+    >
+      <div class="form-two">
+        <label>
+          <span>日期</span>
+          <input v-model="cellForm.spentDate" type="date" disabled />
+        </label>
+        <label>
+          <span>项目</span>
+          <input :value="projectName(cellForm.projectId)" disabled />
+        </label>
+        <label>
+          <span>工时</span>
+          <input v-model.number="cellForm.hours" min="0.1" max="24" step="0.5" type="number" />
+        </label>
+        <label>
+          <span>关联事项（可选）</span>
+          <select v-model="cellForm.issueId">
+            <option value="">不关联事项</option>
+            <option v-for="issue in issuesByProject(cellForm.projectId)" :key="issue.id" :value="issue.id">{{ issue.title }}</option>
+          </select>
+        </label>
+      </div>
+      <label>
+        <span>说明</span>
+        <textarea v-model="cellForm.note" rows="3" placeholder="今天完成了什么、遇到什么阻塞或需要同步什么" />
+      </label>
+      <p v-if="formError" class="form-error">{{ formError }}</p>
+      <template #footer>
+        <Button variant="ghost" @click="closeCellModal">取消</Button>
+        <Button variant="primary" :disabled="cellSaving" @click="saveCell">{{ cellSaving ? "保存中" : "保存草稿" }}</Button>
+      </template>
+    </Modal>
+
+    <Modal
+      :open="dailyModalOpen"
+      title="按日提交"
       eyebrow="工时填报"
-      size="large"
-      @close="modalOpen = false"
+      size="small"
+      @close="closeDailyModal"
     >
       <div class="form-two">
         <label>
           <span>申报人</span>
-          <PersonPicker v-model="form.reporter" :people="people" title="选择申报人" />
+          <input :value="currentUserName" disabled />
         </label>
         <label>
           <span>日期</span>
-          <input v-model="form.spentDate" type="date" />
+          <input v-model="dailyForm.spentDate" :max="today" type="date" />
         </label>
         <label>
           <span>项目</span>
-          <select v-model="form.projectId" @change="syncFormIssue">
+          <select v-model="dailyForm.projectId" @change="syncDailyIssue">
+            <option value="">选择项目</option>
             <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
           </select>
         </label>
         <label>
-          <span>事项</span>
-          <select v-model="form.issueId">
-            <option v-for="issue in issuesByProject(form.projectId)" :key="issue.id" :value="issue.id">{{ issue.title }}</option>
+          <span>工时</span>
+          <input v-model.number="dailyForm.hours" min="0.1" max="24" step="0.5" type="number" />
+        </label>
+        <label class="full-field">
+          <span>关联事项（可选）</span>
+          <select v-model="dailyForm.issueId">
+            <option value="">不关联事项</option>
+            <option v-for="issue in issuesByProject(dailyForm.projectId)" :key="issue.id" :value="issue.id">{{ issue.title }}</option>
           </select>
         </label>
-        <label>
-          <span>工时</span>
-          <input v-model.number="form.hours" min="0.5" max="24" step="0.5" type="number" />
-        </label>
-        <label>
-          <span>说明</span>
-          <input v-model="form.note" placeholder="本次投入内容" />
-        </label>
       </div>
-
+      <label>
+        <span>说明</span>
+        <textarea v-model="dailyForm.note" rows="3" placeholder="说明是主要记录内容，可写交付、沟通、风险或下一步" />
+      </label>
+      <p v-if="formError" class="form-error">{{ formError }}</p>
       <template #footer>
-        <Button variant="ghost" @click="modalOpen = false">取消</Button>
-        <Button variant="primary" :disabled="!canSubmitModal" @click="submitModal">保存</Button>
+        <Button variant="ghost" @click="closeDailyModal">取消</Button>
+        <Button variant="primary" :disabled="dailySaving" @click="submitDaily">{{ dailySaving ? "提交中" : "提交" }}</Button>
+      </template>
+    </Modal>
+
+    <Modal
+      :open="resultModalOpen"
+      title="工时已提交"
+      eyebrow="提交结果"
+      size="small"
+      @close="resultModalOpen = false"
+    >
+      <div v-if="lastSubmitted" class="timesheet-result">
+        <p><span>项目</span><strong>{{ projectName(lastSubmitted.projectId) }}</strong></p>
+        <p><span>日期</span><strong>{{ displayDate(lastSubmitted) }}</strong></p>
+        <p><span>工时</span><strong>{{ lastSubmitted.hours }}h</strong></p>
+        <p><span>关联事项</span><strong>{{ issueName(lastSubmitted.issueId) || "无" }}</strong></p>
+        <p><span>说明</span><strong>{{ lastSubmitted.note || lastSubmitted.description || "无说明" }}</strong></p>
+      </div>
+      <template #footer>
+        <Button variant="ghost" @click="resultModalOpen = false">关闭</Button>
+        <Button variant="primary" @click="goToSubmittedWeek">去查看</Button>
       </template>
     </Modal>
   </section>
@@ -187,7 +246,6 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
-import PersonPicker from "../components/common/PersonPicker.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import Button from "../components/ui/Button.vue";
 import Modal from "../components/ui/Modal.vue";
@@ -201,225 +259,249 @@ const props = defineProps({
   people: { type: Array, required: true },
   managerName: { type: String, required: true },
   context: { type: Object, required: true },
+  projectMembers: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["create", "update", "delete", "submit", "approve", "reject"]);
-
-const TIME_ENTRY_STATUS_ORDER = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED"];
-const TIME_ENTRY_STATUS_LABELS = {
-  DRAFT: "草稿",
-  SUBMITTED: "已提交",
-  APPROVED: "已通过",
-  REJECTED: "已驳回",
-};
-const TIME_ENTRY_STATUS_ALIASES = {
-  草稿: "DRAFT",
-  已提交: "SUBMITTED",
-  已审批: "APPROVED",
-  已通过: "APPROVED",
-  已驳回: "REJECTED",
-};
+const emit = defineEmits(["create", "update", "delete", "submit"]);
 
 const roleView = ref("submitted");
 const weekStart = ref(mondayOf(new Date()));
-const modalOpen = ref(false);
-const editingId = ref("");
-const saveState = ref("已保存");
-const draftHours = reactive({});
-const dirtyCells = ref(new Set());
-const form = reactive({
-  reporter: "",
-  spentDate: "",
-  projectId: "",
-  issueId: "",
-  hours: 1,
-  note: "",
-});
+const projectToAdd = ref("");
+const manualProjectIds = ref(new Set());
+const cellModalOpen = ref(false);
+const dailyModalOpen = ref(false);
+const resultModalOpen = ref(false);
+const cellSaving = ref(false);
+const dailySaving = ref(false);
+const editingEntryId = ref("");
+const formError = ref("");
+const lastSubmitted = ref(null);
+const today = formatDate(new Date());
+const cellForm = reactive(defaultTimeForm());
+const dailyForm = reactive(defaultTimeForm({ status: "SUBMITTED" }));
+const ownedFilters = reactive({ projectId: "", userId: "", dateFrom: "", dateTo: "" });
 
-const weekDays = computed(() => Array.from({ length: 7 }, (_item, index) => {
+const currentUserName = computed(() => props.context.user?.name || props.managerName);
+const weekDays = computed(() => Array.from({ length: 5 }, (_item, index) => {
   const date = addDays(parseDate(weekStart.value), index);
   return {
     date: formatDate(date),
-    label: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][index],
+    label: ["周一", "周二", "周三", "周四", "周五"][index],
     shortDate: `${date.getMonth() + 1}/${date.getDate()}`,
-    fullLabel: `${date.getMonth() + 1}月${date.getDate()}日 ${["周一", "周二", "周三", "周四", "周五", "周六", "周日"][index]}`,
   };
 }));
-const weekRangeLabel = computed(() => `${weekDays.value[0].shortDate} - ${weekDays.value[6].shortDate}`);
-const managedProjectIds = computed(() => props.projects.filter((project) => project.owner === props.managerName || project.ownerId === props.context.userId).map((project) => project.id));
-const scopedProjectIds = computed(() => new Set(roleView.value === "owned" ? managedProjectIds.value : props.projects.map((project) => project.id)));
-const scopedEntries = computed(() => props.timeEntries.filter((entry) => {
-  if (roleView.value === "owned") return managedProjectIds.value.includes(entry.projectId);
-  return entry.reporter === props.managerName || entry.userId === props.context.userId;
-}));
-const weekEntries = computed(() => scopedEntries.value.filter((entry) => weekDays.value.some((day) => day.date === displayDate(entry))));
-const weekRows = computed(() => props.issues
-  .filter((issue) => scopedProjectIds.value.has(issue.projectId))
-  .filter((issue) => !["已完成", "已关闭", "已验收"].includes(issue.status) || weekEntries.value.some((entry) => entry.issueId === issue.id))
-  .map((issue) => ({
-    key: `${issue.projectId}:${issue.id}`,
-    project: props.projects.find((project) => project.id === issue.projectId) || { id: issue.projectId, name: "未知项目" },
-    issue,
-  }))
-  .sort((a, b) => a.project.name.localeCompare(b.project.name, "zh-CN") || a.issue.code.localeCompare(b.issue.code, "zh-CN")));
-const groupedRows = computed(() => {
-  const groups = new Map();
-  weekRows.value.forEach((row) => {
-    if (!groups.has(row.project.id)) groups.set(row.project.id, { project: row.project, rows: [] });
-    groups.get(row.project.id).rows.push(row);
-  });
-  return [...groups.values()];
-});
+const weekRangeLabel = computed(() => `${weekDays.value[0].shortDate} - ${weekDays.value[4].shortDate}`);
+const isCurrentOrFutureWeek = computed(() => weekStart.value >= mondayOf(new Date()));
+const myEntries = computed(() => props.timeEntries.filter((entry) => isOwnEntry(entry)));
+const weekEntries = computed(() => myEntries.value.filter((entry) => weekDays.value.some((day) => day.date === displayDate(entry))));
+const draftEntries = computed(() => weekEntries.value.filter((entry) => normalizedStatus(entry.status) === "DRAFT"));
+const activeWeekProjectIds = computed(() => new Set([
+  ...weekEntries.value.map((entry) => entry.projectId).filter(Boolean),
+  ...manualProjectIds.value,
+]));
+const weekRows = computed(() => props.projects
+  .filter((project) => activeWeekProjectIds.value.has(project.id))
+  .map((project) => ({ project }))
+  .sort((a, b) => a.project.name.localeCompare(b.project.name, "zh-CN")));
+const addableProjects = computed(() => props.projects.filter((project) => !activeWeekProjectIds.value.has(project.id)));
 const weekTotal = computed(() => trimNumber(weekDays.value.reduce((sum, day) => sum + dayTotal(day.date), 0)));
-const missingWeekDates = computed(() => weekDays.value.filter((day) => isReportableDate(day.date) && dayTotal(day.date) <= 0).map((day) => day.date));
-const abnormalDays = computed(() => weekDays.value
-  .map((day) => ({ date: day.date, hours: dayTotal(day.date) }))
-  .filter((item) => item.hours > 10));
-const submitStateLabel = computed(() => roleView.value === "submitted" ? "我的提交" : "项目记录");
-const statusSummary = computed(() => {
-  const counts = weekEntries.value.reduce((map, entry) => {
-    const status = normalizedStatus(entry.status);
-    map.set(status, (map.get(status) || 0) + 1);
-    return map;
-  }, new Map());
-  return counts.size
-    ? TIME_ENTRY_STATUS_ORDER
-      .filter((status) => counts.has(status))
-      .map((status) => `${statusDisplay(status)} ${counts.get(status)}`)
-      .join(" · ")
-    : "暂无记录";
+const missingWeekDates = computed(() => weekDays.value.filter((day) => day.date <= today && isReportableDate(day.date) && dayTotal(day.date) <= 0).map((day) => day.date));
+const statusSummary = computed(() => weekEntries.value.length ? `草稿 ${draftEntries.value.length} · 已提交 ${weekEntries.value.length - draftEntries.value.length}` : "暂无记录");
+const managedProjects = computed(() => props.projects.filter((project) => (
+  props.context.isAdmin || project.ownerId === props.context.userId || project.createdById === props.context.userId || project.owner === currentUserName.value
+)));
+const managedProjectIds = computed(() => new Set(managedProjects.value.map((project) => project.id)));
+const ownedEntries = computed(() => {
+  if (!managedProjectIds.value.size) return [];
+  return props.timeEntries.filter((entry) => managedProjectIds.value.has(entry.projectId));
 });
-const canSubmitModal = computed(() => Boolean(form.reporter && form.spentDate && form.projectId && form.issueId && Number(form.hours) > 0));
+const ownedRows = computed(() => ownedEntries.value
+  .filter((entry) => !ownedFilters.projectId || entry.projectId === ownedFilters.projectId)
+  .filter((entry) => !ownedFilters.userId || entry.userId === ownedFilters.userId)
+  .filter((entry) => !ownedFilters.dateFrom || displayDate(entry) >= ownedFilters.dateFrom)
+  .filter((entry) => !ownedFilters.dateTo || displayDate(entry) <= ownedFilters.dateTo)
+  .sort((a, b) => displayDate(b).localeCompare(displayDate(a)) || String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""))));
+const ownedPeopleOptions = computed(() => {
+  const ids = new Set(ownedEntries.value.map((entry) => entry.userId).filter(Boolean));
+  return (props.context.isAdmin ? props.context.user ? [props.context.user] : [] : [])
+    .concat(props.projectMembers.map((member) => member.user).filter(Boolean))
+    .filter((user, index, list) => ids.has(user.id) && list.findIndex((item) => item.id === user.id) === index)
+    .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+});
 
-watch([weekDays, weekRows, () => props.timeEntries], syncDraftHours, { immediate: true, deep: true });
+watch(() => props.projects, () => {
+  if (!props.projects.some((project) => project.id === dailyForm.projectId)) dailyForm.projectId = props.projects[0]?.id || "";
+}, { immediate: true });
 
-function syncDraftHours() {
-  weekRows.value.forEach((row) => {
-    weekDays.value.forEach((day) => {
-      const key = cellKey(row, day.date);
-      if (dirtyCells.value.has(key)) return;
-      const entry = cellEntry(row, day.date);
-      draftHours[key] = entry?.hours || "";
-    });
+function focusWeek() {
+  roleView.value = "submitted";
+  setThisWeek();
+}
+
+function addProjectRow() {
+  if (!projectToAdd.value) return;
+  const next = new Set(manualProjectIds.value);
+  next.add(projectToAdd.value);
+  manualProjectIds.value = next;
+  projectToAdd.value = "";
+}
+
+function openWeekCell(project, date) {
+  const entry = projectDateEntry(project.id, date);
+  editingEntryId.value = entry?.id || "";
+  Object.assign(cellForm, defaultTimeForm({
+    projectId: project.id,
+    issueId: entry?.issueId || "",
+    spentDate: date,
+    hours: entry?.hours || "",
+    note: entry?.note || entry?.description || "",
+    status: "DRAFT",
+  }));
+  formError.value = "";
+  cellModalOpen.value = true;
+}
+
+function openEntryEdit(entry) {
+  editingEntryId.value = entry.id;
+  Object.assign(cellForm, defaultTimeForm({
+    projectId: entry.projectId,
+    issueId: entry.issueId || "",
+    spentDate: displayDate(entry),
+    hours: entry.hours,
+    note: entry.note || entry.description || "",
+    status: "DRAFT",
+  }));
+  formError.value = "";
+  cellModalOpen.value = true;
+}
+
+function closeCellModal() {
+  cellModalOpen.value = false;
+  cellSaving.value = false;
+  formError.value = "";
+}
+
+function saveCell() {
+  const error = validateTimeForm(cellForm);
+  if (error) {
+    formError.value = error;
+    return;
+  }
+  cellSaving.value = true;
+  const payload = payloadFromForm(cellForm, "DRAFT");
+  const done = (result) => {
+    cellSaving.value = false;
+    if (!result?.ok) {
+      formError.value = result?.message || "工时保存失败，请检查字段后重试。";
+      return;
+    }
+    closeCellModal();
+  };
+  if (editingEntryId.value) emit("update", editingEntryId.value, payload, done);
+  else emit("create", payload, done);
+}
+
+function openDailySubmit(preferredDate = "") {
+  Object.assign(dailyForm, defaultTimeForm({
+    projectId: props.projects[0]?.id || "",
+    spentDate: preferredDate || today,
+    status: "SUBMITTED",
+  }));
+  syncDailyIssue();
+  formError.value = "";
+  dailyModalOpen.value = true;
+}
+
+function closeDailyModal() {
+  dailyModalOpen.value = false;
+  dailySaving.value = false;
+  formError.value = "";
+}
+
+function submitDaily() {
+  const error = validateTimeForm(dailyForm);
+  if (error) {
+    formError.value = error;
+    return;
+  }
+  dailySaving.value = true;
+  const payload = payloadFromForm(dailyForm, "SUBMITTED");
+  emit("create", payload, (result) => {
+    dailySaving.value = false;
+    if (!result?.ok) {
+      formError.value = result?.message || "工时提交失败，请检查字段后重试。";
+      return;
+    }
+    lastSubmitted.value = normalizeResultEntry(result.entry || { ...payload, reporter: currentUserName.value, userId: props.context.userId });
+    closeDailyModal();
+    resultModalOpen.value = true;
   });
 }
 
-function setDraftHour(row, date, value) {
-  const key = cellKey(row, date);
-  draftHours[key] = value === "" ? "" : Number(value);
-  const next = new Set(dirtyCells.value);
-  next.add(key);
-  dirtyCells.value = next;
-  saveState.value = "有未保存修改";
+function goToSubmittedWeek() {
+  if (lastSubmitted.value) weekStart.value = mondayOf(parseDate(displayDate(lastSubmitted.value)));
+  roleView.value = "submitted";
+  resultModalOpen.value = false;
 }
 
-function saveWeek() {
-  const createPayloads = [];
-  dirtyCells.value.forEach((key) => {
-    const meta = parseCellKey(key);
-    const row = weekRows.value.find((item) => item.project.id === meta.projectId && item.issue.id === meta.issueId);
-    if (!row) return;
-    const hours = Number(draftHours[key]);
-    if (!Number.isFinite(hours) || hours <= 0) return;
-    const entry = cellEntry(row, meta.date);
-    const payload = {
-      reporter: props.managerName,
-      spentDate: meta.date,
-      workDate: meta.date,
-      projectId: meta.projectId,
-      issueId: meta.issueId,
-      hours,
-      note: entry?.note || "",
-    };
-    if (entry?.id) emit("update", entry.id, payload);
-    else createPayloads.push(payload);
-  });
-  if (createPayloads.length) emit("create", createPayloads);
-  dirtyCells.value = new Set();
-  saveState.value = "保存请求已发送";
-}
-
-function openCreate(preferredDate = "") {
-  editingId.value = "";
-  form.reporter = props.managerName;
-  form.spentDate = preferredDate || weekDays.value.find((day) => isReportableDate(day.date))?.date || weekDays.value[0].date;
-  form.projectId = props.projects[0]?.id || "";
-  form.issueId = issuesByProject(form.projectId)[0]?.id || "";
-  form.hours = 1;
-  form.note = "";
-  modalOpen.value = true;
-}
-
-function openEdit(entry) {
-  editingId.value = entry.id;
-  form.reporter = entry.reporter;
-  form.spentDate = displayDate(entry);
-  form.projectId = entry.projectId;
-  form.issueId = entry.issueId;
-  form.hours = entry.hours;
-  form.note = entry.note || entry.description || "";
-  modalOpen.value = true;
-}
-
-function submitModal() {
-  if (!canSubmitModal.value) return;
-  const payload = { ...form, workDate: form.spentDate };
-  if (editingId.value) emit("update", editingId.value, payload);
-  else emit("create", payload);
-  modalOpen.value = false;
-}
-
-function syncFormIssue() {
-  if (!issuesByProject(form.projectId).some((issue) => issue.id === form.issueId)) {
-    form.issueId = issuesByProject(form.projectId)[0]?.id || "";
+function syncDailyIssue() {
+  if (!issuesByProject(dailyForm.projectId).some((issue) => issue.id === dailyForm.issueId)) {
+    dailyForm.issueId = "";
   }
 }
 
 function moveWeek(offset) {
-  weekStart.value = formatDate(addDays(parseDate(weekStart.value), offset * 7));
-  dirtyCells.value = new Set();
+  const next = formatDate(addDays(parseDate(weekStart.value), offset * 7));
+  if (next > mondayOf(new Date())) return;
+  weekStart.value = next;
 }
 
 function setThisWeek() {
   weekStart.value = mondayOf(new Date());
-  dirtyCells.value = new Set();
-}
-
-function mobileRowsForDay(date) {
-  const rowsWithEntries = weekRows.value.filter((row) => cellEntry(row, date) || Number(draftHours[cellKey(row, date)]) > 0);
-  return rowsWithEntries.length ? rowsWithEntries : weekRows.value.slice(0, 4);
 }
 
 function dayTotal(date) {
-  return trimNumber(weekRows.value.reduce((sum, row) => sum + Number(draftHours[cellKey(row, date)] || 0), 0));
+  return trimNumber(weekEntries.value.filter((entry) => displayDate(entry) === date).reduce((sum, entry) => sum + Number(entry.hours || 0), 0));
 }
 
-function rowTotal(row) {
-  return trimNumber(weekDays.value.reduce((sum, day) => sum + Number(draftHours[cellKey(row, day.date)] || 0), 0));
+function projectWeekTotal(projectId) {
+  return trimNumber(weekDays.value.reduce((sum, day) => sum + dayProjectHours(projectId, day.date), 0));
 }
 
-function cellEntry(row, date) {
-  return props.timeEntries.find((entry) => (
-    entry.projectId === row.project.id &&
-    entry.issueId === row.issue.id &&
-    displayDate(entry) === date &&
-    (entry.reporter === props.managerName || entry.userId === props.context.userId)
-  ));
+function dayProjectHours(projectId, date) {
+  return trimNumber(weekEntries.value
+    .filter((entry) => entry.projectId === projectId && displayDate(entry) === date)
+    .reduce((sum, entry) => sum + Number(entry.hours || 0), 0));
 }
 
-function canEditCell(row, date) {
-  const entry = cellEntry(row, date);
-  if (!entry) return roleView.value === "submitted" || props.context.isAdmin;
+function dayProjectNote(projectId, date) {
+  return weekEntries.value.find((entry) => entry.projectId === projectId && displayDate(entry) === date)?.note
+    || weekEntries.value.find((entry) => entry.projectId === projectId && displayDate(entry) === date)?.description
+    || "";
+}
+
+function projectDateEntry(projectId, date) {
+  return weekEntries.value.find((entry) => entry.projectId === projectId && displayDate(entry) === date) || null;
+}
+
+function canEditDate(date) {
+  return roleView.value === "submitted" && date <= today && isReportableDate(date);
+}
+
+function canEdit(entry) {
+  return isOwnEntry(entry) && normalizedStatus(entry.status) === "DRAFT";
+}
+
+function canDelete(entry) {
   return canEdit(entry);
 }
 
-function cellKey(row, date) {
-  return `${row.project.id}::${row.issue.id}::${date}`;
+function canSubmitEntry(entry) {
+  return isOwnEntry(entry) && normalizedStatus(entry.status) === "DRAFT";
 }
 
-function parseCellKey(key) {
-  const [projectId, issueId, date] = key.split("::");
-  return { projectId, issueId, date };
+function isOwnEntry(entry) {
+  return entry.userId === props.context.userId || entry.reporter === currentUserName.value;
 }
 
 function issuesByProject(projectId) {
@@ -431,39 +513,72 @@ function projectName(projectId) {
 }
 
 function issueName(issueId) {
-  return props.issues.find((issue) => issue.id === issueId)?.title || "未知任务";
+  if (!issueId) return "";
+  return props.issues.find((issue) => issue.id === issueId)?.title || "未关联事项";
+}
+
+function userName(userId) {
+  return ownedPeopleOptions.value.find((user) => user.id === userId)?.name || "未知成员";
 }
 
 function displayDate(entry) {
-  return entry.spentDate || entry.workDate || "";
+  return entry?.spentDate || entry?.workDate || "";
 }
 
-function canEdit(entry) {
-  if (props.context.isAdmin) return true;
-  return entry.userId === props.context.userId && ["DRAFT", "REJECTED"].includes(normalizedStatus(entry.status));
+function validateTimeForm(form) {
+  if (!form.projectId) return "请选择项目。";
+  if (!form.spentDate) return "请选择日期。";
+  if (form.spentDate > today) return "不能填写未来日期。";
+  if (!isReportableDate(form.spentDate)) return "只能填写工作日。";
+  const hours = Number(form.hours);
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 24) return "请填写 0 到 24 之间的有效工时。";
+  const existing = projectDateEntry(form.projectId, form.spentDate);
+  const currentHours = existing && editingEntryId.value === existing.id ? 0 : Number(existing?.hours || 0);
+  if (currentHours + hours > 24) return "同一天累计工时不能超过 24 小时。";
+  return "";
 }
 
-function canDelete(entry) {
-  return canEdit(entry);
+function payloadFromForm(form, status) {
+  return {
+    reporter: currentUserName.value,
+    userId: props.context.userId,
+    spentDate: form.spentDate,
+    workDate: form.spentDate,
+    projectId: form.projectId,
+    issueId: form.issueId || "",
+    hours: Number(form.hours),
+    note: form.note || "",
+    status,
+  };
 }
 
-function canSubmitEntry(entry) {
-  return entry.userId === props.context.userId && ["DRAFT", "REJECTED"].includes(normalizedStatus(entry.status));
+function defaultTimeForm(overrides = {}) {
+  return {
+    reporter: "",
+    spentDate: today || formatDate(new Date()),
+    projectId: "",
+    issueId: "",
+    hours: "",
+    note: "",
+    status: "DRAFT",
+    ...overrides,
+  };
 }
 
-function canApprove(entry) {
-  const project = props.projects.find((item) => item.id === entry.projectId);
-  return normalizedStatus(entry.status) === "SUBMITTED" && (props.context.isAdmin || project?.ownerId === props.context.userId);
+function normalizeResultEntry(entry) {
+  return {
+    ...entry,
+    spentDate: entry.spentDate || entry.workDate,
+    note: entry.note || entry.description || "",
+  };
 }
 
 function normalizedStatus(status) {
-  if (TIME_ENTRY_STATUS_ALIASES[status]) return TIME_ENTRY_STATUS_ALIASES[status];
-  if (TIME_ENTRY_STATUS_LABELS[status]) return status;
-  return status || "SUBMITTED";
+  return ({ 草稿: "DRAFT", DRAFT: "DRAFT" })[status] || "SUBMITTED";
 }
 
 function statusDisplay(status) {
-  return TIME_ENTRY_STATUS_LABELS[normalizedStatus(status)] || status || TIME_ENTRY_STATUS_LABELS.SUBMITTED;
+  return normalizedStatus(status) === "DRAFT" ? "草稿" : "已提交";
 }
 
 function mondayOf(value) {

@@ -282,9 +282,16 @@
 .search-combobox {
   position: relative;
   min-width: 0;
+  width: 86px;
+  transition: width 180ms ease, opacity 180ms ease;
+}
+
+.search-combobox.expanded {
+  width: min(280px, 38vw);
 }
 
 .command-search-trigger {
+  width: 100%;
   min-width: 86px;
   min-height: 32px;
   border: 1px solid var(--line);
@@ -295,6 +302,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-075);
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, opacity 180ms ease;
 }
 
 .command-search-trigger:hover,
@@ -305,8 +313,9 @@
 }
 
 .compact-search {
-  width: min(280px, 38vw);
+  width: 100%;
   min-height: 32px;
+  transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
 }
 
 .search input,

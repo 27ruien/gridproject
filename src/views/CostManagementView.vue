@@ -4,17 +4,17 @@
       <div class="panel-head cost-page-head">
         <div>
           <p class="eyebrow">成本管理</p>
-          <h2>项目人天投入</h2>
+          <h2>项目工时投入</h2>
           <p>项目人力投入统计，不包含薪资、单价或货币金额。</p>
         </div>
         <Button class="mobile-head-action" icon="plus" variant="primary" size="small" :disabled="!eligibleProjects.length" @click="openCreate">新建记录</Button>
       </div>
 
       <div class="cost-overview-band" aria-label="成本摘要">
-        <div><span>总预算</span><strong>{{ costOverview.plannedPersonDays }} 人天</strong></div>
-        <div><span>已发生成本</span><strong>{{ costOverview.actualPersonDays }} 人天</strong></div>
-        <div><span>预计成本</span><strong>{{ costOverview.forecastPersonDays }} 人天</strong></div>
-        <div><span>剩余预算</span><strong :class="{ danger: costOverview.remainingPersonDays < 0 }">{{ costOverview.remainingPersonDays }} 人天</strong></div>
+        <div><span>计划工时</span><strong>{{ costOverview.plannedHours }} 小时</strong></div>
+        <div><span>已发生工时</span><strong>{{ costOverview.actualHours }} 小时</strong></div>
+        <div><span>预计工时</span><strong>{{ costOverview.forecastHours }} 小时</strong></div>
+        <div><span>剩余工时</span><strong :class="{ danger: costOverview.remainingHours < 0 }">{{ costOverview.remainingHours }} 小时</strong></div>
         <p class="cost-risk-hint" :class="{ danger: costOverview.riskCount }">
           超预算风险：{{ costOverview.riskCount ? `${costOverview.riskCount} 个项目需要关注` : "暂无项目超出预算" }}
         </p>
@@ -72,10 +72,10 @@
             <small>{{ row.project.code || row.project.id }}</small>
           </span>
           <span>{{ row.summary.ownerName }}</span>
-          <span>{{ row.summary.plannedPersonDays }} 人天</span>
-          <span>{{ row.summary.actualPersonDays }} 人天</span>
-          <span>{{ forecastPersonDays(row.summary) }} 人天</span>
-          <strong :class="{ danger: row.summary.remainingPersonDays < 0 }">{{ row.summary.remainingPersonDays }} 人天</strong>
+          <span>{{ plannedHours(row.summary) }} 小时</span>
+          <span>{{ row.summary.actualHours }} 小时</span>
+          <span>{{ forecastHours(row.summary) }} 小时</span>
+          <strong :class="{ danger: remainingHours(row.summary) < 0 }">{{ remainingHours(row.summary) }} 小时</strong>
           <span><StatusLozenge :label="row.summary.remainingPersonDays < 0 ? '超预算' : '正常'" :tone="row.summary.remainingPersonDays < 0 ? 'danger' : 'neutral'" /></span>
           <span>{{ row.summary.participantCount }} 人</span>
           <span class="table-action-text">查看详情</span>
@@ -88,9 +88,9 @@
               <span>{{ row.project.code || row.project.id }}</span>
             </span>
             <div class="cost-card-metrics">
-              <span>计划 {{ row.summary.plannedPersonDays }} 人天</span>
-              <span>实际 {{ row.summary.actualPersonDays }} 人天</span>
-              <strong :class="{ danger: row.summary.remainingPersonDays < 0 }">{{ row.summary.remainingPersonDays }} 人天</strong>
+              <span>计划 {{ plannedHours(row.summary) }} 小时</span>
+              <span>实际 {{ row.summary.actualHours }} 小时</span>
+              <strong :class="{ danger: remainingHours(row.summary) < 0 }">{{ remainingHours(row.summary) }} 小时</strong>
             </div>
             <Button variant="ghost" size="small" @click="openDetail(row.id)">查看详情</Button>
           </article>
@@ -151,11 +151,11 @@
             <strong>{{ selectedSummary.ownerName }}</strong>
           </article>
           <article>
-            <span>项目计划总人天</span>
-            <strong>{{ selectedSummary.plannedPersonDays }} 人天</strong>
+            <span>项目计划总工时</span>
+            <strong>{{ plannedHours(selectedSummary) }} 小时</strong>
           </article>
           <article>
-            <span>标准每日工时</span>
+            <span>换算标准</span>
             <strong>{{ selectedSummary.standardHoursPerDay }} 小时</strong>
           </article>
           <article>
@@ -163,15 +163,11 @@
             <strong>{{ selectedSummary.actualHours }} 小时</strong>
           </article>
           <article>
-            <span>{{ isWeekFiltered ? "本周实际人天" : "实际人天" }}</span>
-            <strong>{{ selectedSummary.actualPersonDays }} 人天</strong>
+            <span>剩余工时</span>
+            <strong>{{ remainingHours(selectedSummary) }} 小时</strong>
           </article>
           <article v-if="!isWeekFiltered">
-            <span>剩余人天</span>
-            <strong>{{ selectedSummary.remainingPersonDays }} 人天</strong>
-          </article>
-          <article v-if="!isWeekFiltered">
-            <span>人天消耗率</span>
+            <span>工时消耗率</span>
             <strong>{{ selectedSummary.personDayBurnRate }}%</strong>
           </article>
           <article>
@@ -181,21 +177,21 @@
         </section>
 
         <p v-if="isWeekFiltered" class="quiet-text">
-          周筛选仅影响实际工时、实际人天、人员投入、Top 5、Raw Data 和 Excel 导出；项目计划总人天保持全周期口径。
+          周筛选仅影响实际工时、人员投入、Top 5、Raw Data 和 Excel 导出；项目计划总工时保持全周期口径。
         </p>
 
         <section class="cost-edit-panel">
           <div class="section-head">
             <div>
-              <h3>计划人天设置</h3>
-              <small>项目总人天是完整项目周期的计划投入，不会随工时自动变化。</small>
+              <h3>计划工时设置</h3>
+              <small>项目总工时是完整项目周期的计划投入，不会随实际填报自动变化。</small>
             </div>
             <Button variant="primary" size="small" @click="saveSelectedRecord">保存设置</Button>
           </div>
           <div class="form-two">
             <label>
-              <span>项目总人天</span>
-              <input v-model.number="editForm.plannedPersonDays" min="0.01" step="0.5" type="number" />
+              <span>项目总工时</span>
+              <input v-model.number="editForm.plannedHours" min="0.1" step="0.5" type="number" />
             </label>
             <label>
               <span>标准每日工时</span>
@@ -222,7 +218,7 @@
                 <small>{{ person.email }}</small>
               </span>
               <span>{{ person.hours }} 小时</span>
-              <span>{{ person.personDays }} 人天</span>
+              <span>{{ person.lastWorkDate || "无日期" }}</span>
               <span>{{ person.share }}%</span>
               <span>{{ person.entryCount }} 条</span>
             </div>
@@ -241,7 +237,7 @@
             <div v-for="(person, index) in topPeople" :key="person.userId" class="top-cost-row">
               <strong>{{ index + 1 }}</strong>
               <span>{{ person.name }}</span>
-              <span>{{ person.hours }} 小时 / {{ person.personDays }} 人天</span>
+              <span>{{ person.hours }} 小时</span>
               <span>{{ person.share }}%</span>
               <i :style="{ width: `${Math.max(6, Number(person.share))}%` }"></i>
             </div>
@@ -257,7 +253,7 @@
           </div>
           <div class="cost-raw-table">
             <div class="cost-raw-head">
-              <span>日期</span><span>人员</span><span>事项</span><span>实际工时</span><span>标准每日工时</span><span>折算人天</span><span>状态</span>
+              <span>日期</span><span>人员</span><span>事项</span><span>实际工时</span><span>换算标准</span><span>说明</span><span>状态</span>
             </div>
             <div v-for="entry in pagedRawData" :key="entry.id" class="cost-raw-row">
               <span>{{ entry.workDate }}</span>
@@ -268,7 +264,7 @@
               </span>
               <span>{{ entry.hours }} 小时</span>
               <span>{{ entry.standardHoursPerDay }} 小时</span>
-              <strong>{{ entry.personDays }} 人天</strong>
+              <strong>{{ entry.note || "无说明" }}</strong>
               <span>{{ entry.status }}</span>
             </div>
           </div>
@@ -298,8 +294,8 @@
           </select>
         </label>
         <label>
-          <span>项目总人天</span>
-          <input v-model.number="createForm.plannedPersonDays" min="0.01" step="0.5" type="number" />
+          <span>项目总工时</span>
+          <input v-model.number="createForm.plannedHours" min="0.1" step="0.5" type="number" />
         </label>
         <label>
           <span>标准每日工时</span>
@@ -308,12 +304,12 @@
       </div>
       <label>
         <span>备注</span>
-        <textarea v-model="createForm.notes" rows="3" placeholder="例如项目完整周期计划投入 120 人天" />
+        <textarea v-model="createForm.notes" rows="3" placeholder="例如项目完整周期计划投入 960 小时" />
       </label>
 
       <template #footer>
         <Button variant="ghost" @click="createOpen = false">取消</Button>
-        <Button variant="primary" :disabled="!createForm.projectId || createForm.plannedPersonDays <= 0" @click="submitCreate">创建</Button>
+        <Button variant="primary" :disabled="!createForm.projectId || createForm.plannedHours <= 0" @click="submitCreate">创建</Button>
       </template>
     </Modal>
   </section>
@@ -342,6 +338,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["create", "update", "delete", "export"]);
+const HOURS_PER_PERSON_DAY = 8;
 
 const search = ref("");
 const projectFilter = ref("");
@@ -359,7 +356,7 @@ const createOpen = ref(false);
 const weekStart = ref("");
 const createForm = reactive(defaultCreateForm());
 const editForm = reactive({
-  plannedPersonDays: 0,
+  plannedHours: 0,
   standardHoursPerDay: 8,
   notes: "",
 });
@@ -369,13 +366,13 @@ const riskFilterOptions = [
   { value: "normal", label: "预算内" },
 ];
 const costTypeOptions = [
-  { value: "person-days", label: "人天投入" },
+  { value: "person-days", label: "工时投入" },
 ];
 const costSortOptions = [
   { value: "updatedAt:desc", label: "最近更新" },
-  { value: "burnRate:desc", label: "人天消耗率最高" },
+  { value: "burnRate:desc", label: "工时消耗率最高" },
   { value: "actualHours:desc", label: "实际总工时最高" },
-  { value: "remaining:asc", label: "剩余人天最少" },
+  { value: "remaining:asc", label: "剩余工时最少" },
   { value: "project:asc", label: "项目名称 A-Z" },
 ];
 
@@ -420,14 +417,14 @@ const filteredRows = computed(() => {
 });
 const costOverview = computed(() => {
   const rows = filteredRows.value;
-  const planned = rows.reduce((sum, row) => sum + Number(row.summary.plannedPersonDays || 0), 0);
-  const actual = rows.reduce((sum, row) => sum + Number(row.summary.actualPersonDays || 0), 0);
-  const forecast = rows.reduce((sum, row) => sum + forecastPersonDays(row.summary), 0);
+  const planned = rows.reduce((sum, row) => sum + plannedHours(row.summary), 0);
+  const actual = rows.reduce((sum, row) => sum + Number(row.summary.actualHours || 0), 0);
+  const forecast = rows.reduce((sum, row) => sum + forecastHours(row.summary), 0);
   return {
-    plannedPersonDays: formatDays(planned),
-    actualPersonDays: formatDays(actual),
-    forecastPersonDays: formatDays(forecast),
-    remainingPersonDays: formatDays(planned - actual),
+    plannedHours: formatHours(planned),
+    actualHours: formatHours(actual),
+    forecastHours: formatHours(forecast),
+    remainingHours: formatHours(planned - actual),
     riskCount: rows.filter((row) => Number(row.summary.remainingPersonDays) < 0).length,
   };
 });
@@ -473,7 +470,7 @@ watch([search, projectFilter, ownerFilter, teamFilter, riskFilter, costTypeFilte
 watch(selectedRow, (row) => {
   rawPage.value = 1;
   if (!row) return;
-  editForm.plannedPersonDays = Number(row.plannedPersonDays || 0);
+  editForm.plannedHours = daysToHours(row.plannedPersonDays);
   editForm.standardHoursPerDay = Number(row.standardHoursPerDay) || 8;
   editForm.notes = row.notes || "";
 });
@@ -486,7 +483,12 @@ function openCreate() {
 }
 
 function submitCreate() {
-  emit("create", { ...createForm });
+  emit("create", {
+    projectId: createForm.projectId,
+    plannedPersonDays: hoursToDays(createForm.plannedHours),
+    standardHoursPerDay: createForm.standardHoursPerDay,
+    notes: createForm.notes,
+  });
   createOpen.value = false;
 }
 
@@ -496,7 +498,11 @@ function openDetail(recordId) {
 
 function saveSelectedRecord() {
   if (!selectedRow.value) return;
-  emit("update", selectedRow.value.id, { ...editForm });
+  emit("update", selectedRow.value.id, {
+    plannedPersonDays: hoursToDays(editForm.plannedHours),
+    standardHoursPerDay: editForm.standardHoursPerDay,
+    notes: editForm.notes,
+  });
 }
 
 function emitExport() {
@@ -551,12 +557,32 @@ function sortRows(rows) {
   return [...rows].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
-function forecastPersonDays(summary) {
-  return formatDays(Math.max(Number(summary.plannedPersonDays || 0), Number(summary.actualPersonDays || 0)));
+function plannedHours(summary) {
+  return daysToHours(summary?.plannedPersonDays);
+}
+
+function remainingHours(summary) {
+  return formatHours(plannedHours(summary) - Number(summary?.actualHours || 0));
+}
+
+function forecastHours(summary) {
+  return formatHours(Math.max(plannedHours(summary), Number(summary?.actualHours || 0)));
+}
+
+function daysToHours(value) {
+  return formatHours(Number(value || 0) * HOURS_PER_PERSON_DAY);
+}
+
+function hoursToDays(value) {
+  return formatDays(Number(value || 0) / HOURS_PER_PERSON_DAY);
 }
 
 function formatDays(value) {
   return Number(Number(value || 0).toFixed(2));
+}
+
+function formatHours(value) {
+  return Number(Number(value || 0).toFixed(1));
 }
 
 function optionLabel(options, value) {
@@ -566,7 +592,7 @@ function optionLabel(options, value) {
 function defaultCreateForm() {
   return {
     projectId: "",
-    plannedPersonDays: "",
+    plannedHours: "",
     standardHoursPerDay: 8,
     notes: "",
   };

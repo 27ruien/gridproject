@@ -1,5 +1,9 @@
 import { isProjectOwner } from "../../domain/access.js";
 
+function isProjectCreator(context, project) {
+  return Boolean(project?.createdById && project.createdById === context.userId);
+}
+
 export const COST_PERMISSIONS = {
   VIEW_PROJECT: "cost.view_project",
   CREATE: "cost.create",
@@ -14,7 +18,7 @@ export const CostAccessPolicy = {
       project &&
       project.organizationId === context.organizationId &&
       !project.deletedAt &&
-      (context.isAdmin || isProjectOwner(context, project)),
+      (context.isAdmin || isProjectOwner(context, project) || isProjectCreator(context, project)),
     );
   },
 
@@ -32,7 +36,7 @@ export const CostAccessPolicy = {
     }
 
     const ownedProjectIds = new Set(projects
-      .filter((project) => project.organizationId === context.organizationId && project.ownerId === context.userId && !project.deletedAt)
+      .filter((project) => project.organizationId === context.organizationId && !project.deletedAt && (project.ownerId === context.userId || project.createdById === context.userId))
       .map((project) => project.id));
 
     return (record) => (
@@ -42,4 +46,3 @@ export const CostAccessPolicy = {
     );
   },
 };
-

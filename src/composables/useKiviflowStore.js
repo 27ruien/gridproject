@@ -615,9 +615,26 @@ export function useKiviflowStore() {
         return payload.entry;
       });
     }
-    const issue = getIssue(input.issueId);
-    if (!issue) return null;
-    return addTimeEntry(issue.id, input);
+    const project = projects.value.find((item) => item.id === input.projectId);
+    if (!project) return { ok: false, message: "请选择可访问项目。" };
+    const issue = input.issueId ? getIssue(input.issueId) : null;
+    if (input.issueId && !issue) return { ok: false, message: "请选择当前项目中的事项。" };
+    const entry = timeEntryService.create({
+      ...input,
+      reporter: input.reporter || currentUser.value?.name || "",
+      status: input.status === "SUBMITTED" ? "已提交" : input.status || "草稿",
+    }, issue, project);
+    if (!entry.hours) return { ok: false, message: "请填写有效工时。" };
+    entry.organizationId = state.organization.id;
+    entry.userId = currentUser.value?.id || userIdForName(users.value, entry.reporter) || "";
+    entry.workDate = entry.spentDate;
+    state.timeEntries.unshift(entry);
+    if (issue) {
+      updateIssue(issue.id, {
+        actualHours: (Number(issue.actualHours) || 0) + entry.hours,
+      });
+    }
+    return entry;
   }
 
   function updateTimeEntry(entryId, patch) {
@@ -670,7 +687,13 @@ export function useKiviflowStore() {
   }
 
   function submitTimeEntry(entryId) {
-    if (!apiMode) return { ok: false, reason: "not-supported", message: "本地模式暂不支持提交审批。" };
+    if (!apiMode) {
+      const index = state.timeEntries.findIndex((entry) => entry.id === entryId);
+      if (index < 0) return { ok: false, reason: "not-found", message: "工时不存在。" };
+      const entry = timeEntryService.update(state.timeEntries[index], { status: "已提交" });
+      state.timeEntries.splice(index, 1, entry);
+      return { ok: true, entry };
+    }
     return withApiSave(async () => {
       const payload = await apiClient.timeEntries.submit(entryId);
       upsertById(state.timeEntries, payload.entry);
@@ -1140,11 +1163,10 @@ function applyRestoredEntity(type, entity) {
 }
 
 function timeEntryPayload(input, users, currentUser) {
-  const reporterUserId = input.userId || userIdForName(users, input.reporter) || currentUser?.id;
   return {
     projectId: input.projectId,
-    issueId: input.issueId,
-    userId: reporterUserId,
+    issueId: input.issueId || null,
+    userId: currentUser?.id,
     workDate: input.workDate || input.spentDate,
     hours: Number(input.hours),
     description: input.note || input.description || "",
@@ -1153,7 +1175,7 @@ function timeEntryPayload(input, users, currentUser) {
 
 function timeEntryPatchPayload(patch) {
   return {
-    ...(patch.issueId !== undefined ? { issueId: patch.issueId } : {}),
+    ...(patch.issueId !== undefined ? { issueId: patch.issueId || null } : {}),
     ...(patch.workDate !== undefined || patch.spentDate !== undefined ? { workDate: patch.workDate || patch.spentDate } : {}),
     ...(patch.hours !== undefined ? { hours: Number(patch.hours) } : {}),
     ...(patch.note !== undefined || patch.description !== undefined ? { description: patch.note || patch.description || "" } : {}),

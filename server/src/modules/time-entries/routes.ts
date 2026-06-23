@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { TimeEntryRepository } from "../../repositories/timeEntries.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { canApproveTimeEntry, canDeleteTimeEntry, canEditTimeEntry, canRejectTimeEntry, canSubmitTimeEntry, canViewProject, canViewTimeEntry } from "../../policies/access.js";
+import { canApproveTimeEntry, canDeleteTimeEntry, canEditTimeEntry, canRejectTimeEntry, canSubmitTimeEntry, canViewProjectWorkspace, canViewTimeEntry } from "../../policies/access.js";
 import { assertDailyHoursLimit, withDailyTimeEntryLock } from "../../services/timeEntryConsistency.js";
 import { badRequest, forbidden, notFound, validationError } from "../../utils/errors.js";
 import { pageEnvelope, pagination, parseDateOnly, timeEntryDto } from "../../utils/dto.js";
@@ -50,13 +50,14 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       } : {}),
     };
 
-    if (!context.isAdmin) {
+    if (!context.isAdmin && query.scope === "owned") {
       const repository = new TimeEntryRepository(app.prisma);
       const projectIds = await repository.visibleProjectIds(context.organizationId, context.userId);
-      where.OR = [
-        { userId: context.userId },
-        { projectId: { in: projectIds } },
-      ];
+      where.projectId = query.projectId && projectIds.includes(query.projectId) ? query.projectId : { in: projectIds };
+      if (query.projectId && !projectIds.includes(query.projectId)) where.projectId = { in: [] };
+      if (!projectIds.length) where.projectId = { in: [] };
+    } else if (!context.isAdmin) {
+      where.userId = context.userId;
     }
 
     const [entries, totalCount] = await Promise.all([
@@ -77,13 +78,13 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const parsed = timeEntrySchema.safeParse(request.body);
     if (!parsed.success) throw validationError("工时参数不正确。", parsed.error.flatten());
     const input = parsed.data;
-    const userId = context.isAdmin && input.userId ? input.userId : context.userId;
-    if (input.userId && input.userId !== context.userId && !context.isAdmin) throw forbidden("只能为自己创建工时。");
-    if (context.isAdmin && userId !== context.userId && !input.correctionReason?.trim()) {
-      throw badRequest("管理员代录他人工时必须填写修正原因。");
-    }
-    const project = await app.prisma.project.findFirst({ where: { id: input.projectId, organizationId: context.organizationId, deletedAt: null } });
-    if (!canViewProject(context, project)) throw notFound("项目不存在。");
+    const userId = context.userId;
+    if (input.userId && input.userId !== context.userId) throw forbidden("只能填报自己的工时。");
+    const project = await app.prisma.project.findFirst({
+      where: { id: input.projectId, organizationId: context.organizationId, deletedAt: null },
+      include: { members: true },
+    });
+    if (!canViewProjectWorkspace(context, project, project?.members || [])) throw notFound("项目不存在。");
     await assertActiveProjectMember(app, context.organizationId, project!.id, userId);
     if (input.issueId) await assertIssueBelongsToProject(app, context.organizationId, project!.id, input.issueId);
     const workDate = parseRequiredWorkDate(input.workDate);
@@ -169,6 +170,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     if (!context.isAdmin) throw forbidden("只有 ADMIN 可以移动工时所属项目。");
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
+    if (entry.userId !== context.userId) throw forbidden("只能调整自己的工时。");
     const parsed = timeEntryMoveSchema.safeParse(request.body);
     if (!parsed.success) throw validationError("移动工时参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -256,7 +258,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
   app.post("/:id/submit", async (request) => {
     const context = requireAuth(request);
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
-    if (!canSubmitTimeEntry(context, entry)) throw forbidden("只有自己的草稿或驳回工时可以提交。");
+    if (!canSubmitTimeEntry(context, entry)) throw forbidden("只有自己的草稿工时可以提交。");
     const updated = await app.prisma.$transaction(async (tx) => {
       const row = await tx.timeEntry.update({
         where: { id: entry.id },

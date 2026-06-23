@@ -96,14 +96,16 @@
           </div>
           <div class="comment-box">
             <textarea v-model="commentText" placeholder="记录沟通结论、风险或需要对齐的信息"></textarea>
-            <Button variant="primary" size="small" @click="submitComment">添加评论</Button>
+            <Button variant="primary" size="small" :disabled="commentSaving" @click="submitComment">{{ commentSaving ? "添加中" : "添加评论" }}</Button>
           </div>
           <div class="comment-list">
-            <p v-for="comment in issue.comments" :key="comment.id">
-              <strong>{{ comment.actor }}</strong>
-              <span>{{ comment.text }}</span>
-              <small>{{ formatActivityTime(comment.at) }}</small>
-            </p>
+            <article v-for="comment in issue.comments" :key="comment.id" class="comment-card">
+              <span class="avatar mini-avatar">{{ (comment.actor || "用").slice(0, 1) }}</span>
+              <span class="comment-card-body">
+                <span class="comment-card-meta"><strong>{{ comment.actor || "未知成员" }}</strong><time :datetime="comment.at">{{ formatActivityTime(comment.at) }}</time></span>
+                <p>{{ comment.text }}</p>
+              </span>
+            </article>
             <p v-if="!issue.comments.length" class="quiet-text">暂无评论。</p>
           </div>
         </section>
@@ -175,6 +177,8 @@ const props = defineProps({
 const emit = defineEmits(["close", "update", "comment", "time-entry", "delete"]);
 const activeTab = ref("detail");
 const commentText = ref("");
+const commentSaving = ref(false);
+const previousIssueId = ref("");
 const tabs = [
   { key: "detail", label: "详情" },
   { key: "comments", label: "评论" },
@@ -208,7 +212,10 @@ const totalLoggedHours = computed(() => props.timeEntries.reduce((sum, entry) =>
 
 watch(() => props.issue, (issue) => {
   if (!issue) return;
-  activeTab.value = "detail";
+  if (issue.id !== previousIssueId.value) {
+    activeTab.value = "detail";
+    previousIssueId.value = issue.id;
+  }
   Object.assign(form, {
     title: issue.title,
     type: issue.type,
@@ -235,8 +242,13 @@ function save() {
 
 function submitComment() {
   if (!commentText.value.trim()) return;
-  emit("comment", props.issue.id, commentText.value);
-  commentText.value = "";
+  commentSaving.value = true;
+  const text = commentText.value;
+  emit("comment", props.issue.id, text, (result) => {
+    commentSaving.value = false;
+    activeTab.value = "comments";
+    if (result?.ok) commentText.value = "";
+  });
 }
 
 function submitTimeEntry() {

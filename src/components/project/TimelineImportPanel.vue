@@ -7,7 +7,7 @@
         <p>先解析并检查阶段、任务和关键日期，保存项目时才会写入。</p>
       </div>
       <label class="ui-button ghost small file-trigger">
-        {{ loading ? "正在解析" : "选择文件" }}
+        {{ loading ? activeStageLabel : "选择文件" }}
         <input
           :disabled="loading"
           accept=".xlsx,.xlsm,.csv,.json,.txt,.tsv"
@@ -34,8 +34,19 @@
       <span v-if="preview.sheetName">Sheet：{{ preview.sheetName }}</span>
     </div>
 
+    <div v-if="loading || progressIndex > 0" class="timeline-import-progress" aria-label="Timeline 导入进度">
+      <div class="timeline-progress-bar"><i :style="{ width: `${progressPercent}%` }"></i></div>
+      <ol>
+        <li v-for="(stage, index) in progressStages" :key="stage.key" :class="{ active: index === progressIndex, complete: index < progressIndex }">{{ stage.label }}</li>
+      </ol>
+    </div>
+
     <div v-if="preview.errors.length" class="import-message-list error" role="alert">
       <p v-for="error in preview.errors" :key="error.code">{{ error.message }}</p>
+      <p v-if="preview.sheetName">工作表：{{ preview.sheetName }}</p>
+      <p v-if="preview.detectedHeaders?.length">识别到的表头：{{ preview.detectedHeaders.join('、') }}</p>
+      <p v-if="preview.missingRequiredFields?.length">缺少必要字段：{{ preview.missingRequiredFields.join('、') }}</p>
+      <p v-for="diagnostic in preview.sheetDiagnostics" :key="diagnostic.sheetName">工作表 {{ diagnostic.sheetName }} 首行：{{ diagnostic.detectedHeaders.join('、') || '空' }}</p>
     </div>
 
     <template v-if="preview.tasks.length">
@@ -79,29 +90,32 @@
         </div>
         <div class="timeline-task-table-wrap">
           <table class="timeline-task-table">
-            <thead><tr><th>阶段</th><th>任务</th><th>开始</th><th>结束</th><th>状态</th></tr></thead>
+            <thead><tr><th>阶段</th><th>任务</th><th>负责人</th><th>开始</th><th>结束 / 工期</th><th>状态</th><th>行级错误</th></tr></thead>
             <tbody>
               <tr v-for="(task, index) in editableTasks" :key="`${task.originalIndex}-${index}`">
                 <td><input v-model="task.model" aria-label="阶段" @change="reanalyzeTasks" /></td>
                 <td><input v-model="task.name" aria-label="任务名称" @change="reanalyzeTasks" /></td>
+                <td><input :value="(task.owners || []).join('、')" aria-label="负责人" @change="updateTaskOwners(task, $event.target.value)" /></td>
                 <td><input v-model="task.startDate" aria-label="开始日期" type="date" @change="reanalyzeTasks" /></td>
-                <td><input v-model="task.dueDate" aria-label="结束日期" type="date" @change="reanalyzeTasks" /></td>
+                <td><input v-model="task.dueDate" aria-label="结束日期" type="date" @change="reanalyzeTasks" /><small>{{ task.workdays }} 个工作日</small></td>
                 <td><span class="status-lozenge neutral">{{ task.status || "未完成" }}</span></td>
+                <td><span class="row-error-text">{{ rowErrorForTask(task) }}</span></td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div v-if="preview.warnings.length" class="import-message-list warning">
+      <div v-if="preview.warnings.length || preview.rowErrors?.length" class="import-message-list warning">
         <p v-for="warning in preview.warnings" :key="warning">{{ warning }}</p>
+        <p v-for="rowError in preview.rowErrors" :key="`${rowError.rowNumber}-${rowError.message}`">第 {{ rowError.rowNumber || '?' }} 行：{{ rowError.message }}</p>
       </div>
     </template>
   </section>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import { analyzeScheduleImport, parseScheduleText } from "../../domain/scheduleImport.js";
 import { parseScheduleFile } from "../../services/scheduleFileService.js";
 import Button from "../ui/Button.vue";
@@ -125,11 +139,21 @@ const dateFields = [
 ];
 const text = ref("");
 const loading = ref(false);
+const progressIndex = ref(0);
 const behavior = ref(props.initialBehavior);
 const editableTasks = ref([]);
 const editableDates = reactive(emptyDates());
 const preview = ref(emptyPreview());
 const sourceLabel = computed(() => preview.value.fileName || (editableTasks.value.length ? "粘贴内容" : ""));
+const progressStages = [
+  { key: "upload", label: "上传中" },
+  { key: "sheet", label: "读取工作表" },
+  { key: "header", label: "识别表头" },
+  { key: "rows", label: "解析行数据" },
+  { key: "done", label: "校验完成" },
+];
+const activeStageLabel = computed(() => progressStages[progressIndex.value]?.label || "正在解析");
+const progressPercent = computed(() => Math.round(((progressIndex.value + 1) / progressStages.length) * 100));
 
 watch(behavior, emitChange);
 
@@ -138,20 +162,36 @@ async function readFile(event) {
   event.target.value = "";
   if (!file) return;
   loading.value = true;
-  const result = await parseScheduleFile(file);
-  loading.value = false;
-  applyPreview(result);
+  progressIndex.value = 0;
+  try {
+    await advanceProgress(1);
+    const result = await parseScheduleFile(file);
+    await advanceProgress(2);
+    await advanceProgress(3);
+    applyPreview(result);
+    await advanceProgress(4);
+  } catch (error) {
+    applyPreview({
+      ...emptyPreview(),
+      fileName: file.name,
+      errors: [{ code: "PARSE_FAILED", message: error?.message || "文件解析失败，请检查文件格式。" }],
+    });
+  } finally {
+    loading.value = false;
+  }
 }
 
 function parseText() {
+  progressIndex.value = 4;
   applyPreview({ ...parseScheduleText(text.value), fileName: "", sheetName: "" });
 }
 
 function applyPreview(result) {
-  preview.value = result;
-  editableTasks.value = result.tasks.map((task) => ({ ...task, owners: [...(task.owners || [])] }));
+  const next = { ...emptyPreview(), ...(result || {}) };
+  preview.value = next;
+  editableTasks.value = next.tasks.map((task) => ({ ...task, owners: [...(task.owners || [])] }));
   dateFields.forEach(({ key }) => {
-    editableDates[key] = result.keyDates?.[key]?.date || "";
+    editableDates[key] = next.keyDates?.[key]?.date || "";
   });
   emitChange();
 }
@@ -169,6 +209,16 @@ function reanalyzeTasks() {
     editableDates[key] = previousDates[key] || analyzed.keyDates?.[key]?.date || "";
   });
   emitChange();
+}
+
+function updateTaskOwners(task, value) {
+  task.owners = String(value || "").split(/[、,，/+&\s]+/).map((item) => item.trim()).filter(Boolean);
+  reanalyzeTasks();
+}
+
+function rowErrorForTask(task) {
+  const rowNumber = Number(task.originalIndex || 0) + 1;
+  return preview.value.rowErrors?.find((error) => Number(error.rowNumber) === rowNumber)?.message || "";
 }
 
 function dateSource(key) {
@@ -193,6 +243,7 @@ function reset() {
   editableTasks.value = [];
   Object.assign(editableDates, emptyDates());
   preview.value = emptyPreview();
+  progressIndex.value = 0;
   emitChange();
 }
 
@@ -204,7 +255,13 @@ function emptyPreview() {
   return {
     tasks: [], phases: [], warnings: [], errors: [], keyDates: {},
     recognizedPhaseCount: 0, unrecognizedTaskCount: 0, fileName: "", sheetName: "",
+    detectedHeaders: [], missingRequiredFields: [], rowErrors: [], sheetDiagnostics: [],
   };
+}
+
+async function advanceProgress(index) {
+  progressIndex.value = index;
+  await nextTick();
 }
 
 defineExpose({ reset });

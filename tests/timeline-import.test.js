@@ -58,12 +58,29 @@ const workbookResult = await parseScheduleFile({
 });
 assert.equal(workbookResult.sheetName, "项目 Timeline");
 assert.equal(workbookResult.tasks[0].name, "Excel 需求");
+assert.deepEqual(workbookResult.missingRequiredFields, []);
+
+const aliasWorkbook = new ExcelJS.Workbook();
+const aliasSheet = aliasWorkbook.addWorksheet("别名表头");
+aliasSheet.addRows([
+  ["模块", "任务名称", "负责人", "开始日期", "结束日期或工作日数", "状态"],
+  ["开发", "别名导入", "林夏", "2026-07-06", "3天", "进行中"],
+]);
+const aliasBuffer = await aliasWorkbook.xlsx.writeBuffer();
+const aliasResult = await parseScheduleFile({ name: "alias.xlsx", arrayBuffer: async () => aliasBuffer });
+assert.equal(aliasResult.tasks[0].model, "开发");
+assert.equal(aliasResult.tasks[0].name, "别名导入");
+assert.deepEqual(aliasResult.tasks[0].owners, ["林夏"]);
+assert.equal(aliasResult.tasks[0].workdays, 3);
 
 const badWorkbook = new ExcelJS.Workbook();
 badWorkbook.addWorksheet("说明").addRow(["这里没有 Timeline 表头"]);
 const badBuffer = await badWorkbook.xlsx.writeBuffer();
 const badWorkbookResult = await parseScheduleFile({ name: "bad.xlsx", arrayBuffer: async () => badBuffer });
 assert.equal(badWorkbookResult.errors[0].code, "HEADER_UNRECOGNIZED");
+assert.equal(badWorkbookResult.sheetName, "说明");
+assert.ok(badWorkbookResult.detectedHeaders.includes("这里没有 Timeline 表头"));
+assert.ok(badWorkbookResult.missingRequiredFields.includes("事项名称/任务名称"));
 
 const project = projectService.createProject({ name: "导入测试", owner: "林夏", templateId: "agile" });
 assert.deepEqual(project.executionTeams, []);

@@ -14,22 +14,22 @@ export const ProjectAccessPolicy = {
     return Boolean(context?.isActiveUser);
   },
 
-  canViewProject(context, project) {
+  canViewProject(context, project, projectMembers = []) {
     return Boolean(
       context?.isActiveUser &&
       project &&
       project.organizationId === context.organizationId &&
-      !project.deletedAt,
+      !project.deletedAt &&
+      (context.isAdmin || isProjectOwner(context, project) || isActiveProjectMember(context, project, projectMembers)),
     );
   },
 
   canViewProjectBoard(context, project, projectMembers = []) {
-    if (!this.canViewProject(context, project)) return false;
-    return context.isAdmin || isProjectOwner(context, project) || isActiveProjectMember(context, project, projectMembers);
+    return this.canViewProject(context, project, projectMembers);
   },
 
   canUpdateProject(context, project) {
-    return this.canViewProject(context, project) && (context.isAdmin || isProjectOwner(context, project));
+    return Boolean(context?.isActiveUser && project && project.organizationId === context.organizationId && !project.deletedAt && (context.isAdmin || isProjectOwner(context, project)));
   },
 
   canDeleteProject(context, project) {
@@ -41,6 +41,17 @@ export const ProjectAccessPolicy = {
   },
 
   projectWhereForUser(context) {
+    if (!context.isAdmin) {
+      return {
+        organizationId: context.organizationId,
+        deletedAt: null,
+        OR: [
+          { ownerId: context.userId },
+          { createdById: context.userId },
+          { members: { some: { userId: context.userId, status: "ACTIVE" } } },
+        ],
+      };
+    }
     return {
       organizationId: context.organizationId,
       deletedAt: null,
@@ -48,10 +59,11 @@ export const ProjectAccessPolicy = {
   },
 
   permissionsForProject(context, project, projectMembers = []) {
-    const canViewProjectTimeEntries = context.isAdmin || isProjectOwner(context, project);
-    const canManageCost = context.isAdmin || isProjectOwner(context, project);
+    const isCreator = project?.createdById === context.userId;
+    const canViewProjectTimeEntries = context.isAdmin || isProjectOwner(context, project) || isCreator;
+    const canManageCost = context.isAdmin || isProjectOwner(context, project) || isCreator;
     return {
-      canView: this.canViewProject(context, project),
+      canView: this.canViewProject(context, project, projectMembers),
       canViewBoard: this.canViewProjectBoard(context, project, projectMembers),
       canUpdate: this.canUpdateProject(context, project),
       canDelete: this.canDeleteProject(context, project),
@@ -64,4 +76,3 @@ export const ProjectAccessPolicy = {
     };
   },
 };
-

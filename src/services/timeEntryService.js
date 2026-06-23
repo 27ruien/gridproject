@@ -8,11 +8,12 @@ export const timeEntryService = {
     return normalizeTimeEntry({
       id: `time-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       projectId: project.id,
-      issueId: issue.id,
-      reporter: input.reporter || issue.owner,
+      issueId: issue?.id || "",
+      reporter: input.reporter || issue?.owner || "",
       spentDate: input.spentDate,
       hours: input.hours,
       note: input.note,
+      status: input.status,
       createdAt: new Date().toISOString(),
     });
   },

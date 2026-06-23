@@ -4,10 +4,30 @@ import { requireAuth } from "../../middleware/auth.js";
 import { costRecordDto, issueDto, projectDto, projectMemberDto, sanitizeUserDto, timeEntryDto } from "../../utils/dto.js";
 import { normalizeSettings } from "../settings/routes.js";
 
+const ACTIVE_PROJECT_MEMBER_STATUS = "ACTIVE" as const;
+
 export async function bootstrapRoutes(app: FastifyInstance) {
   app.get("/", async (request) => {
     const context = requireAuth(request);
     const repository = new UserRepository(app.prisma);
+    const projectAccessWhere = context.isAdmin
+      ? { organizationId: context.organizationId, deletedAt: null }
+      : {
+          organizationId: context.organizationId,
+          deletedAt: null,
+          OR: [
+            { ownerId: context.userId },
+            { createdById: context.userId },
+            { members: { some: { userId: context.userId, status: ACTIVE_PROJECT_MEMBER_STATUS } } },
+          ],
+        };
+    const ownedProjectWhere = context.isAdmin
+      ? { organizationId: context.organizationId, deletedAt: null }
+      : {
+          organizationId: context.organizationId,
+          deletedAt: null,
+          OR: [{ ownerId: context.userId }, { createdById: context.userId }],
+        };
     const [organization, users, projects, issues, timeEntries, projectMembers, costRecords] = await Promise.all([
       app.prisma.organization.findUniqueOrThrow({ where: { id: context.organizationId } }),
       app.prisma.user.findMany({
@@ -15,7 +35,7 @@ export async function bootstrapRoutes(app: FastifyInstance) {
         orderBy: { updatedAt: "desc" },
       }),
       app.prisma.project.findMany({
-        where: { organizationId: context.organizationId, deletedAt: null },
+        where: projectAccessWhere,
         include: {
           owner: true,
           milestones: { where: { deletedAt: null }, orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }] },
@@ -23,20 +43,20 @@ export async function bootstrapRoutes(app: FastifyInstance) {
         orderBy: { updatedAt: "desc" },
       }),
       app.prisma.issue.findMany({
-        where: { organizationId: context.organizationId, deletedAt: null },
+        where: { organizationId: context.organizationId, deletedAt: null, project: projectAccessWhere },
         orderBy: { updatedAt: "desc" },
       }),
       app.prisma.timeEntry.findMany({
         where: {
           organizationId: context.organizationId,
           deletedAt: null,
-          ...(context.isAdmin ? {} : { OR: [{ userId: context.userId }, { project: { ownerId: context.userId } }] }),
+          ...(context.isAdmin ? {} : { OR: [{ userId: context.userId }, { project: ownedProjectWhere }] }),
         },
         include: { user: true, issue: true },
         orderBy: { workDate: "desc" },
       }),
       app.prisma.projectMember.findMany({
-        where: { organizationId: context.organizationId },
+        where: { organizationId: context.organizationId, project: projectAccessWhere },
         include: { user: true },
         orderBy: { updatedAt: "desc" },
       }),
@@ -44,7 +64,7 @@ export async function bootstrapRoutes(app: FastifyInstance) {
         where: {
           organizationId: context.organizationId,
           status: "ACTIVE",
-          ...(context.isAdmin ? {} : { project: { ownerId: context.userId } }),
+          ...(context.isAdmin ? {} : { project: ownedProjectWhere }),
         },
         include: { project: { include: { owner: true } } },
         orderBy: { updatedAt: "desc" },

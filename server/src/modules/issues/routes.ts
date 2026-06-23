@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { canViewProject, isProjectOwner } from "../../policies/access.js";
+import { canViewProjectWorkspace, isProjectOwner } from "../../policies/access.js";
 import { assertActiveProjectMember, assertIssueCodeAvailable, requireVisibleProject } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, pageEnvelope, pagination, parseDateOnly, toJsonObject } from "../../utils/dto.js";
@@ -99,14 +99,14 @@ export async function issueRoutes(app: FastifyInstance) {
   app.get("/issues/:issueId", async (request) => {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
-    if (!issue || issue.deletedAt || !canViewProject(context, issue.project)) throw notFound("事项不存在。");
+    if (!issue || issue.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
     return { requestId: request.id, issue: issueDto(issue) };
   });
 
   app.patch("/issues/:issueId", async (request) => {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
-    if (!issue || issue.deletedAt || !canViewProject(context, issue.project)) throw notFound("事项不存在。");
+    if (!issue || issue.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
     const parsed = issuePatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -148,7 +148,7 @@ export async function issueRoutes(app: FastifyInstance) {
   app.delete("/issues/:issueId", async (request) => {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
-    if (!issue || issue.deletedAt || !canViewProject(context, issue.project)) throw notFound("事项不存在。");
+    if (!issue || issue.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
     if (!canDeleteIssue(context, issue)) throw forbidden("没有权限删除该事项。");
     const updated = await app.prisma.$transaction(async (tx) => {
       const row = await tx.issue.update({
@@ -189,7 +189,7 @@ async function loadIssueDetail(app: FastifyInstance, organizationId: string, iss
   const issue = await app.prisma.issue.findFirst({
     where: { id: issueId, organizationId, ...(includeDeleted ? {} : { deletedAt: null }) },
     include: {
-      project: true,
+      project: { include: { members: true } },
       comments: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
       activities: { orderBy: { createdAt: "desc" }, take: 50 },
     },

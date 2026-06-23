@@ -56,7 +56,8 @@ const costRecords = [
 ];
 
 assert.equal(ProjectAccessPolicy.canViewProject(adminContext, projects[0]), true, "ADMIN can view projects");
-assert.equal(ProjectAccessPolicy.canViewProject(memberContext, projects[0]), true, "ACTIVE MEMBER can view org projects");
+assert.equal(ProjectAccessPolicy.canViewProject(memberContext, projects[0], projectMembers), true, "ACTIVE MEMBER can view joined projects");
+assert.equal(ProjectAccessPolicy.canViewProject(nonMemberContext, projects[0], projectMembers), false, "non-members cannot view unjoined projects");
 assert.equal(ProjectAccessPolicy.canCreateProject(memberContext), true, "ACTIVE MEMBER can create projects");
 assert.equal(ProjectAccessPolicy.canViewProjectBoard(adminContext, projects[0], projectMembers), true);
 assert.equal(ProjectAccessPolicy.canViewProjectBoard(ownerContext, projects[0], projectMembers), true);
@@ -65,7 +66,15 @@ assert.equal(ProjectAccessPolicy.canViewProjectBoard(nonMemberContext, projects[
 assert.equal(ProjectAccessPolicy.canUpdateProject(memberContext, projects[1]), false);
 assert.equal(ProjectAccessPolicy.canDeleteProject(ownerContext, projects[0]), true);
 assert.equal(ProjectAccessPolicy.canDeleteProject(adminContext, projects[1]), true);
-assert.deepEqual(ProjectAccessPolicy.projectWhereForUser(ownerContext), { organizationId: ORGANIZATION_ID, deletedAt: null });
+assert.deepEqual(ProjectAccessPolicy.projectWhereForUser(ownerContext), {
+  organizationId: ORGANIZATION_ID,
+  deletedAt: null,
+  OR: [
+    { ownerId: ownerContext.userId },
+    { createdById: ownerContext.userId },
+    { members: { some: { userId: ownerContext.userId, status: "ACTIVE" } } },
+  ],
+});
 
 const createdProject = createProjectCommand({
   context: memberContext,
@@ -92,7 +101,9 @@ assert.equal(ownerChanged.projectMember.status, "ACTIVE");
 const adminWhere = TimeEntryAccessPolicy.timeEntryWhereForUser(adminContext, projects);
 assert.equal(timeEntries.filter(adminWhere).length, 6, "ADMIN sees all non-deleted org time entries");
 const ownerWhere = TimeEntryAccessPolicy.timeEntryWhereForUser(ownerContext, projects);
-assert.deepEqual(timeEntries.filter(ownerWhere).map((item) => item.id).sort(), ["te1", "te2", "te3", "te4", "te7"]);
+assert.deepEqual(timeEntries.filter(ownerWhere).map((item) => item.id).sort(), ["te1", "te7"]);
+const ownerBoardWhere = TimeEntryAccessPolicy.timeEntryWhereForOwnedProjects(ownerContext, projects);
+assert.deepEqual(timeEntries.filter(ownerBoardWhere).map((item) => item.id).sort(), ["te1", "te2", "te3", "te4"]);
 const memberWhere = TimeEntryAccessPolicy.timeEntryWhereForUser(memberContext, projects);
 assert.deepEqual(timeEntries.filter(memberWhere).map((item) => item.id).sort(), ["te2", "te3", "te4"]);
 assert.equal(TimeEntryAccessPolicy.canCreateTimeEntry(memberContext, { userId: zhoucheng.id }, projects[0], projectMembers), true);
@@ -229,8 +240,9 @@ assert.equal(calculationService.getCostRawData("crm").length, 2);
 const workbook = await buildCostRawDataWorkbook({ summary, rawData: summary.rawData });
 const worksheet = workbook.getWorksheet("项目工时 Raw Data");
 assert.equal(worksheet.rowCount, 3);
-assert.equal(worksheet.getRow(1).values.includes("项目计划总人天"), true);
+assert.equal(worksheet.getRow(1).values.includes("项目计划总工时"), true);
 assert.equal(worksheet.getRow(1).values.includes("实际工时"), true);
+assert.equal(worksheet.getRow(1).values.includes("折算实际人天"), false);
 assert.equal(costExportFileName(summary, "2026-06-18"), "CRM_CRM_项目工时RawData_2026-06-18.xlsx");
 assert.equal(escapeExcelText("=SUM(A1:A2)"), "'=SUM(A1:A2)");
 

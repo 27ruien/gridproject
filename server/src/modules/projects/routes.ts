@@ -2,11 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ProjectRepository } from "../../repositories/projects.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { canCreateProject, canManageProject, canViewProject } from "../../policies/access.js";
+import { canCreateProject, canManageProject, canViewProjectWorkspace } from "../../policies/access.js";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, milestoneDto, pageEnvelope, pagination, parseDateOnly, projectDto, projectMemberDto, timeEntryDto, costRecordDto, toJsonObject } from "../../utils/dto.js";
 
 const executionTeamSchema = z.enum(["商务", "设计", "开发", "特效"]);
+const projectStatusSchema = z.enum(["规划中", "开发阶段", "测试阶段", "验收阶段", "上线阶段", "已暂停", "已完成"]);
+const ACTIVE_PROJECT_MEMBER_STATUS = "ACTIVE" as const;
 
 const projectSchema = z.object({
   name: z.string().min(1),
@@ -14,7 +16,7 @@ const projectSchema = z.object({
   templateId: z.string().optional(),
   executionTeams: z.array(executionTeamSchema).max(4).optional(),
   description: z.string().optional(),
-  status: z.string().optional(),
+  status: projectStatusSchema.optional(),
   health: z.number().int().min(0).max(100).optional(),
   ownerId: z.string().optional(),
   startDate: z.string().optional().nullable(),
@@ -31,22 +33,30 @@ export async function projectRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const query = request.query as Record<string, string | undefined>;
     const { page, pageSize, skip, take } = pagination(query);
+    const accessWhere = context.isAdmin ? {} : {
+      OR: [
+        { ownerId: context.userId },
+        { createdById: context.userId },
+          { members: { some: { userId: context.userId, status: ACTIVE_PROJECT_MEMBER_STATUS } } },
+      ],
+    };
+    const searchWhere = query.search ? {
+      OR: [
+        { name: { contains: query.search, mode: "insensitive" as const } },
+        { code: { contains: query.search, mode: "insensitive" as const } },
+      ],
+    } : {};
     const where: any = {
       organizationId: context.organizationId,
       deletedAt: null,
-      ...(query.search ? {
-        OR: [
-          { name: { contains: query.search, mode: "insensitive" as const } },
-          { code: { contains: query.search, mode: "insensitive" as const } },
-        ],
-      } : {}),
+      ...(Object.keys(accessWhere).length || Object.keys(searchWhere).length ? { AND: [accessWhere, searchWhere].filter((item) => Object.keys(item).length) } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.team ? { config: { path: ["executionTeams"], array_contains: [query.team] } } : {}),
     };
     const [projects, totalCount] = await Promise.all([
       app.prisma.project.findMany({
         where,
-        include: { owner: true },
+        include: { owner: true, members: true },
         orderBy: sortProject(query.sort),
         skip,
         take,
@@ -120,7 +130,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const repository = new ProjectRepository(app.prisma);
     const project = await repository.findVisibleById(context.organizationId, id);
-    if (!canViewProject(context, project)) throw notFound("项目不存在。");
+    if (!canViewProjectWorkspace(context, project, project?.members || [])) throw notFound("项目不存在。");
     return { requestId: request.id, project: projectDto(project) };
   });
 
@@ -229,7 +239,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const repository = new ProjectRepository(app.prisma);
     const project = await repository.findBoard(context.organizationId, id);
-    if (!canViewProject(context, project)) throw notFound("项目不存在。");
+    if (!canViewProjectWorkspace(context, project, project?.members || [])) throw notFound("项目不存在。");
     return {
       requestId: request.id,
       project: projectDto(project),
@@ -238,7 +248,7 @@ export async function projectRoutes(app: FastifyInstance) {
       members: project!.members.map(projectMemberDto),
       timeEntries: project!.timeEntries.map(timeEntryDto),
       costRecord: project!.costRecord ? costRecordDto(project!.costRecord) : null,
-      permissions: permissionsForProject(context, project),
+      permissions: permissionsForProject(context, project, project!.members),
     };
   });
 
@@ -262,18 +272,19 @@ function sortProject(sort = "updatedAt:desc") {
   return { updatedAt: "desc" as const };
 }
 
-function permissionsForProject(context: any, project: any) {
+function permissionsForProject(context: any, project: any, members: any[] = []) {
   const manage = canManageProject(context, project);
+  const ownerOrCreator = manage || project?.createdById === context.userId;
   return {
-    canView: canViewProject(context, project),
-    canViewBoard: canViewProject(context, project),
+    canView: canViewProjectWorkspace(context, project, members),
+    canViewBoard: canViewProjectWorkspace(context, project, members),
     canUpdate: manage,
     canDelete: manage,
     canManageMembers: manage,
-    canViewProjectTimeEntries: manage,
-    canApproveTimeEntries: manage,
-    canViewCost: manage,
-    canManageCost: manage,
-    canExportCost: manage,
+    canViewProjectTimeEntries: ownerOrCreator,
+    canApproveTimeEntries: false,
+    canViewCost: ownerOrCreator,
+    canManageCost: ownerOrCreator,
+    canExportCost: ownerOrCreator,
   };
 }

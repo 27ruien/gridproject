@@ -28,14 +28,26 @@ export const TimeEntryAccessPolicy = {
       return (entry) => entry.organizationId === context.organizationId && !entry.deletedAt;
     }
 
-    const ownedProjectIds = new Set(projects
-      .filter((project) => project.organizationId === context.organizationId && project.ownerId === context.userId && !project.deletedAt)
-      .map((project) => project.id));
-
     return (entry) => (
       entry.organizationId === context.organizationId &&
       !entry.deletedAt &&
-      (entry.userId === context.userId || ownedProjectIds.has(entry.projectId))
+      entry.userId === context.userId
+    );
+  },
+
+  timeEntryWhereForOwnedProjects(context, projects = []) {
+    if (context.isAdmin) return this.timeEntryWhereForUser(context, projects);
+    const ownedProjectIds = new Set(projects
+      .filter((project) => (
+        project.organizationId === context.organizationId &&
+        !project.deletedAt &&
+        (project.ownerId === context.userId || project.createdById === context.userId)
+      ))
+      .map((project) => project.id));
+    return (entry) => (
+      entry.organizationId === context.organizationId &&
+      !entry.deletedAt &&
+      ownedProjectIds.has(entry.projectId)
     );
   },
 
@@ -51,14 +63,12 @@ export const TimeEntryAccessPolicy = {
 
   canEditTimeEntry(context, timeEntry) {
     if (!context?.isActiveUser || timeEntry?.organizationId !== context.organizationId || timeEntry?.deletedAt) return false;
-    if (context.isAdmin) return true;
     if (timeEntry.userId !== context.userId) return false;
-    return [TIME_ENTRY_STATUS.DRAFT, TIME_ENTRY_STATUS.REJECTED].includes(normalizeTimeEntryStatus(timeEntry.status));
+    return normalizeTimeEntryStatus(timeEntry.status) === TIME_ENTRY_STATUS.DRAFT;
   },
 
   canDeleteTimeEntry(context, timeEntry) {
     if (!context?.isActiveUser || timeEntry?.organizationId !== context.organizationId || timeEntry?.deletedAt) return false;
-    if (context.isAdmin) return true;
     return timeEntry.userId === context.userId && normalizeTimeEntryStatus(timeEntry.status) === TIME_ENTRY_STATUS.DRAFT;
   },
 
@@ -90,4 +100,3 @@ export function normalizeTimeEntryStatus(status) {
   };
   return legacyStatusMap[status] || status || TIME_ENTRY_STATUS.SUBMITTED;
 }
-

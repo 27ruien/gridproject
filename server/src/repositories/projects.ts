@@ -6,7 +6,7 @@ export class ProjectRepository {
   findVisibleById(organizationId: string, id: string) {
     return this.prisma.project.findFirst({
       where: { organizationId, id, deletedAt: null },
-      include: { owner: true },
+      include: { owner: true, members: true },
     });
   }
 

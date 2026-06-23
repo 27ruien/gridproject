@@ -19,6 +19,21 @@
       <ProjectCardGrid :projects="homeProjects" compact :date-format="preferences.dateFormat" empty-title="暂无可访问项目" empty-text="加入项目后会在这里显示。" @open="$emit('open-project', $event)" />
     </section>
 
+    <section class="home-section timesheet-nudge-section">
+      <div class="section-head">
+        <div>
+          <h2>本周工时</h2>
+          <p>只统计你自己的工作日填报记录。</p>
+        </div>
+        <Button variant="primary" size="small" @click="$emit('open-timesheets')">去填写工时</Button>
+      </div>
+      <div class="timesheet-nudge-grid" aria-label="本周工时摘要">
+        <div><span>已填写 / 已提交</span><strong>{{ weekTimeSummary.hours }}h</strong></div>
+        <div><span>尚未填写</span><strong>{{ weekTimeSummary.missingDays }} 天</strong></div>
+        <div><span>是否有草稿</span><strong :class="{ danger: weekTimeSummary.hasDrafts }">{{ weekTimeSummary.hasDrafts ? "有" : "无" }}</strong></div>
+      </div>
+    </section>
+
     <section class="home-section due-section">
       <div class="section-head"><div><h2>待关注事项</h2><p>区分已逾期与未来 7 天到期的未完成事项。</p></div></div>
       <div class="segmented-control due-tabs" role="tablist" aria-label="到期事项范围">
@@ -68,10 +83,11 @@ const props = defineProps({
   currentUser: { type: Object, required: true },
   users: { type: Array, required: true },
   projectMembers: { type: Array, required: true },
+  timeEntries: { type: Array, default: () => [] },
   preferences: { type: Object, required: true },
   isAdmin: { type: Boolean, default: false },
 });
-defineEmits(["show-projects", "open-project", "open-issue"]);
+defineEmits(["show-projects", "open-project", "open-issue", "open-timesheets"]);
 const activeDueTab = ref(props.preferences.homeDueRange || "all");
 watch(() => props.preferences.homeDueRange, (value) => { activeDueTab.value = value || "all"; });
 
@@ -87,6 +103,20 @@ const accessibleProjectIds = computed(() => new Set(props.projects.filter((proje
 const accessibleProjects = computed(() => props.projectRows.filter((project) => accessibleProjectIds.value.has(project.id)));
 const accessibleIssues = computed(() => props.openIssues.filter((issue) => accessibleProjectIds.value.has(issue.projectId) && !["已完成", "已关闭", "已验收"].includes(issue.status)));
 const homeProjects = computed(() => [...accessibleProjects.value].sort((a, b) => projectScore(b) - projectScore(a) || String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6));
+const weekWorkdays = computed(() => Array.from({ length: 5 }, (_item, index) => formatDate(addDays(startOfWeek(now, "monday"), index))).filter((date) => date <= formatDate(now)));
+const myWeekEntries = computed(() => props.timeEntries.filter((entry) => (
+  (entry.userId === props.currentUser.id || entry.reporter === props.managerName) &&
+  weekWorkdays.value.includes(entry.workDate || entry.spentDate)
+)));
+const weekTimeSummary = computed(() => {
+  const filledDates = new Set(myWeekEntries.value.filter((entry) => Number(entry.hours) > 0).map((entry) => entry.workDate || entry.spentDate));
+  const hours = myWeekEntries.value.reduce((sum, entry) => sum + Number(entry.hours || 0), 0);
+  return {
+    hours: trimNumber(hours),
+    missingDays: weekWorkdays.value.filter((date) => !filledDates.has(date)).length,
+    hasDrafts: myWeekEntries.value.some((entry) => normalizeTimeStatus(entry.status) === "DRAFT"),
+  };
+});
 const dueIssues = computed(() => {
   const all = sortDue(accessibleIssues.value.filter(isInDueWindow));
   return { all, mine: all.filter((issue) => issue.ownerId === props.currentUser.id || ownerName(issue) === props.managerName), others: all.filter((issue) => Boolean(issue.ownerId || issue.owner) && issue.ownerId !== props.currentUser.id && ownerName(issue) !== props.managerName) };
@@ -117,4 +147,8 @@ function dueRelative(issue) { const days = daysUntil(issue.dueDate); if (days < 
 function dueTone(issue) { const days = daysUntil(issue.dueDate); return days < 0 ? "overdue" : days <= 1 ? "urgent" : ""; }
 function issueIcon(type) { return ({ 需求: "issueRequirement", 任务: "issueTask", 缺陷: "issueBug", 风险: "issueRisk", 交付物: "issueEpic" })[type] || "issueTask"; }
 function startOfWeek(value, weekStart) { const date = new Date(value); date.setHours(0, 0, 0, 0); const day = date.getDay(); const offset = weekStart === "sunday" ? day : (day + 6) % 7; date.setDate(date.getDate() - offset); return date; }
+function addDays(value, amount) { const date = new Date(value); date.setDate(date.getDate() + amount); return date; }
+function formatDate(value) { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+function trimNumber(value) { return Number(Number(value || 0).toFixed(1)); }
+function normalizeTimeStatus(status) { return ({ 草稿: "DRAFT", 已提交: "SUBMITTED" })[status] || (status === "DRAFT" ? "DRAFT" : "SUBMITTED"); }
 </script>

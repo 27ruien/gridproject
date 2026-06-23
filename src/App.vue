@@ -94,23 +94,25 @@
 
       <DashboardView
         v-if="currentView === 'dashboard'"
-        :projects="projects"
-        :project-rows="projectRows"
-        :open-issues="openIssues"
+        :projects="visibleProjects"
+        :project-rows="visibleProjectRows"
+        :open-issues="visibleOpenIssues"
         :manager-name="currentManager.name"
         :current-user="store.currentUser.value"
         :users="store.users.value"
         :project-members="store.projectMembers.value"
+        :time-entries="store.timeEntries.value"
         :preferences="preferences"
         :is-admin="store.currentContext.value.isAdmin"
         @show-projects="setView('projects')"
         @open-project="openProject"
         @open-issue="openIssue"
+        @open-timesheets="setView('timesheets')"
       />
 
       <ProjectLibraryView
         v-else-if="currentView === 'projects'"
-        :project-rows="projectRows"
+        :project-rows="visibleProjectRows"
         :date-format="preferences.dateFormat"
         @create="openProjectModal()"
         @trash="setView('trash')"
@@ -120,22 +122,21 @@
 
       <TimesheetView
         v-else-if="currentView === 'timesheets'"
-        :projects="projects"
-        :issues="store.issues.value"
+        :projects="visibleProjects"
+        :issues="visibleIssuesForUser"
         :time-entries="store.timeEntries.value"
         :people="people"
         :manager-name="currentManager.name"
         :context="store.currentContext.value"
+        :project-members="store.projectMembers.value"
         @create="createTimeEntry"
         @update="updateTimeEntry"
         @delete="deleteTimeEntry"
         @submit="submitTimeEntry"
-        @approve="approveTimeEntry"
-        @reject="rejectTimeEntry"
       />
 
       <CostManagementView
-        v-else-if="currentView === 'costs'"
+        v-else-if="currentView === 'costs' && store.currentContext.value.isAdmin"
         :projects="projects"
         :issues="store.issues.value"
         :users="store.users.value"
@@ -149,7 +150,7 @@
       />
 
       <UserManagementView
-        v-else-if="currentView === 'users'"
+        v-else-if="currentView === 'users' && store.currentContext.value.isAdmin"
         :users="store.users.value"
         :projects="projects"
         :project-members="store.projectMembers.value"
@@ -168,7 +169,7 @@
       />
 
       <PlatformSettingsView
-        v-else-if="currentView === 'settings'"
+        v-else-if="currentView === 'settings' && store.currentContext.value.isAdmin"
         :settings="settings"
         @save="saveSettings"
       />
@@ -206,7 +207,7 @@
       :time-entries="selectedIssueTimeEntries"
       @close="selectedIssueId = null"
       @update="updateIssue"
-      @comment="addIssueComment"
+      @comment="addIssueCommentWithResolver"
       @time-entry="addTimeEntry"
       @delete="requestDeleteIssue"
     />
@@ -315,6 +316,12 @@ const {
   preferences,
 } = store;
 
+const visibleProjects = computed(() => projects.value.filter((entry) => store.getProjectPermissions(entry.id).canView));
+const visibleProjectIds = computed(() => new Set(visibleProjects.value.map((entry) => entry.id)));
+const visibleProjectRows = computed(() => projectRows.value.filter((entry) => visibleProjectIds.value.has(entry.id)));
+const visibleIssuesForUser = computed(() => store.issues.value.filter((issue) => visibleProjectIds.value.has(issue.projectId)));
+const visibleOpenIssues = computed(() => openIssues.value.filter((issue) => visibleProjectIds.value.has(issue.projectId)));
+
 const {
   rawSearchText,
   debouncedSearchText,
@@ -332,7 +339,7 @@ const {
   expandSearch,
   handleSearchInput,
   setSearchText,
-} = useGlobalSearch({ projects, issues: store.issues, projectName });
+} = useGlobalSearch({ projects: visibleProjects, issues: visibleIssuesForUser, projectName });
 
 const {
   toastMessage,
@@ -410,8 +417,7 @@ const projectSidebarContext = computed(() => {
   };
 });
 const routesForUser = computed(() => routes.filter((route) => (
-  (route.key !== "costs" || projects.value.some((entry) => store.getProjectPermissions(entry.id).canViewCost)) &&
-  (route.key !== "users" || store.currentContext.value.isAdmin)
+  !["costs", "users", "settings"].includes(route.key) || store.currentContext.value.isAdmin
 )));
 const showAuthLoading = computed(() => store.apiMode && !store.auth.initialized && store.auth.loading);
 const showLogin = computed(() => store.apiMode && store.auth.initialized && !store.auth.authenticated);
@@ -442,10 +448,17 @@ watch(() => store.auth.authenticated, (authenticated) => {
   }
 }, { immediate: true });
 
-function setView(view) {
-  if (view === "users" && !store.currentContext.value.isAdmin) {
+watch([currentView, () => store.currentContext.value.isAdmin], ([view, isAdmin]) => {
+  if (["costs", "users", "settings"].includes(view) && !isAdmin) {
     currentView.value = "dashboard";
-    showToast("没有权限访问人员管理");
+    showToast("没有权限访问该页面");
+  }
+}, { immediate: true });
+
+function setView(view) {
+  if (["costs", "users", "settings"].includes(view) && !store.currentContext.value.isAdmin) {
+    currentView.value = "dashboard";
+    showToast("没有权限访问该页面");
     return;
   }
   currentView.value = view;
@@ -472,6 +485,11 @@ async function savePassword(payload, resolve) {
 }
 
 function openProject(projectId) {
+  if (!visibleProjectIds.value.has(projectId)) {
+    currentView.value = "dashboard";
+    showToast("没有权限访问该项目");
+    return;
+  }
   currentProjectId.value = projectId;
   currentView.value = "project";
   selectedIssueId.value = null;
@@ -709,9 +727,15 @@ async function addIssueComment(issueId, text) {
   const comment = await store.addIssueComment(issueId, text);
   if (!comment?.id) {
     showToast(comment?.message || store.operation.error || "评论添加失败");
-    return;
+    return { ok: false, message: comment?.message || store.operation.error || "评论添加失败" };
   }
   showToast("评论已添加");
+  return { ok: true, comment };
+}
+
+async function addIssueCommentWithResolver(issueId, text, resolve) {
+  const result = await addIssueComment(issueId, text);
+  resolve?.(result);
 }
 
 async function addTimeEntry(issueId, input) {
@@ -723,7 +747,7 @@ async function addTimeEntry(issueId, input) {
   showToast("工时已提交并关联任务");
 }
 
-async function createTimeEntry(input) {
+async function createTimeEntry(input, resolve) {
   if (Array.isArray(input)) {
     const entries = [];
     for (const item of input) {
@@ -731,32 +755,52 @@ async function createTimeEntry(input) {
       if (entry?.id) entries.push(entry);
       else if (entry?.ok === false) {
         showToast(entry.message || "工时创建失败");
+        resolve?.({ ok: false, message: entry.message || "工时创建失败" });
         return;
       }
     }
     if (!entries.length) {
       showToast("请选择任务并填写有效工时");
+      resolve?.({ ok: false, message: "请选择项目、日期并填写有效工时" });
       return;
     }
     showToast(`已创建 ${entries.length} 条工时`);
+    resolve?.({ ok: true, entries });
     return;
   }
 
   const entry = await store.createTimeEntry(input);
   if (!entry?.id) {
-    showToast("请选择任务并填写有效工时");
+    const message = entry?.message || store.operation.error || "请选择项目、日期并填写有效工时";
+    showToast(message);
+    resolve?.({ ok: false, message });
     return;
   }
-  showToast("工时已创建");
+  let finalEntry = entry;
+  if (input.status === "SUBMITTED" && store.apiMode) {
+    const submitted = await store.submitTimeEntry(entry.id);
+    if (!submitted?.ok) {
+      const message = submitted?.message || store.operation.error || "工时提交失败";
+      showToast(message);
+      resolve?.({ ok: false, message, entry });
+      return;
+    }
+    finalEntry = submitted.entry || entry;
+  }
+  showToast(input.status === "SUBMITTED" ? "工时已提交" : "工时已保存");
+  resolve?.({ ok: true, entry: finalEntry });
 }
 
-async function updateTimeEntry(entryId, patch) {
+async function updateTimeEntry(entryId, patch, resolve) {
   const entry = await store.updateTimeEntry(entryId, patch);
   if (!entry?.id) {
-    showToast(entry?.message || store.operation.error || "工时更新失败");
+    const message = entry?.message || store.operation.error || "工时更新失败";
+    showToast(message);
+    resolve?.({ ok: false, message });
     return;
   }
   showToast("工时已更新");
+  resolve?.({ ok: true, entry });
 }
 
 async function deleteTimeEntry(entryId) {
@@ -766,17 +810,7 @@ async function deleteTimeEntry(entryId) {
 
 async function submitTimeEntry(entryId) {
   const result = await store.submitTimeEntry(entryId);
-  showToast(result.ok ? "工时已提交审批" : result.message || "工时提交失败");
-}
-
-async function approveTimeEntry(entryId) {
-  const result = await store.approveTimeEntry(entryId);
-  showToast(result.ok ? "工时已审批" : result.message || "工时审批失败");
-}
-
-async function rejectTimeEntry(entryId) {
-  const result = await store.rejectTimeEntry(entryId, "审批驳回");
-  showToast(result.ok ? "工时已驳回" : result.message || "工时驳回失败");
+  showToast(result.ok ? "工时已提交" : result.message || "工时提交失败");
 }
 
 async function createCostRecord(input) {
