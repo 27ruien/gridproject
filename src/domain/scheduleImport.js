@@ -39,6 +39,11 @@ const FIELD_ALIASES = {
   color: ["color", "颜色", "色值"],
 };
 
+const OWNER_HEADER_ALIASES = {
+  Kivisense: ["kivisense", "kv", "弥知科技", "我方"],
+  Brands: ["brand", "brands", "client", "客户", "品牌方"],
+};
+
 const CHINA_PUBLIC_HOLIDAYS_2026 = new Set([
   "2026-01-01", "2026-01-02", "2026-01-03",
   "2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23",
@@ -107,6 +112,59 @@ export function parseScheduleRows(sourceRows, options = {}) {
 
 export function hasRecognizableScheduleHeader(cells) {
   return isImportHeader(buildHeaderMap((cells || []).map(cleanCell)));
+}
+
+export function parseHorizontalTimelineRows(sourceRows, options = {}) {
+  const table = (sourceRows || [])
+    .map((row) => (Array.isArray(row) ? row.map(cleanCell) : splitDelimitedRow(String(row || ""))));
+  const cellMeta = options.cellMeta || {};
+  const year = inferTimelineYear(options.fileName || "", options.today || new Date());
+  const layout = detectHorizontalTimelineLayout(table, year);
+  if (!layout) {
+    return importResult([], ["没有识别到横向 Timeline 日期栏"], [importError("HORIZONTAL_LAYOUT_UNRECOGNIZED", "未识别到横向 Timeline 日期栏。")]);
+  }
+
+  const warnings = [];
+  const tasks = [];
+  let currentModel = "";
+
+  for (let rowIndex = layout.bodyStartIndex; rowIndex < table.length; rowIndex += 1) {
+    const cells = table[rowIndex] || [];
+    const taskName = cleanCell(cells[layout.nameIndex] || "");
+    const modelValue = layout.modelIndex >= 0 ? cleanCell(cells[layout.modelIndex] || "") : "";
+    if (modelValue) currentModel = stripListMarker(modelValue);
+    if (!taskName || looksLikeHorizontalHeaderRow(cells)) continue;
+
+    const scheduledColumns = scheduledTimelineColumns(layout, cells, rowIndex, cellMeta);
+
+    if (!scheduledColumns.length) {
+      warnings.push(`第 ${rowIndex + 1} 行未导入：缺少排期色块或日期标记`);
+      continue;
+    }
+
+    const startColumn = Math.min(...scheduledColumns);
+    const endColumn = Math.max(...scheduledColumns);
+    const startDate = layout.dateColumns.find((dateColumn) => dateColumn.index === startColumn)?.date || "";
+    const endDate = layout.dateColumns.find((dateColumn) => dateColumn.index === endColumn)?.date || "";
+
+    try {
+      tasks.push(normalizeScheduleTask({
+        model: currentModel || inferModelFromTaskName(taskName),
+        name: taskName,
+        owners: extractHorizontalOwners(cells, layout.ownerColumns),
+        start: startDate,
+        end: endDate,
+        status: layout.statusIndex >= 0 ? cells[layout.statusIndex] : "",
+        category: "",
+        color: dominantTimelineFill(scheduledColumns.map((column) => cellMeta[`${rowIndex}:${column}`])),
+      }, rowIndex + 1));
+    } catch (error) {
+      warnings.push(`第 ${rowIndex + 1} 行未导入：${error.message}`);
+    }
+  }
+
+  const errors = tasks.length ? [] : [importError("NO_VALID_TASKS", "未发现有效任务，请检查任务名称和排期色块。")];
+  return analyzeScheduleImport(importResult(tasks, warnings, errors));
 }
 
 export function analyzeScheduleImport(input) {
@@ -421,8 +479,8 @@ function normalizeOwners(owners) {
   const normalized = values.map((owner) => {
     const token = String(owner || "").trim();
     const lower = token.toLowerCase();
-    if (["kivisense", "kv", "我方"].includes(lower)) return "Kivisense";
-    if (["brand", "brands", "client", "客户", "品牌方"].includes(lower)) return "Brands";
+    if (OWNER_HEADER_ALIASES.Kivisense.includes(lower)) return "Kivisense";
+    if (OWNER_HEADER_ALIASES.Brands.includes(lower)) return "Brands";
     return token;
   }).filter(Boolean);
 
@@ -442,9 +500,19 @@ function parseDateIso(value) {
 
 function extractDate(value) {
   const match = String(value || "").match(/(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
-  if (!match) return "";
+  if (!match) {
+    const serial = Number(String(value || "").trim());
+    if (Number.isFinite(serial) && serial >= 20000 && serial <= 80000) return formatDate(excelSerialDate(Math.round(serial)));
+    return "";
+  }
   const [, year, month, day] = match;
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function excelSerialDate(serial) {
+  const date = new Date(1899, 11, 30);
+  date.setDate(date.getDate() + serial);
+  return date;
 }
 
 function extractDuration(value) {
@@ -459,6 +527,180 @@ function looksLikeStatus(value) {
 
 function stripListMarker(value) {
   return String(value || "").trim().replace(/^\d+[\s.)、-]+/, "");
+}
+
+function detectHorizontalTimelineLayout(table, year) {
+  for (let rowIndex = 0; rowIndex < Math.min(table.length - 1, 12); rowIndex += 1) {
+    const labelRow = table[rowIndex] || [];
+    const dayRow = table[rowIndex + 1] || [];
+    const dateColumns = buildHorizontalDateColumns(labelRow, dayRow, year);
+    if (dateColumns.length < 2) continue;
+
+    const dateStartIndex = dateColumns[0].index;
+    const metaCells = labelRow.slice(0, dateStartIndex);
+    const nameIndex = findHorizontalNameIndex(metaCells);
+    if (nameIndex < 0) continue;
+
+    return {
+      headerIndex: rowIndex,
+      bodyStartIndex: rowIndex + 2,
+      dateColumns,
+      modelIndex: findHorizontalModelIndex(metaCells, nameIndex),
+      nameIndex,
+      ownerColumns: findHorizontalOwnerColumns(metaCells),
+      statusIndex: findHorizontalStatusIndex(metaCells),
+    };
+  }
+  return null;
+}
+
+function buildHorizontalDateColumns(labelRow, dayRow, initialYear) {
+  let activeMonth = "";
+  let activeYear = initialYear;
+  return dayRow.flatMap((dayValue, index) => {
+    const monthLabel = parseMonthLabel(labelRow[index]);
+    if (monthLabel) {
+      if (activeMonth && monthLabel.month < activeMonth.month) activeYear += 1;
+      activeMonth = monthLabel;
+    }
+    const day = parseDayNumber(dayValue);
+    if (!activeMonth || !day) return [];
+    const date = new Date(activeYear, activeMonth.month - 1, day);
+    if (date.getMonth() !== activeMonth.month - 1 || date.getDate() !== day) return [];
+    return [{ index, date: formatDate(date), label: `${activeMonth.label}${day}` }];
+  });
+}
+
+function findHorizontalNameIndex(metaCells) {
+  const direct = metaCells.findIndex((cell) => ["name", "task", "description", "事项", "事项名称", "任务", "任务名称"].includes(normalizeLabel(cell)));
+  if (direct >= 0) return direct;
+  if (metaCells.length >= 2 && /model|module|工作内容|阶段/i.test(String(metaCells[0] || ""))) return 1;
+  return 0;
+}
+
+function findHorizontalModelIndex(metaCells, nameIndex) {
+  const direct = metaCells.findIndex((cell) => ["model", "module", "工作内容", "模块", "阶段"].includes(normalizeLabel(cell)));
+  return direct >= 0 && direct !== nameIndex ? direct : -1;
+}
+
+function findHorizontalOwnerColumns(metaCells) {
+  return metaCells
+    .map((cell, index) => ({ index, owner: resolveOwnerHeader(cell) }))
+    .filter((item) => item.owner);
+}
+
+function findHorizontalStatusIndex(metaCells) {
+  return metaCells.findIndex((cell) => ["status", "状态", "完成状态"].includes(normalizeLabel(cell)));
+}
+
+function extractHorizontalOwners(cells, ownerColumns) {
+  return ownerColumns
+    .filter(({ index }) => isOwnerMarked(cells[index]))
+    .map(({ owner }) => owner);
+}
+
+function resolveOwnerHeader(value) {
+  const normalized = normalizeLabel(value);
+  return Object.entries(OWNER_HEADER_ALIASES).find(([, aliases]) => aliases.map(normalizeLabel).includes(normalized))?.[0] || "";
+}
+
+function isOwnerMarked(value) {
+  const text = normalizeMatchText(value);
+  return ["√", "✓", "v", "yes", "y", "true", "1", "是"].includes(text) || /^(完成|done)$/.test(text);
+}
+
+function isScheduledTimelineCell(meta = {}, value = "") {
+  if (cleanCell(value) && !looksLikeStatus(value)) return true;
+  return Boolean(meta.fill && meta.fill !== "00000000" && meta.fill !== "FFFFFFFF" && meta.fill !== "FF000000" && meta.fill !== "000000");
+}
+
+function scheduledTimelineColumns(layout, cells, rowIndex, cellMeta) {
+  const candidates = layout.dateColumns
+    .filter((dateColumn) => isScheduledTimelineCell(cellMeta[`${rowIndex}:${dateColumn.index}`], cells[dateColumn.index]))
+    .map((dateColumn) => ({
+      index: dateColumn.index,
+      value: cells[dateColumn.index],
+      meta: cellMeta[`${rowIndex}:${dateColumn.index}`] || {},
+    }));
+  const runs = timelineRuns(candidates);
+  const explicitRuns = runs.filter((run) => run.hasValue);
+  const selectedRuns = explicitRuns.length ? explicitRuns : runs;
+
+  return selectedRuns.flatMap((run) => {
+    if (looksLikeTemplateTailRun(run, layout)) return [run.columns[0].index];
+    return run.columns.map((column) => column.index);
+  });
+}
+
+function timelineRuns(columns) {
+  const runs = [];
+  let current = null;
+  columns.forEach((column) => {
+    const key = `${column.meta.fill || ""}:${column.meta.styleIndex ?? ""}`;
+    const canAppend = current && column.index === current.endIndex + 1 && key === current.key;
+    if (!canAppend) {
+      current = {
+        key,
+        startIndex: column.index,
+        endIndex: column.index,
+        columns: [],
+        hasValue: false,
+      };
+      runs.push(current);
+    }
+    current.columns.push(column);
+    current.endIndex = column.index;
+    current.hasValue = current.hasValue || Boolean(cleanCell(column.value));
+  });
+  return runs;
+}
+
+function looksLikeTemplateTailRun(run, layout) {
+  const minimumTailLength = Math.max(15, Math.ceil(layout.dateColumns.length * 0.5));
+  const endOrdinal = layout.dateColumns.findIndex((dateColumn) => dateColumn.index === run.endIndex);
+  const nearTimelineEnd = endOrdinal >= layout.dateColumns.length - 6;
+  return !run.hasValue && nearTimelineEnd && run.columns.length >= minimumTailLength;
+}
+
+function dominantTimelineFill(metas = []) {
+  return metas.map((meta) => meta?.fill).find((fill) => fill && fill !== "00000000" && fill !== "FFFFFFFF") || "";
+}
+
+function parseMonthLabel(value) {
+  const text = String(value || "").normalize("NFKC").trim().toLowerCase();
+  if (!text) return null;
+  const numeric = text.match(/(\d{1,2})\s*月/);
+  if (numeric) return { month: Number(numeric[1]), label: `${Number(numeric[1])}月` };
+  const english = [
+    ["january", "jan", 1], ["february", "feb", 2], ["march", "mar", 3], ["april", "apr", 4],
+    ["may", "may", 5], ["june", "jun", 6], ["july", "jul", 7], ["august", "aug", 8],
+    ["september", "sep", 9], ["october", "oct", 10], ["november", "nov", 11], ["december", "dec", 12],
+  ].find(([full, short]) => text === full || text === short || text.startsWith(`${full} `) || text.startsWith(`${short} `));
+  return english ? { month: english[2], label: english[0] } : null;
+}
+
+function parseDayNumber(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{1,2}$/.test(text)) return 0;
+  const day = Number(text);
+  return day >= 1 && day <= 31 ? day : 0;
+}
+
+function inferTimelineYear(fileName, today) {
+  const match = String(fileName || "").match(/20\d{2}/);
+  if (match) return Number(match[0]);
+  const date = new Date(today || Date.now());
+  return Number.isFinite(date.getFullYear()) ? date.getFullYear() : 2026;
+}
+
+function inferModelFromTaskName(name) {
+  const phase = classifyTimelinePhase({ model: "", name, category: "" });
+  return phase.key === UNKNOWN_PHASE.key ? "未分类" : phase.label;
+}
+
+function looksLikeHorizontalHeaderRow(cells) {
+  const normalized = cells.map(normalizeLabel).filter(Boolean);
+  return normalized.includes("model") || normalized.includes("description") || normalized.includes("事项") || normalized.includes("工作内容");
 }
 
 function mapTimelineStatus(status) {

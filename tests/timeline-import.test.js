@@ -73,6 +73,43 @@ assert.equal(aliasResult.tasks[0].name, "别名导入");
 assert.deepEqual(aliasResult.tasks[0].owners, ["林夏"]);
 assert.equal(aliasResult.tasks[0].workdays, 3);
 
+const horizontalWorkbook = new ExcelJS.Workbook();
+const horizontalSheet = horizontalWorkbook.addWorksheet("Timeline");
+horizontalSheet.addRow(["真实项目 Timeline"]);
+horizontalSheet.addRow([]);
+horizontalSheet.addRow(["工作内容", "事项", "弥知科技", "品牌方", "状态", "6月"]);
+horizontalSheet.addRow(["", "", "", "", "", ...Array.from({ length: 20 }, (_, index) => index + 1)]);
+horizontalSheet.addRow(["Proposal", "Requirement", "", "√", "完成"]);
+horizontalSheet.addRow(["Development", "Frontend build", "√", "", "进行中"]);
+horizontalSheet.addRow(["Launch", "Launch online", "√", "√", ""]);
+horizontalSheet.getCell("F5").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFA9D08E" } };
+["G6", "H6", "I6"].forEach((address) => {
+  horizontalSheet.getCell(address).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8CBAD" } };
+});
+for (let column = 8; column <= 25; column += 1) {
+  horizontalSheet.getCell(7, column).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF5B9BD5" } };
+}
+const horizontalBuffer = await horizontalWorkbook.xlsx.writeBuffer();
+const horizontalResult = await parseScheduleFile({
+  name: "horizontal-timeline-2026.xlsx",
+  arrayBuffer: async () => horizontalBuffer,
+});
+assert.equal(horizontalResult.sheetName, "Timeline");
+assert.equal(horizontalResult.tasks.length, 3);
+assert.equal(horizontalResult.tasks[0].model, "Proposal");
+assert.equal(horizontalResult.tasks[0].name, "Requirement");
+assert.deepEqual(horizontalResult.tasks[0].owners, ["Brands"]);
+assert.equal(horizontalResult.tasks[0].startDate, "2026-06-01");
+assert.equal(horizontalResult.tasks[0].dueDate, "2026-06-01");
+assert.equal(horizontalResult.tasks[1].name, "Frontend build");
+assert.deepEqual(horizontalResult.tasks[1].owners, ["Kivisense"]);
+assert.equal(horizontalResult.tasks[1].startDate, "2026-06-02");
+assert.equal(horizontalResult.tasks[1].dueDate, "2026-06-04");
+assert.equal(horizontalResult.tasks[2].name, "Launch online");
+assert.deepEqual(horizontalResult.tasks[2].owners, ["Kivisense", "Brands"]);
+assert.equal(horizontalResult.tasks[2].startDate, "2026-06-03");
+assert.equal(horizontalResult.tasks[2].dueDate, "2026-06-03");
+
 const badWorkbook = new ExcelJS.Workbook();
 badWorkbook.addWorksheet("说明").addRow(["这里没有 Timeline 表头"]);
 const badBuffer = await badWorkbook.xlsx.writeBuffer();
