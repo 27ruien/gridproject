@@ -1,7 +1,7 @@
 <template>
   <section class="view-toolbar" aria-label="项目视图工具栏">
     <div class="view-toolbar-main">
-      <details class="toolbar-menu view-options-menu">
+      <details v-if="showViewMenu" class="toolbar-menu view-options-menu">
         <summary class="toolbar-button">
           <Icon :name="activeView === '看板' || activeView === '阶段计划' ? 'board' : 'list'" />
           <span>{{ activeView }}</span>
@@ -100,6 +100,7 @@ const activeView = defineModel("activeView", { type: String, required: true });
 defineProps({
   people: { type: Array, required: true },
   views: { type: Array, required: true },
+  showViewMenu: { type: Boolean, default: true },
 });
 
 defineEmits(["create", "reset"]);

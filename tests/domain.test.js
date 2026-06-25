@@ -18,8 +18,11 @@ const waterfall = getTemplateById("waterfall");
 
 assert.equal(PROJECT_TEMPLATES.length, 2);
 assert.deepEqual(agile.workflow, ISSUE_STATUSES);
-assert.ok(agile.views.includes("看板"));
-assert.ok(waterfall.views.includes("阶段计划"));
+assert.deepEqual(agile.views, ["概览", "工作项", "里程碑", "交付与验收", "风险"]);
+assert.deepEqual(waterfall.views, ["概览", "工作项", "里程碑", "交付与验收", "风险"]);
+assert.ok(!waterfall.views.includes("阶段计划"));
+assert.ok(!waterfall.views.includes("甘特图"));
+assert.ok(!waterfall.views.includes("验收"));
 
 const project = projectService.createProject({
   name: "测试项目",
@@ -83,7 +86,12 @@ assert.equal(issue.startDate, "2026-05-11");
 assert.equal(getNextStatus(issue.status), "进行中");
 assert.equal(filterIssues([issue], { keyword: "测试", owner: "林夏", creator: "周程", dateFrom: "2026-05-12", dateTo: "2026-05-20" }).length, 1);
 assert.equal(filterIssues([issue], { owner: "韩越" }).length, 0);
-assert.ok(agile.views.includes("甘特图"));
+assert.ok(!agile.views.includes("甘特图"));
+assert.deepEqual(issueService.filterForView([
+  { ...issue, id: "d1", type: "交付物" },
+  { ...issue, id: "a1", type: "验收项" },
+  { ...issue, id: "t1", type: "任务" },
+], "交付与验收").map((item) => item.id), ["d1", "a1"]);
 
 const advanced = issueService.advanceIssue(issue, agile);
 assert.equal(advanced.status, "进行中");

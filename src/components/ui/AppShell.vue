@@ -124,8 +124,10 @@ function selectProjectView(view) {
 
 function projectViewIcon(view) {
   if (view === "概览") return "dashboard";
-  if (view === "看板") return "board";
-  if (view === "甘特图") return "calendar";
+  if (view === "工作项") return "board";
+  if (view === "里程碑") return "milestone";
+  if (view === "交付与验收") return "check";
+  if (view === "风险") return "issueRisk";
   if (view === "版本") return "issueEpic";
   if (view === "复盘") return "check";
   return "list";

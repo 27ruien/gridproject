@@ -151,5 +151,9 @@ function normalizeProjectViewName(viewName) {
   return {
     Backlog: "待办事项",
     Sprint: "迭代",
+    阶段计划: "工作项",
+    甘特图: "工作项",
+    交付物: "交付与验收",
+    验收: "交付与验收",
   }[viewName] || viewName;
 }
