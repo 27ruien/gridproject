@@ -583,7 +583,7 @@
 }
 
 .project-card.project-card-dashboard {
-  min-height: 190px;
+  min-height: 188px;
   border-color: var(--home-line, #e6e8ec);
   border-radius: var(--home-radius, 10px);
   box-shadow: none;
@@ -597,7 +597,7 @@
 }
 
 .project-card-dashboard .project-card-hit {
-  gap: 12px;
+  gap: 13px;
   padding: 16px;
 }
 
@@ -617,16 +617,16 @@
 }
 
 .project-card-dashboard .project-card-title strong {
-  font-size: 15px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 21px;
   font-weight: 650;
   -webkit-line-clamp: 1;
 }
 
 .project-card-dashboard .project-card-title small {
-  margin-top: 1px;
+  margin-top: 2px;
   color: #7a8491;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .project-card-dashboard .status-lozenge {
@@ -645,8 +645,8 @@
 }
 
 .project-card-dashboard .mini-avatar {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   background: #e8f1ff;
   color: #3867a9;
 }
@@ -661,7 +661,7 @@
 }
 
 .project-card-dashboard .project-card-progress .progress {
-  height: 4px;
+  height: 3px;
   background: #edf0f4;
 }
 
@@ -670,10 +670,10 @@
 }
 
 .project-card-dashboard .project-card-footer {
-  padding-top: 10px;
+  padding-top: 9px;
   border-top-color: #edf0f4;
   color: #697382;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .project-card-dashboard .project-on-track {
@@ -693,7 +693,7 @@
 }
 
 .home-view {
-  --home-content-max: 1160px;
+  --home-content-max: 1360px;
   --home-gap: 24px;
   --home-grid-gap: 18px;
   --home-line: #e4e7ec;
@@ -701,7 +701,7 @@
   --home-radius: 10px;
   --home-muted: #68717d;
   --home-subtle: #858e9a;
-  width: min(calc(100% - 32px), var(--home-content-max));
+  width: min(100%, var(--home-content-max));
   margin: 0 auto;
   display: grid;
   gap: var(--home-gap);
@@ -733,7 +733,7 @@
 .home-greeting h1 {
   margin: 0;
   color: #15181d;
-  font-size: clamp(26px, 2vw, 28px);
+  font-size: clamp(28px, 2vw, 30px);
   line-height: 1.25;
   font-weight: 620;
   letter-spacing: 0;
@@ -866,14 +866,14 @@
 }
 
 .timesheet-nudge-panel {
-  padding: 18px 20px;
+  padding: 16px 20px;
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .timesheet-total {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .timesheet-total > span {
@@ -884,8 +884,8 @@
 
 .timesheet-total strong {
   color: #15181d;
-  font-size: 30px;
-  line-height: 34px;
+  font-size: 29px;
+  line-height: 32px;
   font-weight: 650;
 }
 
@@ -915,7 +915,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   border-top: 1px solid var(--home-line-soft);
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .timesheet-nudge-grid > div {
@@ -1133,8 +1133,10 @@
 .home-empty > span { display: grid; }
 
 .risk-section {
-  border-top: 1px solid var(--home-line);
-  padding-top: 18px;
+  border: 1px solid var(--home-line);
+  border-radius: var(--home-radius);
+  background: #fff;
+  padding: 16px 18px 18px;
 }
 
 .risk-strip {
@@ -1145,12 +1147,12 @@
 
 .risk-strip button {
   min-width: 0;
-  min-height: 52px;
+  min-height: 48px;
   border: 1px solid var(--home-line);
   border-radius: var(--home-radius);
-  background: var(--surface);
+  background: #fff;
   color: var(--red);
-  padding: var(--space-100);
+  padding: 12px;
   display: flex;
   align-items: center;
   gap: var(--space-100);
