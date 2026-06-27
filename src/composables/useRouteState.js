@@ -79,7 +79,7 @@ export function useRouteState({
 
     if (projectId && projects.value.some((entry) => entry.id === projectId)) currentProjectId.value = projectId;
     if (appPath === "/users") currentView.value = store.currentContext.value.isAdmin ? "users" : "dashboard";
-    if (view && [...routes.map((entry) => entry.key), "project", "trash"].includes(view)) {
+    if (view && [...routeKeys(routes), "project", "trash"].includes(view)) {
       currentView.value = view === "users" && !store.currentContext.value.isAdmin ? "dashboard" : view;
     }
     if (tab && activeViewRef) activeViewRef.value = normalizeProjectViewName(tab);
@@ -156,4 +156,8 @@ function normalizeProjectViewName(viewName) {
     交付物: "交付与验收",
     验收: "交付与验收",
   }[viewName] || viewName;
+}
+
+function routeKeys(routes = []) {
+  return routes.flatMap((route) => [route.key, ...(route.children?.length ? routeKeys(route.children) : [])]);
 }

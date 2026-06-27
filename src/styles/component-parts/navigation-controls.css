@@ -142,6 +142,58 @@
   outline-offset: -2px;
 }
 
+.nav-group {
+  display: grid;
+  gap: var(--space-050);
+}
+
+.nav-group-trigger {
+  justify-content: flex-start;
+}
+
+.nav-group-trigger .nav-group-arrow {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: var(--subtle);
+  transition: transform 160ms ease;
+}
+
+.nav-group.open .nav-group-arrow {
+  transform: rotate(180deg);
+}
+
+.nav-submenu {
+  display: grid;
+  gap: 2px;
+  padding-left: calc(16px + var(--space-100));
+}
+
+.nav-subitem {
+  min-height: 30px;
+  color: #616b78;
+  padding-inline: var(--space-075);
+}
+
+.nav-subitem .ui-icon {
+  width: 8px;
+  height: 8px;
+  color: var(--brand);
+  fill: currentColor;
+  stroke-width: 0;
+}
+
+.nav-subitem.active {
+  background: #f1f5ff;
+  border-color: #cfdbf7;
+  color: #2f5fa8;
+}
+
+.app-shell.nav-collapsed .nav-group-trigger .nav-group-arrow,
+.app-shell.nav-collapsed .nav-submenu {
+  display: none;
+}
+
 .app-shell.nav-collapsed .nav-item:hover::after,
 .app-shell.nav-collapsed .nav-item:focus-visible::after {
   content: attr(data-tooltip);

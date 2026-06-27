@@ -5,6 +5,7 @@ import { calculateProjectCost, escapeExcelText } from "../src/domain/cost.js";
 import { ProjectAccessPolicy } from "../src/server/policies/projectAccessPolicy.js";
 import { TimeEntryAccessPolicy } from "../src/server/policies/timeEntryAccessPolicy.js";
 import { CostAccessPolicy } from "../src/server/policies/costAccessPolicy.js";
+import { getMissingSubmitDates } from "../src/services/timesheetPolicyService.js";
 import { createProjectCommand, changeProjectOwnerCommand } from "../src/server/services/projectCommandService.js";
 import { costService } from "../src/services/costService.js";
 import { canUserLogin } from "../src/services/userService.js";
@@ -112,6 +113,15 @@ assert.equal(TimeEntryAccessPolicy.canEditTimeEntry(memberContext, timeEntries[2
 assert.equal(TimeEntryAccessPolicy.canEditTimeEntry(memberContext, timeEntries[1]), false);
 assert.equal(TimeEntryAccessPolicy.canApproveTimeEntry(ownerContext, timeEntries[1], projects[0]), true);
 assert.equal(TimeEntryAccessPolicy.canApproveTimeEntry(memberContext, timeEntries[1], projects[0]), false);
+assert.deepEqual(
+  getMissingSubmitDates([
+    { reporter: "林夏", spentDate: "2026-06-01", status: "SUBMITTED" },
+    { reporter: "林夏", spentDate: "2026-06-02", status: "DRAFT" },
+    { reporter: "林夏", spentDate: "2026-06-03", status: "草稿" },
+  ], "林夏", "2026-06", "2026-06-04").sort(),
+  ["2026-06-02", "2026-06-03", "2026-06-04"],
+  "missing submit dates exclude weekends, future dates and submitted entries while keeping drafts visible",
+);
 
 assert.equal(CostAccessPolicy.canViewCost(adminContext, projects[0]), true);
 assert.equal(CostAccessPolicy.canManageCost(ownerContext, projects[0]), true);

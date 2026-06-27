@@ -78,7 +78,20 @@
         @update="updateTimeEntry"
         @delete="deleteTimeEntry"
         @submit="submitTimeEntry"
+        @open-list="setView('timesheet-list')"
         @start-action-handled="timesheetStartAction = null"
+      />
+
+      <TimesheetListView
+        v-else-if="currentView === 'timesheet-list'"
+        :projects="visibleProjects"
+        :issues="visibleIssuesForUser"
+        :time-entries="store.timeEntries.value"
+        :people="people"
+        :context="store.currentContext.value"
+        :project-members="store.projectMembers.value"
+        @open-fill="setView('timesheets')"
+        @submit="submitTimeEntry"
       />
 
       <CostManagementView
@@ -232,6 +245,7 @@ import ProjectLibraryView from "./views/ProjectLibraryView.vue";
 import ProjectWorkspaceView from "./views/ProjectWorkspaceView.vue";
 import ProjectCreateView from "./views/ProjectCreateView.vue";
 import TimesheetView from "./views/TimesheetView.vue";
+import TimesheetListView from "./views/TimesheetListView.vue";
 import CostManagementView from "./views/CostManagementView.vue";
 import UserManagementView from "./views/UserManagementView.vue";
 import TrashView from "./views/TrashView.vue";
@@ -339,7 +353,7 @@ bindActiveView(activeView);
 const pageTitle = computed(() => {
   if (currentView.value === "project") return "项目空间";
   if (currentView.value === "trash") return "回收站";
-  const route = routes.find((item) => item.key === currentView.value);
+  const route = findRoute(routes, currentView.value);
   return route?.label || "主页";
 });
 const browserTitle = computed(() => currentView.value === "project" && project.value?.name ? `${project.value.name} | GridProject` : "GridProject");
@@ -363,9 +377,7 @@ const projectSidebarContext = computed(() => {
     activeView: activeView.value,
   };
 });
-const routesForUser = computed(() => routes.filter((route) => (
-  !["costs", "users", "settings"].includes(route.key) || store.currentContext.value.isAdmin
-)));
+const routesForUser = computed(() => filterRoutesForUser(routes, store.currentContext.value));
 const showAuthLoading = computed(() => store.apiMode && !store.auth.initialized && store.auth.loading);
 const showLogin = computed(() => store.apiMode && store.auth.initialized && !store.auth.authenticated);
 
@@ -411,6 +423,26 @@ function setView(view) {
   currentView.value = view;
   selectedIssueId.value = null;
   closeSearch();
+}
+
+function filterRoutesForUser(routeList, context) {
+  return routeList
+    .map((route) => {
+      if (route.adminOnly && !context.isAdmin) return null;
+      if (!route.children?.length) return route;
+      const children = filterRoutesForUser(route.children, context);
+      return children.length ? { ...route, children } : null;
+    })
+    .filter(Boolean);
+}
+
+function findRoute(routeList, key) {
+  for (const route of routeList) {
+    if (route.key === key) return route;
+    const child = route.children?.length ? findRoute(route.children, key) : null;
+    if (child) return child;
+  }
+  return null;
 }
 
 function handleAccountAction(action) {

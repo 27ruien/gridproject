@@ -27,19 +27,50 @@
 
       <div class="sidebar-navigation">
         <nav class="nav" aria-label="主导航">
-          <button
-            v-for="route in routes"
-            :key="route.key"
-            class="nav-item"
-            :class="{ active: currentView === route.key }"
-            :aria-label="route.label"
-            :data-tooltip="route.label"
-            type="button"
-            @click="navigate(route.key)"
-          >
-            <Icon :name="route.icon" />
-            <span>{{ route.label }}</span>
-          </button>
+          <template v-for="route in routes" :key="route.key">
+            <div v-if="route.children?.length" class="nav-group" :class="{ open: isRouteGroupOpen(route), active: isRouteGroupActive(route) }">
+              <button
+                class="nav-item nav-group-trigger"
+                :class="{ active: isRouteGroupActive(route) }"
+                :aria-label="route.label"
+                :aria-expanded="isRouteGroupOpen(route)"
+                :data-tooltip="route.label"
+                type="button"
+                @click="toggleRouteGroup(route.key)"
+              >
+                <Icon :name="route.icon" />
+                <span>{{ route.label }}</span>
+                <Icon class="nav-group-arrow" name="chevronDown" />
+              </button>
+              <div v-if="isRouteGroupOpen(route)" class="nav-submenu" role="group" :aria-label="route.label">
+                <button
+                  v-for="child in route.children"
+                  :key="child.key"
+                  class="nav-item nav-subitem"
+                  :class="{ active: currentView === child.key }"
+                  :aria-label="child.label"
+                  :data-tooltip="child.label"
+                  type="button"
+                  @click="navigate(child.key)"
+                >
+                  <Icon :name="child.icon" />
+                  <span>{{ child.label }}</span>
+                </button>
+              </div>
+            </div>
+            <button
+              v-else
+              class="nav-item"
+              :class="{ active: currentView === route.key }"
+              :aria-label="route.label"
+              :data-tooltip="route.label"
+              type="button"
+              @click="navigate(route.key)"
+            >
+              <Icon :name="route.icon" />
+              <span>{{ route.label }}</span>
+            </button>
+          </template>
         </nav>
 
         <section v-if="projectContext" class="project-sidebar-context" aria-label="当前项目导航">
@@ -95,14 +126,17 @@ const props = defineProps({
 const emit = defineEmits(["navigate", "logout", "project-view", "account-navigate"]);
 const mobileNavOpen = ref(false);
 const navCollapsed = ref(false);
+const openRouteGroups = ref(new Set());
 const navPreference = storageKey("navCollapsed");
 
 watch(() => props.currentView, () => {
   mobileNavOpen.value = false;
+  syncOpenRouteGroups();
 });
 
 onMounted(() => {
   applyNavPreference(props.preferences.defaultNav);
+  syncOpenRouteGroups();
   window.addEventListener("resize", syncResponsiveCollapse);
 });
 
@@ -120,6 +154,29 @@ function navigate(routeKey) {
 function selectProjectView(view) {
   emit("project-view", view);
   mobileNavOpen.value = false;
+}
+
+function toggleRouteGroup(routeKey) {
+  const next = new Set(openRouteGroups.value);
+  if (next.has(routeKey)) next.delete(routeKey);
+  else next.add(routeKey);
+  openRouteGroups.value = next;
+}
+
+function isRouteGroupActive(route) {
+  return Boolean(route.children?.some((child) => child.key === props.currentView));
+}
+
+function isRouteGroupOpen(route) {
+  return isRouteGroupActive(route) || openRouteGroups.value.has(route.key);
+}
+
+function syncOpenRouteGroups() {
+  const activeGroup = props.routes.find((route) => route.children?.some((child) => child.key === props.currentView));
+  if (!activeGroup || openRouteGroups.value.has(activeGroup.key)) return;
+  const next = new Set(openRouteGroups.value);
+  next.add(activeGroup.key);
+  openRouteGroups.value = next;
 }
 
 function projectViewIcon(view) {

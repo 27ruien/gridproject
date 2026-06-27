@@ -35,15 +35,20 @@ export function calculateMonthlyTarget(monthValue) {
   return getReportableDates(monthValue).length * DAILY_WORK_HOURS;
 }
 
-export function getMissingSubmitDates(entries, reporter, monthValue) {
+export function getMissingSubmitDates(entries, reporter, monthValue, today = new Date()) {
   if (!reporter) return [];
+  const todayValue = typeof today === "string" ? today.slice(0, 10) : today.toISOString().slice(0, 10);
   const submitted = new Set(
     entries
-      .filter((entry) => entry.reporter === reporter && isInMonth(entry.spentDate, monthValue))
-      .map((entry) => entry.spentDate),
+      .filter((entry) => (
+        entry.reporter === reporter &&
+        isInMonth(entry.spentDate || entry.workDate, monthValue) &&
+        !["DRAFT", "草稿"].includes(entry.status)
+      ))
+      .map((entry) => entry.spentDate || entry.workDate),
   );
 
-  return getReportableDates(monthValue).filter((date) => !submitted.has(date));
+  return getReportableDates(monthValue).filter((date) => date <= todayValue && !submitted.has(date));
 }
 
 export function createEntrySearchText(entry, projectName, issueName) {

@@ -16,6 +16,10 @@ export function isProjectOwner(context: AuthContext, project: { ownerId?: string
   return Boolean(project?.ownerId && project.ownerId === context.userId);
 }
 
+export function isProjectManager(context: AuthContext, project: { ownerId?: string | null; createdById?: string | null } | null | undefined) {
+  return Boolean(project && (project.ownerId === context.userId || project.createdById === context.userId));
+}
+
 export function isProjectMember(context: AuthContext, project: { id?: string | null } | null | undefined, members: Array<{ projectId?: string | null; userId?: string | null; status?: string | null }> = []) {
   return Boolean(project?.id && members.some((member) => (
     member.projectId === project.id &&
@@ -41,9 +45,9 @@ export function canViewCost(context: AuthContext, project: { organizationId: str
   return canManageProject(context, project) || Boolean(context.isActiveUser && project && project.organizationId === context.organizationId && !project.deletedAt && (project as any).createdById === context.userId);
 }
 
-export function canViewTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
+export function canViewTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null; createdById?: string | null } | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
-  if (context.isAdmin || isProjectOwner(context, project)) return true;
+  if (context.isAdmin || isProjectManager(context, project)) return true;
   return entry.userId === context.userId;
 }
 

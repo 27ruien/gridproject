@@ -396,6 +396,353 @@
   flex: 0 0 82px;
 }
 
+.cost-time-workspace {
+  --timesheet-line: #e4e7ec;
+  --timesheet-line-soft: #eef1f5;
+  --timesheet-text: #151922;
+  --timesheet-muted: #68717d;
+  --timesheet-subtle: #8b95a3;
+  --timesheet-panel: #fff;
+  --timesheet-panel-soft: #f8fafc;
+  max-width: 1480px;
+  margin-inline: auto;
+  gap: 16px;
+}
+
+.timesheet-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-200);
+  padding: 4px 4px 0;
+}
+
+.timesheet-page-header h1 {
+  margin: 0;
+  color: var(--timesheet-text);
+  font-size: 30px;
+  line-height: 38px;
+  font-weight: 620;
+  letter-spacing: 0;
+}
+
+.timesheet-page-header p {
+  margin: 4px 0 0;
+  color: var(--timesheet-muted);
+  font-size: 15px;
+}
+
+.timesheet-pending-panel,
+.timesheet-cycle-panel,
+.owned-timesheet-board,
+.timesheet-preview-list,
+.timesheet-list-filters,
+.timesheet-list-table {
+  border: 1px solid var(--timesheet-line);
+  border-radius: 8px;
+  background: var(--timesheet-panel);
+}
+
+.timesheet-pending-panel {
+  display: grid;
+  gap: 16px;
+  padding: 17px 22px 18px;
+}
+
+.timesheet-pending-top {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-200);
+}
+
+.timesheet-pending-top h2,
+.timesheet-cycle-panel h3,
+.owned-timesheet-board h3,
+.timesheet-preview-list h3 {
+  margin: 0;
+  color: var(--timesheet-text);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 620;
+}
+
+.timesheet-pending-top p {
+  margin: 2px 0 0;
+  color: var(--timesheet-muted);
+  font-size: 13px;
+}
+
+.timesheet-month-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+}
+
+.timesheet-month-switcher strong {
+  min-width: 108px;
+  color: #2f64c5;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pending-date-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.pending-date-tag {
+  min-width: 86px;
+  min-height: 36px;
+  border: 1px solid #efd9c7;
+  border-radius: 6px;
+  background: #fff;
+  color: #a45d28;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pending-date-tag:hover,
+.pending-date-tag:focus-visible {
+  background: #fff8f1;
+  border-color: #e7c3a4;
+  outline: 0;
+}
+
+.pending-date-tag small {
+  color: #b07a4c;
+  font-size: 11px;
+}
+
+.pending-date-tag.draft {
+  border-color: #ead1a8;
+  color: #93651e;
+}
+
+.timesheet-complete-state {
+  margin: 0;
+  border-top: 1px solid var(--timesheet-line-soft);
+  color: var(--timesheet-muted);
+  padding-top: var(--space-125);
+  font-size: 13px;
+}
+
+.timesheet-role-tabs {
+  justify-self: start;
+}
+
+.timesheet-cycle-panel,
+.owned-timesheet-board,
+.timesheet-preview-list {
+  display: grid;
+  gap: var(--space-150);
+  padding: var(--space-150);
+}
+
+.timesheet-cycle-panel .section-head,
+.timesheet-preview-list .section-head,
+.owned-timesheet-board .section-head {
+  align-items: center;
+}
+
+.timesheet-week-toolbar {
+  border-radius: 7px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.timesheet-week-summary {
+  border-radius: 8px;
+  background: #fff;
+}
+
+.timesheet-week-summary > div {
+  min-height: 104px;
+  padding: 18px 22px;
+}
+
+.timesheet-week-summary span {
+  color: var(--timesheet-muted);
+  font-size: 13px;
+}
+
+.timesheet-week-summary strong {
+  color: var(--timesheet-text);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 620;
+}
+
+.timesheet-week-summary .total strong { color: #385f93; }
+.timesheet-week-summary .missing strong { color: #a6543e; }
+.timesheet-week-summary .draft strong { color: #a96a22; }
+.timesheet-week-summary .submitted strong { color: #33845b; }
+
+.timesheet-alert-strip {
+  border-color: #ead7be;
+  background: #fffaf4;
+  color: #8b5d23;
+}
+
+.timesheet-week-table {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.timesheet-week-head,
+.timesheet-week-row,
+.timesheet-week-total-row {
+  grid-template-columns: minmax(220px, 1.28fr) repeat(5, minmax(118px, 0.82fr)) minmax(86px, 0.5fr);
+  min-width: 940px;
+}
+
+.timesheet-week-head {
+  border-radius: 0;
+  background: #fbfcfd;
+}
+
+.timesheet-week-row,
+.timesheet-week-total-row {
+  min-height: 58px;
+}
+
+.timesheet-cell-button.filled {
+  background: #fcfdff;
+}
+
+.timesheet-cell-button.draft strong {
+  color: #9b621e;
+}
+
+.timesheet-cell-button.submitted strong {
+  color: #2f7b55;
+}
+
+.timesheet-cell-button.disabled {
+  background: #f8fafc;
+}
+
+.timesheet-preview-list .timesheet-review-list,
+.owned-timesheet-board .timesheet-review-list {
+  border-top: 1px solid var(--timesheet-line-soft);
+}
+
+.timesheet-review-list.compact-list .timesheet-record-row {
+  grid-template-columns: minmax(106px, 0.65fr) minmax(220px, 1.4fr) 72px 104px minmax(92px, 0.55fr);
+}
+
+.timesheet-list-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+}
+
+.timesheet-list-filters label,
+.timesheet-list-filters select,
+.timesheet-list-filters input,
+.owned-timesheet-filters label,
+.owned-timesheet-filters select,
+.owned-timesheet-filters input,
+.timesheet-add-project select {
+  min-width: 0;
+}
+
+.timesheet-list-filters label {
+  display: grid;
+  gap: 6px;
+}
+
+.timesheet-list-filters label span,
+.owned-timesheet-filters label span {
+  color: var(--timesheet-muted);
+  font-size: 12px;
+}
+
+.timesheet-list-table {
+  display: grid;
+  overflow-x: auto;
+}
+
+.timesheet-list-head,
+.timesheet-list-row {
+  display: grid;
+  grid-template-columns: 86px 80px minmax(150px, 1.05fr) minmax(120px, 0.8fr) minmax(140px, 0.95fr) 58px 74px 82px 82px 68px;
+  min-width: 1048px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.timesheet-list-head {
+  min-height: 42px;
+  border-bottom: 1px solid var(--timesheet-line);
+  background: #fbfcfd;
+  color: var(--timesheet-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.timesheet-list-row {
+  min-height: 56px;
+  border-bottom: 1px solid var(--timesheet-line-soft);
+  color: #2c3440;
+  font-size: 12.5px;
+}
+
+.timesheet-list-row:last-child {
+  border-bottom: 0;
+}
+
+.timesheet-list-row > span,
+.timesheet-list-row > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timesheet-list-row small {
+  display: block;
+  color: var(--timesheet-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timesheet-list-actions {
+  color: var(--timesheet-subtle);
+}
+
+.timesheet-no-projects {
+  margin: 0;
+  color: var(--timesheet-muted);
+  font-size: 13px;
+}
+
+.cost-time-workspace .empty-state {
+  min-height: 120px;
+  border-style: solid;
+  border-color: var(--timesheet-line);
+  background: #fff;
+  gap: var(--space-075);
+}
+
+.cost-time-workspace .empty-icon {
+  width: 28px;
+  height: 28px;
+  background: #eff4ff;
+}
+
 .cost-table-head,
 .cost-table-row {
   grid-template-columns: minmax(210px, 1.5fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(86px, 0.55fr) minmax(76px, 0.5fr) minmax(82px, 0.5fr);
