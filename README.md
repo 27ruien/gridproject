@@ -1,6 +1,6 @@
 # GridProject
 
-GridProject 是一个项目管理平台，前端使用 Vue 3 + Vite，后端使用 Fastify + Prisma + PostgreSQL。当前聚焦项目、事项、工时、人员管理，以及不含金额/币种/费率的人天投入管理。
+GridProject 是一个项目管理平台，前端使用 React + TypeScript + Vite + shadcn/ui，后端使用 Fastify + Prisma + PostgreSQL。当前聚焦项目、事项、工时、人员管理，以及不含金额/币种/费率的人天投入管理。
 
 ## 本地运行
 
@@ -108,11 +108,11 @@ npm run release:check:server
 
 - `src/domain/`：领域模型和工作流规则。
 - `src/storage/`：存储适配器。
-- `src/services/apiClient.js`：真实后端 API client。
-- `src/services/`：项目、事项、模板、状态服务。
-- `src/composables/`：Vue 组合式状态。
-- `src/components/`：通用、模板、项目和事项组件。
-- `src/components/ui/`：App Shell、按钮、图标、表格、Tabs、状态、弹窗、详情面板等基础组件。
+- `src/lib/api/`：真实后端 API client 和业务 API 模块。
+- `src/lib/permissions/`：前端路由、页面和操作权限封装。
+- `src/features/`：按业务域组织的 React 页面和业务组件。
+- `src/components/`：通用导航、反馈、数据展示和共享组件。
+- `src/components/ui/`：shadcn/ui 基础组件。
 - `src/styles/`：Design Tokens、Reset、基础样式、布局、组件和响应式规则。
 - `src/qa/` 与 `scripts/capture-visuals.mjs`：本地视觉验收场景和截图矩阵。
 - `src/views/`：核心产品视图。
@@ -127,5 +127,3 @@ npm run release:check:server
 - [Permissions Matrix](docs/permissions-matrix.md)
 - [Deployment](docs/deployment.md)
 - [GitHub Actions Dev Deployment](docs/github-actions-dev-deployment.md)
-- [Plane R1 Visual Review](docs/GridProject_Plane_R1_Review.md)
-- [Plane R2 Visual Review](docs/GridProject_Plane_R2_Review.md)
