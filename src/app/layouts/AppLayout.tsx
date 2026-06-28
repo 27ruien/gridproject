@@ -114,19 +114,19 @@ export function AppLayout() {
   }
 
   return (
-    <SidebarProvider defaultOpen={store.currentUser?.preferences?.defaultNav !== "collapsed"}>
+    <SidebarProvider defaultOpen={store.currentUser?.preferences?.defaultNav !== "collapsed"} className="min-w-0">
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild size="lg" tooltip={store.state.settings.platformName}>
                 <Link to="/">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted text-sm font-semibold text-muted-foreground">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent text-sm font-semibold text-sidebar-accent-foreground">
                     {store.state.settings.logoText}
                   </span>
                   <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">{store.state.settings.platformName}</span>
-                    <span className="truncate text-xs text-muted-foreground">React · Rhea</span>
+                    <span className="truncate text-xs text-sidebar-foreground/70">React · Rhea</span>
                   </span>
                 </Link>
               </SidebarMenuButton>
@@ -166,8 +166,8 @@ export function AppLayout() {
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
+      <SidebarInset className="min-w-0 flex-1 overflow-x-hidden">
+        <header className="sticky top-0 z-20 flex h-14 min-w-0 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
           <SidebarTrigger aria-label="切换导航" />
           <Separator orientation="vertical" className="hidden h-5 md:block" />
           <Breadcrumb className="min-w-0 flex-1">
@@ -215,7 +215,7 @@ export function AppLayout() {
           </DropdownMenu>
         </header>
 
-        <main className="min-h-[calc(100vh-3.5rem)]">
+        <main className="min-w-0 flex-1">
           <Outlet />
         </main>
       </SidebarInset>

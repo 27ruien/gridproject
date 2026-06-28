@@ -7,6 +7,7 @@ import { PageHeading } from "@/components/shared/page-heading";
 import { ProjectCard } from "@/components/shared/project-card";
 import { StatusBadge, priorityTone } from "@/components/shared/status";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { visibleProjectsForUser } from "@/lib/permissions/policies";
 import { daysUntil, isClosedStatus, monthWorkdays, priorityWeight, round, summarizeProject } from "@/lib/state/calculations";
@@ -39,15 +40,15 @@ export function HomePage() {
   const weekLabel = `${format(weekStart, "MM-dd")} - ${format(addDays(weekStart, 4), "MM-dd")}`;
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeading
         eyebrow={format(new Date(), "yyyy年M月d日")}
         title={`${greeting()}，${store.currentUser?.name || "成员"}`}
         description="从到期待办、自己的工时和项目工作流进入今天真正要处理的事情。"
         actions={<Button onClick={() => navigate("/projects")}><FolderKanban className="h-4 w-4" />项目库</Button>}
       />
-      <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1.4fr)_420px]">
-        <section className="space-y-4">
+      <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+        <section className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">我的项目</h2>
@@ -72,9 +73,9 @@ export function HomePage() {
           )}
         </section>
 
-        <aside className="space-y-4">
-          <section className="rounded-md border bg-card">
-            <header className="flex items-center justify-between border-b px-4 py-3">
+        <aside className="min-w-0 space-y-4">
+          <Card size="sm">
+            <div className="flex flex-col gap-3 px-[var(--card-spacing)] sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-sm font-semibold">即将到期</h2>
                 <p className="text-xs text-muted-foreground">逾期、今天、明天和 7 天内事项</p>
@@ -86,7 +87,7 @@ export function HomePage() {
                   <TabsTrigger className="h-7 px-2 text-xs" value="others">他人</TabsTrigger>
                 </TabsList>
               </Tabs>
-            </header>
+            </div>
             <div className="divide-y">
               {dueIssues.slice(0, 8).map((issue) => (
                 <button key={issue.id} className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50" type="button" onClick={() => navigate(`/projects/${issue.projectId}?issue=${issue.id}`)}>
@@ -99,29 +100,31 @@ export function HomePage() {
               ))}
               {!dueIssues.length ? <div className="p-4"><EmptyState title="暂无待关注事项" description="当前没有需要在 7 天内处理的可见事项。" /></div> : null}
             </div>
-          </section>
+          </Card>
 
-          <section className="rounded-md border bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold">我的工时</h2>
-                <p className="text-xs text-muted-foreground">{weekLabel} · 本月目标按工作日计算</p>
+          <Card size="sm">
+            <CardContent>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold">我的工时</h2>
+                  <p className="text-xs text-muted-foreground">{weekLabel} · 本月目标按工作日计算</p>
+                </div>
+                <Button variant="outline" size="sm" asChild><Link to="/timesheets"><Plus className="h-4 w-4" />填报</Link></Button>
               </div>
-              <Button variant="outline" size="sm" asChild><Link to="/timesheets"><Plus className="h-4 w-4" />填报</Link></Button>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-md border bg-background p-3">
-                <CalendarClock className="mb-2 h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">本月已提交</p>
-                <strong className="text-xl">{round(myMonthHours, 1)}h</strong>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-md border bg-background p-3">
+                  <CalendarClock className="mb-2 h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">本月已提交</p>
+                  <strong className="text-xl">{round(myMonthHours, 1)}h</strong>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <TimerReset className="mb-2 h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">待补工时</p>
+                  <strong className="text-xl">{Math.max(0, targetHours - myMonthHours)}h</strong>
+                </div>
               </div>
-              <div className="rounded-md border bg-background p-3">
-                <TimerReset className="mb-2 h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">待补工时</p>
-                <strong className="text-xl">{Math.max(0, targetHours - myMonthHours)}h</strong>
-              </div>
-            </div>
-          </section>
+            </CardContent>
+          </Card>
         </aside>
       </div>
     </div>

@@ -121,7 +121,7 @@ export function ProjectWorkspacePage() {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeading
         eyebrow={`${template.badge} · ${project.code || project.id}`}
         title={project.name}
@@ -245,8 +245,8 @@ function OverviewTab({
 }) {
   const risks = issues.filter(isIssueRisky);
   return (
-    <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1.5fr)_420px]">
-      <section className="space-y-4">
+    <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+      <section className="min-w-0 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="项目进度" value={`${summary.progress}%`} detail={`${summary.doneCount}/${summary.totalCount} 完成`} icon={<CheckCircle2 className="h-4 w-4" />} />
           <Metric label="健康度" value={`${summary.health}`} detail={summary.riskCount ? `${summary.riskCount} 个风险` : "状态稳定"} icon={<AlertTriangle className="h-4 w-4" />} tone={summary.riskCount ? "warn" : "success"} />
@@ -287,7 +287,7 @@ function OverviewTab({
         </section>
       </section>
 
-      <aside className="space-y-4">
+      <aside className="min-w-0 space-y-4">
         <section className="rounded-md border bg-card p-4">
           <h2 className="text-sm font-semibold">风险摘要</h2>
           <div className="mt-4 space-y-3">
@@ -386,7 +386,7 @@ function WorkItemsPanel({
   }
   return (
     <div className="p-4 md:p-6">
-      <section className="rounded-md border bg-card">
+      <section className="overflow-hidden rounded-md border bg-card">
         <div className="divide-y">
           {issues.map((issue) => <IssueRow key={issue.id} issue={issue} onOpen={() => onOpenIssue(issue.id)} />)}
         </div>
@@ -415,7 +415,7 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
   }
   return (
     <div className="p-4 md:p-6">
-      <section className="rounded-md border bg-card">
+      <section className="overflow-hidden rounded-md border bg-card">
         <header className="flex flex-col gap-3 border-b px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-sm font-semibold">项目甘特图</h2>
@@ -435,38 +435,40 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
             <Button variant="outline" onClick={() => setQuery("")}>今天</Button>
           </div>
         </header>
-        <div className="min-w-[760px] p-4">
-          <div className="grid grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 border-b pb-2 text-xs font-medium text-muted-foreground">
-            <span>事项</span>
-            <span className="flex items-center gap-2"><GanttChartSquare className="h-4 w-4" />排期 · 条形可拖拽顺延 1 天</span>
-            <span>状态</span>
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px] p-4">
+            <div className="grid grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 border-b pb-2 text-xs font-medium text-muted-foreground">
+              <span>事项</span>
+              <span className="flex items-center gap-2"><GanttChartSquare className="h-4 w-4" />排期 · 条形可拖拽顺延 1 天</span>
+              <span>状态</span>
+            </div>
+            <div className="divide-y">
+              {visibleIssues.map((issue) => (
+                <button key={issue.id} type="button" className="grid w-full grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 py-3 text-left hover:bg-muted/40" onClick={() => onOpenIssue(issue.id)}>
+                  <span className="min-w-0">
+                    <strong className="block truncate text-sm">{issue.title}</strong>
+                    <small className="text-xs text-muted-foreground">{issue.code} · {issue.owner || "未分配"} · {issue.next || "无依赖说明"}</small>
+                  </span>
+                  <span className="relative h-8 rounded bg-muted">
+                    <span
+                      draggable
+                      className={cn("absolute top-1 h-6 cursor-grab rounded bg-primary/75 active:cursor-grabbing", isIssueRisky(issue) && "bg-amber-500")}
+                      style={ganttStyle(issue, projectStart, projectEnd, scale)}
+                      onClick={(event) => event.stopPropagation()}
+                      onDragEnd={(event) => {
+                        event.preventDefault();
+                        void shiftOneDay(issue);
+                      }}
+                    />
+                    <span className="absolute inset-y-0 left-2 flex items-center text-[11px] text-muted-foreground">{issue.startDate || "?"} - {issue.dueDate || "?"}</span>
+                  </span>
+                  <span><StatusBadge label={issue.status} tone={statusTone(issue.status)} /></span>
+                </button>
+              ))}
+            </div>
+            {!datedIssues.length ? <EmptyState title="暂无可排期事项" description="为事项补充开始日期和截止日期后，甘特图会自动展示。" /> : null}
+            {collapsed && datedIssues.length > visibleIssues.length ? <p className="pt-3 text-center text-xs text-muted-foreground">已折叠 {datedIssues.length - visibleIssues.length} 个事项。</p> : null}
           </div>
-          <div className="divide-y">
-            {visibleIssues.map((issue) => (
-              <button key={issue.id} type="button" className="grid w-full grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 py-3 text-left hover:bg-muted/40" onClick={() => onOpenIssue(issue.id)}>
-                <span className="min-w-0">
-                  <strong className="block truncate text-sm">{issue.title}</strong>
-                  <small className="text-xs text-muted-foreground">{issue.code} · {issue.owner || "未分配"} · {issue.next || "无依赖说明"}</small>
-                </span>
-                <span className="relative h-8 rounded bg-muted">
-                  <span
-                    draggable
-                    className={cn("absolute top-1 h-6 cursor-grab rounded bg-primary/75 active:cursor-grabbing", isIssueRisky(issue) && "bg-amber-500")}
-                    style={ganttStyle(issue, projectStart, projectEnd, scale)}
-                    onClick={(event) => event.stopPropagation()}
-                    onDragEnd={(event) => {
-                      event.preventDefault();
-                      void shiftOneDay(issue);
-                    }}
-                  />
-                  <span className="absolute inset-y-0 left-2 flex items-center text-[11px] text-muted-foreground">{issue.startDate || "?"} - {issue.dueDate || "?"}</span>
-                </span>
-                <span><StatusBadge label={issue.status} tone={statusTone(issue.status)} /></span>
-              </button>
-            ))}
-          </div>
-          {!datedIssues.length ? <EmptyState title="暂无可排期事项" description="为事项补充开始日期和截止日期后，甘特图会自动展示。" /> : null}
-          {collapsed && datedIssues.length > visibleIssues.length ? <p className="pt-3 text-center text-xs text-muted-foreground">已折叠 {datedIssues.length - visibleIssues.length} 个事项。</p> : null}
         </div>
       </section>
     </div>

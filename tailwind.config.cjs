@@ -1,3 +1,5 @@
+const plugin = require("tailwindcss/plugin");
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -39,7 +41,7 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
+          DEFAULT: "hsl(var(--sidebar))",
           foreground: "hsl(var(--sidebar-foreground))",
           primary: "hsl(var(--sidebar-primary))",
           "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
@@ -77,5 +79,16 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    plugin(({ addVariant }) => {
+      addVariant("data-open", ['&[data-state="open"]', '&[data-open]:not([data-open="false"])']);
+      addVariant("data-closed", ['&[data-state="closed"]', '&[data-closed]:not([data-closed="false"])']);
+      addVariant("data-active", ['&[data-state="active"]', '&[data-active]:not([data-active="false"])']);
+      addVariant("data-checked", ['&[data-state="checked"]', '&[data-checked]:not([data-checked="false"])']);
+      addVariant("data-unchecked", ['&[data-state="unchecked"]', '&[data-unchecked]:not([data-unchecked="false"])']);
+      addVariant("data-selected", ['&[data-selected="true"]']);
+      addVariant("data-disabled", ['&[data-disabled="true"]', '&[data-disabled]:not([data-disabled="false"])']);
+    }),
+  ],
 };

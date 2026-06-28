@@ -62,7 +62,7 @@ export function TimesheetPage() {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeading
         eyebrow="Timesheet"
         title="工时填报"

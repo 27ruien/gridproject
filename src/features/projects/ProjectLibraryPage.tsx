@@ -36,7 +36,7 @@ export function ProjectLibraryPage() {
     });
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeading
         eyebrow="Projects"
         title="项目库"
