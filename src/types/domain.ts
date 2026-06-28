@@ -10,7 +10,7 @@ export type Preferences = {
   weekStart: "monday" | "sunday";
   defaultNav: "expanded" | "collapsed" | "auto";
   homeDueRange: "all" | "mine" | "others";
-  avatarColor: string;
+  avatarColor?: string;
 };
 
 export type User = {

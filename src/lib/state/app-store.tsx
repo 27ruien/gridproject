@@ -28,7 +28,7 @@ type AppStore = {
   refresh: () => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<boolean>;
   logout: () => Promise<void>;
-  updateProfile: (input: { name: string; avatarColor: string }) => Promise<boolean>;
+  updateProfile: (input: { name: string; avatarColor?: string }) => Promise<boolean>;
   updatePreferences: (input: Preferences) => Promise<boolean>;
   updatePassword: (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => Promise<boolean>;
   getProjectPermissions: (projectId: string) => ReturnType<typeof permissionsForProject>;
@@ -189,8 +189,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setState((previous) => upsertUser(previous, payload.user));
         return true;
       }
-      setState((previous) => upsertUser(previous, { ...context.user!, name: input.name, preferences: { ...context.user?.preferences, avatarColor: input.avatarColor } }));
-      setCurrentUser((user) => user ? { ...user, name: input.name, preferences: { ...user.preferences, avatarColor: input.avatarColor } } : user);
+      setState((previous) => upsertUser(previous, { ...context.user!, name: input.name }));
+      setCurrentUser((user) => user ? { ...user, name: input.name } : user);
       toast.success("个人资料已保存");
       return true;
     },

@@ -8,15 +8,14 @@ export const DEFAULT_PREFERENCES = {
   weekStart: "monday",
   defaultNav: "auto",
   homeDueRange: "all",
-  avatarColor: "#315a9f",
 } as const;
 
 export const DEMO_USERS: User[] = [
-  { id: "user-admin", organizationId: ORGANIZATION_ID, name: "管理员", email: "admin@gridproject.local", role: "ADMIN", status: "ACTIVE", preferences: { ...DEFAULT_PREFERENCES, avatarColor: "#1e4f86" }, lastLoginAt: "2026-06-18T08:30:00.000Z" },
-  { id: "user-linxia", organizationId: ORGANIZATION_ID, name: "林夏", email: "linxia@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: { ...DEFAULT_PREFERENCES, avatarColor: "#315a9f" }, lastLoginAt: "2026-06-17T10:20:00.000Z" },
-  { id: "user-zhoucheng", organizationId: ORGANIZATION_ID, name: "周程", email: "zhoucheng@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: { ...DEFAULT_PREFERENCES, avatarColor: "#2b7a6f" }, lastLoginAt: "2026-06-16T09:10:00.000Z" },
-  { id: "user-hanyue", organizationId: ORGANIZATION_ID, name: "韩越", email: "hanyue@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: { ...DEFAULT_PREFERENCES, avatarColor: "#8f5d1f" }, lastLoginAt: "2026-06-15T13:00:00.000Z" },
-  { id: "user-chenche", organizationId: ORGANIZATION_ID, name: "陈澈", email: "chenche@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: { ...DEFAULT_PREFERENCES, avatarColor: "#7a4f94" }, lastLoginAt: null },
+  { id: "user-admin", organizationId: ORGANIZATION_ID, name: "管理员", email: "admin@gridproject.local", role: "ADMIN", status: "ACTIVE", preferences: DEFAULT_PREFERENCES, lastLoginAt: "2026-06-18T08:30:00.000Z" },
+  { id: "user-linxia", organizationId: ORGANIZATION_ID, name: "林夏", email: "linxia@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: DEFAULT_PREFERENCES, lastLoginAt: "2026-06-17T10:20:00.000Z" },
+  { id: "user-zhoucheng", organizationId: ORGANIZATION_ID, name: "周程", email: "zhoucheng@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: DEFAULT_PREFERENCES, lastLoginAt: "2026-06-16T09:10:00.000Z" },
+  { id: "user-hanyue", organizationId: ORGANIZATION_ID, name: "韩越", email: "hanyue@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: DEFAULT_PREFERENCES, lastLoginAt: "2026-06-15T13:00:00.000Z" },
+  { id: "user-chenche", organizationId: ORGANIZATION_ID, name: "陈澈", email: "chenche@gridproject.local", role: "MEMBER", status: "ACTIVE", preferences: DEFAULT_PREFERENCES, lastLoginAt: null },
 ];
 
 const projects: Project[] = [
