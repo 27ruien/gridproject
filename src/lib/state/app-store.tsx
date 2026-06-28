@@ -125,9 +125,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const context = React.useMemo(() => buildAccessContext(currentUser, state.organization.id), [currentUser, state.organization.id]);
   const effectiveAuthenticated = apiMode ? Boolean(authenticated || currentUser || meQuery.data?.user) : authenticated;
+  const bootstrapPending = effectiveAuthenticated && !bootstrapQuery.data && !bootstrapQuery.isError;
   const initializing = apiMode && (
     meQuery.isLoading
     || Boolean(meQuery.data?.user && !currentUser)
+    || bootstrapPending
     || (effectiveAuthenticated && bootstrapQuery.isLoading)
   );
 
