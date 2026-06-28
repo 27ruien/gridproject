@@ -22,8 +22,8 @@ export function ProjectCard({
   const summary = summarizeProject(project, issues);
   return (
     <article className="group relative flex min-h-48 flex-col gap-4 rounded-md border bg-card p-4 transition-colors hover:border-primary/40">
-      <button type="button" className="absolute inset-0 z-0 rounded-md" aria-label={`打开项目 ${project.name}`} onClick={onOpen} />
-      <div className="relative z-10 flex items-start justify-between gap-3">
+      <button type="button" className="absolute inset-0 z-10 rounded-md" aria-label={`打开项目 ${project.name}`} onClick={onOpen} />
+      <div className="pointer-events-none relative z-20 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <StatusBadge label={project.status} tone={summary.overdueCount ? "warn" : "neutral"} />
@@ -35,7 +35,7 @@ export function ProjectCard({
         {onEdit ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="relative z-20" size="icon" variant="ghost" aria-label="项目操作"><MoreHorizontal className="h-4 w-4" /></Button>
+              <Button className="pointer-events-auto relative z-30" size="icon" variant="ghost" aria-label="项目操作"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onOpen}>打开项目</DropdownMenuItem>
@@ -44,7 +44,7 @@ export function ProjectCard({
           </DropdownMenu>
         ) : null}
       </div>
-      <div className="relative z-10 mt-auto space-y-3">
+      <div className="pointer-events-none relative z-20 mt-auto space-y-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{project.code || project.id}</span>
           <span>{summary.doneCount}/{summary.totalCount} 完成</span>
