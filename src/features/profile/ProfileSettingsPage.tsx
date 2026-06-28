@@ -70,7 +70,7 @@ function ProfilePanel() {
   }
 
   return (
-    <Panel title="个人资料" description="这些信息会用于导航头像、项目 Owner 和协作上下文展示。" action={<Button onClick={submit}><Save className="h-4 w-4" />保存资料</Button>}>
+    <Panel title="个人资料" description="这些信息会用于导航头像、项目所有人和协作上下文展示。" action={<Button onClick={submit}><Save className="h-4 w-4" />保存资料</Button>}>
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
         <Field label="姓名"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
       </div>
@@ -104,7 +104,7 @@ function PreferencesPanel() {
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="界面密度">
           <Select value={form.density} onValueChange={(value) => setForm({ ...form, density: value as Preferences["density"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="comfortable">舒适</SelectItem>
               <SelectItem value="compact">紧凑</SelectItem>
@@ -113,7 +113,7 @@ function PreferencesPanel() {
         </Field>
         <Field label="日期格式">
           <Select value={form.dateFormat} onValueChange={(value) => setForm({ ...form, dateFormat: value as Preferences["dateFormat"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="yyyy-mm-dd">yyyy-mm-dd</SelectItem>
               <SelectItem value="mm-dd-yyyy">mm-dd-yyyy</SelectItem>
@@ -123,7 +123,7 @@ function PreferencesPanel() {
         </Field>
         <Field label="周起始日">
           <Select value={form.weekStart} onValueChange={(value) => setForm({ ...form, weekStart: value as Preferences["weekStart"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="monday">周一</SelectItem>
               <SelectItem value="sunday">周日</SelectItem>
@@ -132,7 +132,7 @@ function PreferencesPanel() {
         </Field>
         <Field label="默认导航">
           <Select value={form.defaultNav} onValueChange={(value) => setForm({ ...form, defaultNav: value as Preferences["defaultNav"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="auto">自动</SelectItem>
               <SelectItem value="expanded">展开</SelectItem>
@@ -142,7 +142,7 @@ function PreferencesPanel() {
         </Field>
         <Field label="首页到期范围">
           <Select value={form.homeDueRange} onValueChange={(value) => setForm({ ...form, homeDueRange: value as Preferences["homeDueRange"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部</SelectItem>
               <SelectItem value="mine">我的</SelectItem>

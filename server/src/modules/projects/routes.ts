@@ -19,6 +19,12 @@ const projectSchema = z.object({
   status: projectStatusSchema.optional(),
   health: z.number().int().min(0).max(100).optional(),
   ownerId: z.string().optional(),
+  commercialOwnerId: z.string().optional().nullable(),
+  projectManagerId: z.string().optional().nullable(),
+  designGroupId: z.string().optional().nullable(),
+  contentGroupId: z.string().optional().nullable(),
+  effectsGroupId: z.string().optional().nullable(),
+  qaId: z.string().optional().nullable(),
   startDate: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
   testDate: z.string().optional().nullable(),
@@ -94,7 +100,11 @@ export async function projectRoutes(app: FastifyInstance) {
           testDate: parseDateOnly(input.testDate),
           acceptanceDate: parseDateOnly(input.acceptanceDate),
           releaseDate: parseDateOnly(input.releaseDate),
-          config: { templateId: input.templateId || "agile", executionTeams: input.executionTeams || [] },
+          config: {
+            templateId: input.templateId || "agile",
+            executionTeams: input.executionTeams || [],
+            ...roleConfig(input),
+          },
           ownerId,
           createdById: context.userId,
         },
@@ -108,6 +118,7 @@ export async function projectRoutes(app: FastifyInstance) {
           status: "ACTIVE",
         },
       });
+      await upsertRoleMembers(tx, context.organizationId, project.id, roleUserIds(input));
       await tx.auditLog.create({
         data: {
           organizationId: context.organizationId,
@@ -170,11 +181,12 @@ export async function projectRoutes(app: FastifyInstance) {
           ...(input.testDate !== undefined ? { testDate: parseDateOnly(input.testDate) ?? null } : {}),
           ...(input.acceptanceDate !== undefined ? { acceptanceDate: parseDateOnly(input.acceptanceDate) ?? null } : {}),
           ...(input.releaseDate !== undefined ? { releaseDate: parseDateOnly(input.releaseDate) ?? null } : {}),
-          ...(input.templateId !== undefined || input.executionTeams !== undefined ? {
+          ...(input.templateId !== undefined || input.executionTeams !== undefined || hasRoleInput(input) ? {
             config: {
               ...currentConfig,
               ...(input.templateId !== undefined ? { templateId: input.templateId || "agile" } : {}),
               ...(input.executionTeams !== undefined ? { executionTeams: input.executionTeams } : {}),
+              ...roleConfig(input),
             },
           } : {}),
         },
@@ -187,6 +199,7 @@ export async function projectRoutes(app: FastifyInstance) {
           update: { status: "ACTIVE" },
         });
       }
+      await upsertRoleMembers(tx, context.organizationId, id, roleUserIds(input));
       await tx.auditLog.create({
         data: {
           organizationId: context.organizationId,
@@ -252,6 +265,42 @@ export async function projectRoutes(app: FastifyInstance) {
     };
   });
 
+}
+
+function roleConfig(input: z.infer<typeof projectSchema> | z.infer<typeof projectPatchSchema>) {
+  return {
+    ...(input.commercialOwnerId !== undefined ? { commercialOwnerId: input.commercialOwnerId || "" } : {}),
+    ...(input.projectManagerId !== undefined ? { projectManagerId: input.projectManagerId || "" } : {}),
+    ...(input.designGroupId !== undefined ? { designGroupId: input.designGroupId || "" } : {}),
+    ...(input.contentGroupId !== undefined ? { contentGroupId: input.contentGroupId || "" } : {}),
+    ...(input.effectsGroupId !== undefined ? { effectsGroupId: input.effectsGroupId || "" } : {}),
+    ...(input.qaId !== undefined ? { qaId: input.qaId || "" } : {}),
+  };
+}
+
+function hasRoleInput(input: z.infer<typeof projectSchema> | z.infer<typeof projectPatchSchema>) {
+  return ["commercialOwnerId", "projectManagerId", "designGroupId", "contentGroupId", "effectsGroupId", "qaId"].some((key) => key in input);
+}
+
+function roleUserIds(input: z.infer<typeof projectSchema> | z.infer<typeof projectPatchSchema>) {
+  return [...new Set([
+    input.commercialOwnerId,
+    input.projectManagerId,
+    input.designGroupId,
+    input.contentGroupId,
+    input.effectsGroupId,
+    input.qaId,
+  ].filter(Boolean) as string[])];
+}
+
+async function upsertRoleMembers(tx: any, organizationId: string, projectId: string, userIds: string[]) {
+  for (const userId of userIds) {
+    await tx.projectMember.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      create: { organizationId, projectId, userId, status: "ACTIVE" },
+      update: { status: "ACTIVE" },
+    });
+  }
 }
 
 async function assertProjectCodeAvailable(app: FastifyInstance, organizationId: string, code: string, exceptProjectId?: string) {

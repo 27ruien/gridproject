@@ -38,6 +38,7 @@ export type Organization = {
 export type PlatformSettings = {
   platformName: string;
   logoText: string;
+  logoUrl?: string;
 };
 
 export type ProjectTemplateId = "agile" | "waterfall";
@@ -62,6 +63,12 @@ export type Project = {
   ownerId: string;
   owner?: string;
   createdById?: string;
+  commercialOwnerId?: string | null;
+  projectManagerId?: string | null;
+  designGroupId?: string | null;
+  contentGroupId?: string | null;
+  effectsGroupId?: string | null;
+  qaId?: string | null;
   status: string;
   executionTeams: string[];
   startDate?: string;

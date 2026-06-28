@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Search, Trash2, XCircle } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Search, Trash2, XCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
 import { StatusBadge, statusTone } from "@/components/shared/status";
@@ -14,6 +14,7 @@ import { canApproveTimeEntry, canEditTimeEntry, normalizeTimeEntryStatus, visibl
 import { round } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
 import type { TimeEntry } from "@/types/domain";
+import { TimeEntryDialog, plainTimeDescription } from "./TimeEntryDialog";
 
 const statusOptions = [
   { value: "all", label: "全部状态" },
@@ -29,7 +30,10 @@ export function TimesheetListPage() {
   const [projectId, setProjectId] = useState("all");
   const [status, setStatus] = useState("all");
   const [userId, setUserId] = useState(store.context.isAdmin ? "all" : store.context.userId);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [rejecting, setRejecting] = useState<TimeEntry | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const visibleProjects = useMemo(
     () => visibleProjectsForUser(store.context, store.state.projects, store.state.projectMembers),
     [store.context, store.state.projectMembers, store.state.projects],
@@ -41,6 +45,8 @@ export function TimesheetListPage() {
     .filter((entry) => projectId === "all" || entry.projectId === projectId)
     .filter((entry) => status === "all" || normalizeTimeEntryStatus(entry.status) === status)
     .filter((entry) => userId === "all" || entry.userId === userId)
+    .filter((entry) => !dateFrom || String(entry.workDate) >= dateFrom)
+    .filter((entry) => !dateTo || String(entry.workDate) <= dateTo)
     .filter((entry) => {
       if (!query.trim()) return true;
       const project = store.state.projects.find((item) => item.id === entry.projectId);
@@ -58,31 +64,34 @@ export function TimesheetListPage() {
         eyebrow="Timesheet Review"
         title="工时列表"
         description="查看团队工时、筛选项目和人员，并完成提交工时的审批或驳回。"
+        actions={<Button onClick={() => setCreateOpen(true)}><CalendarPlus className="h-4 w-4" />新建工时</Button>}
       />
       <section className="border-b bg-card px-4 py-3 md:px-6">
-        <div className="grid gap-3 xl:grid-cols-[minmax(220px,1fr)_180px_160px_180px]">
-          <label className="relative">
+        <div className="grid min-w-0 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(5,minmax(140px,160px))]">
+          <label className="relative min-w-0 sm:col-span-2 xl:col-span-1">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-9" placeholder="搜索项目、事项、人员或说明" value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Select value={projectId} onValueChange={setProjectId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部项目</SelectItem>
               {visibleProjects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
             <SelectContent>{statusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={userId} onValueChange={setUserId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
             <SelectContent>
               {store.context.isAdmin ? <SelectItem value="all">全部人员</SelectItem> : null}
               {store.state.users.filter((user) => user.status === "ACTIVE").map((user) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Input aria-label="开始日期" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+          <Input aria-label="结束日期" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
         </div>
       </section>
       <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -113,7 +122,7 @@ export function TimesheetListPage() {
                     <TableCell>{project?.name || "-"}</TableCell>
                     <TableCell>
                       <span className="block max-w-72 truncate">{issue ? `${issue.code} · ${issue.title}` : "未关联事项"}</span>
-                      <span className="block max-w-72 truncate text-xs text-muted-foreground">{entry.note || entry.description || "无说明"}</span>
+                      <span className="block max-w-72 truncate text-xs text-muted-foreground">{plainTimeDescription(entry.note || entry.description)}</span>
                     </TableCell>
                     <TableCell className="text-right">{entry.hours}</TableCell>
                     <TableCell><StatusBadge label={statusLabel(entry.status)} tone={statusTone(normalizeTimeEntryStatus(entry.status))} /></TableCell>
@@ -144,6 +153,7 @@ export function TimesheetListPage() {
         </aside>
       </div>
       <RejectDialog entry={rejecting} onOpenChange={(open) => !open && setRejecting(null)} />
+      <TimeEntryDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }

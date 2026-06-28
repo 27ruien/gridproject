@@ -127,7 +127,7 @@ export function CostManagementPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">{selectedProject.code || selectedProject.id}</span>
-                    {" · "}负责人 {summary.ownerName}
+                    {" · "}项目所有人 {summary.ownerName}
                   </p>
                   <p className="text-sm text-muted-foreground">{selected.notes || "暂无成本备注。"}</p>
                 </div>

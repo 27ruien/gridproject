@@ -20,6 +20,7 @@ export function LoginPage() {
   const searchParams = new URLSearchParams(location.search);
   const platformName = store.state.settings.platformName || "GridProject";
   const logoText = store.state.settings.logoText || platformName.slice(0, 1);
+  const logoUrl = store.state.settings.logoUrl || "";
   const organizationName = store.state.organization.name || "组织工作台";
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -40,8 +41,8 @@ export function LoginPage() {
         <CardContent className="space-y-6">
           <header className="space-y-5">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground">
-                {logoText.slice(0, 2)}
+              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary text-sm font-semibold text-primary-foreground">
+                {logoUrl ? <img src={logoUrl} alt="" className="size-full object-cover" /> : logoText.slice(0, 2)}
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold">{platformName}</span>

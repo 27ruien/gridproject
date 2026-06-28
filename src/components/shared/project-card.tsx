@@ -53,7 +53,7 @@ export function ProjectCard({
           </div>
           <Progress value={summary.progress} className="h-1.5" />
           <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-            <span className="flex min-w-0 items-center gap-1 truncate"><UsersRound className="h-3.5 w-3.5 shrink-0" />{owner?.name || project.owner || "未设置负责人"}</span>
+            <span className="flex min-w-0 items-center gap-1 truncate"><UsersRound className="h-3.5 w-3.5 shrink-0" />{owner?.name || project.owner || "未设置所有人"}</span>
             <span className="flex min-w-0 items-center gap-1 truncate"><CalendarDays className="h-3.5 w-3.5 shrink-0" />{project.releaseDate || project.dueDate || "未设置上线"}</span>
           </div>
         </div>

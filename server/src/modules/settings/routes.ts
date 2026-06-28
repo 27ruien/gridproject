@@ -8,11 +8,13 @@ import { toJsonObject } from "../../utils/dto.js";
 const settingsSchema = z.object({
   platformName: z.string().min(1).max(80).optional(),
   logoText: z.string().min(1).max(2).optional(),
+  logoUrl: z.string().max(200000).optional(),
 }).strict();
 
 const DEFAULT_SETTINGS = {
   platformName: "GridProject",
   logoText: "G",
+  logoUrl: "",
 };
 
 export async function settingsRoutes(app: FastifyInstance) {
@@ -32,6 +34,7 @@ export async function settingsRoutes(app: FastifyInstance) {
       ...normalizeSettings(organization.settings),
       ...parsed.data,
       logoText: (parsed.data.logoText || normalizeSettings(organization.settings).logoText).slice(0, 2),
+      logoUrl: parsed.data.logoUrl !== undefined ? parsed.data.logoUrl : normalizeSettings(organization.settings).logoUrl,
     };
     const updated = await app.prisma.organization.update({
       where: { id: context.organizationId },
@@ -59,5 +62,6 @@ export function normalizeSettings(value: unknown) {
     ...settings,
     platformName: String(settings.platformName || DEFAULT_SETTINGS.platformName),
     logoText: String(settings.logoText || DEFAULT_SETTINGS.logoText).slice(0, 2),
+    logoUrl: String(settings.logoUrl || ""),
   };
 }

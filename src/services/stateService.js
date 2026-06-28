@@ -23,6 +23,7 @@ const seedState = {
   settings: {
     platformName: "GridProject",
     logoText: "G",
+    logoUrl: "",
   },
   projects: [
     {
@@ -260,6 +261,7 @@ function normalizeSettings(settings) {
   return {
     platformName: settings.platformName === "KiviFlow" ? "GridProject" : settings.platformName || "GridProject",
     logoText: ((settings.logoText === "K" ? "G" : settings.logoText) || "G").slice(0, 2),
+    logoUrl: settings.logoUrl || "",
   };
 }
 
@@ -275,6 +277,12 @@ function normalizeProject(project) {
     templateId: template.id,
     ownerId,
     owner: project.owner || userNameForId(seedState.users, ownerId),
+    commercialOwnerId: project.commercialOwnerId || null,
+    projectManagerId: project.projectManagerId || null,
+    designGroupId: project.designGroupId || null,
+    contentGroupId: project.contentGroupId || null,
+    effectsGroupId: project.effectsGroupId || null,
+    qaId: project.qaId || null,
     status: normalizeProjectStatus(project.status),
     executionTeams: Array.isArray(project.executionTeams) ? [...new Set(project.executionTeams)] : [],
     startDate,

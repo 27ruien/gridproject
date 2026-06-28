@@ -510,7 +510,7 @@ function MembersTab({ project, members, canManage }: { project: Project; members
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">{user?.name || member.userId}</TableCell>
                   <TableCell>{user?.email || "-"}</TableCell>
-                  <TableCell>{project.ownerId === member.userId ? "Owner" : user?.role === "ADMIN" ? "管理员" : "成员"}</TableCell>
+                  <TableCell>{project.ownerId === member.userId ? "项目所有人" : user?.role === "ADMIN" ? "管理员" : "成员"}</TableCell>
                   <TableCell>{member.createdAt?.slice(0, 10) || "-"}</TableCell>
                   <TableCell>
                     {canManage && project.ownerId !== member.userId ? (
@@ -526,10 +526,10 @@ function MembersTab({ project, members, canManage }: { project: Project; members
 
       <section className="min-w-0 rounded-md border bg-card p-4">
         <h2 className="text-sm font-semibold">添加成员</h2>
-        <p className="mt-1 text-xs text-muted-foreground">仅项目 Owner 或管理员可以管理成员。</p>
+        <p className="mt-1 text-xs text-muted-foreground">仅项目所有人或管理员可以管理成员。</p>
         <div className="mt-4 space-y-3">
           <Select value={userId} onValueChange={setUserId} disabled={!canManage}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">选择成员</SelectItem>
               {availableUsers.map((user) => <SelectItem key={user.id} value={user.id}>{user.name} · {user.email}</SelectItem>)}
@@ -722,25 +722,25 @@ function IssueDialog({ open, onOpenChange, project }: { open: boolean; onOpenCha
           <Field label="标题" className="md:col-span-2"><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
           <Field label="类型">
             <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>{template.issueTypes.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <Field label="状态">
             <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>{ISSUE_STATUSES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <Field label="优先级">
             <Select value={form.priority} onValueChange={(value) => setForm({ ...form, priority: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>{["P0", "P1", "P2", "P3"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <Field label="负责人">
             <Select value={form.ownerId} onValueChange={(value) => setForm({ ...form, ownerId: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">未分配</SelectItem>
                 {store.state.users.filter((user) => user.status === "ACTIVE").map((user) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
@@ -823,13 +823,13 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="状态">
               <Select value={issue.status} onValueChange={(value) => update({ status: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>{ISSUE_STATUSES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
             <Field label="优先级">
               <Select value={issue.priority} onValueChange={(value) => update({ priority: value as Issue["priority"] })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>{["P0", "P1", "P2", "P3"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -838,7 +838,7 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
                 const owner = ownerOptions.find((user) => user.id === value);
                 update({ ownerId: owner?.id || null, owner: owner?.name || "未分配" });
               }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">未分配</SelectItem>
                   {ownerOptions.map((user) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}

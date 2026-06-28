@@ -87,6 +87,8 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const title = pageTitle(location.pathname);
+  const platformName = store.state.settings.platformName || "GridProject";
+  const organizationName = store.state.organization.name || "组织工作台";
   const showAdmin = canAccessAdminPage(store.context);
   const visibleNav = showAdmin ? [...primaryNavItems, ...adminNavItems] : primaryNavItems;
 
@@ -119,14 +121,16 @@ export function AppLayout() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild size="lg" tooltip={store.state.settings.platformName}>
+              <SidebarMenuButton asChild size="lg" tooltip={platformName}>
                 <Link to="/">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent text-sm font-semibold text-sidebar-accent-foreground">
-                    {store.state.settings.logoText}
-                  </span>
+                  <BrandMark
+                    logoUrl={store.state.settings.logoUrl}
+                    logoText={store.state.settings.logoText}
+                    className="size-8 rounded-md border border-sidebar-border bg-sidebar-accent text-sm text-sidebar-accent-foreground"
+                  />
                   <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{store.state.settings.platformName}</span>
-                    <span className="truncate text-xs text-sidebar-foreground/70">React · Rhea</span>
+                    <span className="truncate font-semibold">{platformName}</span>
+                    <span className="truncate text-xs text-sidebar-foreground/70">{organizationName}</span>
                   </span>
                 </Link>
               </SidebarMenuButton>
@@ -172,7 +176,7 @@ export function AppLayout() {
           <Separator orientation="vertical" className="hidden h-5 md:block" />
           <Breadcrumb className="min-w-0 flex-1">
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden sm:inline-flex">GridProject</BreadcrumbItem>
+              <BreadcrumbItem className="hidden sm:inline-flex">{platformName}</BreadcrumbItem>
               <BreadcrumbSeparator className="hidden sm:inline-flex" />
               <BreadcrumbItem>
                 <BreadcrumbPage className="truncate">{title}</BreadcrumbPage>
@@ -220,7 +224,7 @@ export function AppLayout() {
         </main>
       </SidebarInset>
 
-      <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
+      <CommandDialog title="全局搜索" description="搜索项目、事项或页面" open={commandOpen} onOpenChange={setCommandOpen}>
         <CommandInput placeholder="搜索项目、事项或页面" />
         <CommandList>
           <CommandEmpty>没有找到匹配结果。</CommandEmpty>
@@ -295,4 +299,12 @@ function pageTitle(pathname: string) {
   if (pathname === "/trash") return "回收站";
   if (pathname.startsWith("/profile")) return "个人设置";
   return "页面";
+}
+
+function BrandMark({ logoUrl, logoText, className }: { logoUrl?: string; logoText?: string; className?: string }) {
+  return (
+    <span className={cn("flex shrink-0 items-center justify-center overflow-hidden font-semibold", className)}>
+      {logoUrl ? <img src={logoUrl} alt="" className="size-full object-cover" /> : (logoText || "G").slice(0, 2)}
+    </span>
+  );
 }

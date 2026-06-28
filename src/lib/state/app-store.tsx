@@ -247,10 +247,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return payload.project;
       }
       const project = localProject(input, context.user!);
+      const memberUserIds = [...new Set([
+        project.ownerId,
+        project.commercialOwnerId,
+        project.projectManagerId,
+        project.designGroupId,
+        project.contentGroupId,
+        project.effectsGroupId,
+        project.qaId,
+      ].filter(Boolean) as string[])];
       setState((previous) => ({
         ...previous,
         projects: [project, ...previous.projects],
-        projectMembers: [{ id: `pm-${project.id}-${project.ownerId}`, organizationId: project.organizationId, projectId: project.id, userId: project.ownerId, status: "ACTIVE" }, ...previous.projectMembers],
+        projectMembers: [
+          ...memberUserIds.map((userId) => ({ id: `pm-${project.id}-${userId}`, organizationId: project.organizationId, projectId: project.id, userId, status: "ACTIVE" as const })),
+          ...previous.projectMembers,
+        ],
       }));
       toast.success("项目已创建");
       return project;
@@ -263,6 +275,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return payload.project;
       }
       let updated: Project | null = null;
+      const roleUserIds = [patch.ownerId, patch.commercialOwnerId, patch.projectManagerId, patch.designGroupId, patch.contentGroupId, patch.effectsGroupId, patch.qaId].filter(Boolean) as string[];
       setState((previous) => ({
         ...previous,
         projects: previous.projects.map((project) => {
@@ -270,6 +283,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updated = { ...project, ...patch, updatedAt: new Date().toISOString() };
           return updated;
         }),
+        projectMembers: roleUserIds.length
+          ? [
+              ...roleUserIds.map((userId) => ({ id: `pm-${projectId}-${userId}`, organizationId: context.organizationId, projectId, userId, status: "ACTIVE" as const })),
+              ...previous.projectMembers.filter((member) => !(member.projectId === projectId && roleUserIds.includes(member.userId))),
+            ]
+          : previous.projectMembers,
       }));
       toast.success("项目已更新");
       return updated;
@@ -428,7 +447,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return finalEntry.entry;
       }
       const entry: TimeEntry = {
-        id: `time-${Date.now()}`,
+        id: `time-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         organizationId: context.organizationId,
         projectId: payload.projectId,
         issueId: payload.issueId,
@@ -600,7 +619,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     resetUserPassword: async (userId, input) => Boolean(await run("重置密码", () => peopleApi.resetPassword(userId, input), "密码已重置")),
     updateSettings: async (patch) => {
-      const next = { platformName: patch.platformName || state.settings.platformName, logoText: (patch.logoText || state.settings.logoText || "G").slice(0, 2) };
+      const next = {
+        platformName: patch.platformName || state.settings.platformName,
+        logoText: (patch.logoText || state.settings.logoText || "G").slice(0, 2),
+        logoUrl: patch.logoUrl !== undefined ? patch.logoUrl : state.settings.logoUrl || "",
+      };
       if (apiMode) {
         const payload = await run("保存平台设置", () => settingsApi.update(next), "平台设置已保存");
         if (!payload?.settings) return false;
@@ -641,7 +664,7 @@ function loadLocalUser(): User {
 function normalizeState(input: Partial<AppState>): AppState {
   return {
     organization: input.organization || seedState.organization,
-    settings: input.settings || seedState.settings,
+    settings: { ...seedState.settings, ...(input.settings || {}) },
     users: input.users || seedState.users,
     projects: input.projects || seedState.projects,
     projectMembers: input.projectMembers || seedState.projectMembers,
@@ -675,6 +698,12 @@ function projectPayload(input: Partial<Project>) {
     status: input.status,
     description: input.description,
     executionTeams: input.executionTeams,
+    commercialOwnerId: input.commercialOwnerId,
+    projectManagerId: input.projectManagerId,
+    designGroupId: input.designGroupId,
+    contentGroupId: input.contentGroupId,
+    effectsGroupId: input.effectsGroupId,
+    qaId: input.qaId,
     startDate: input.startDate,
     dueDate: input.dueDate,
     testDate: input.testDate,
@@ -717,6 +746,12 @@ function localProject(input: Partial<Project>, user: User): Project {
     ownerId: input.ownerId || user.id,
     owner: input.owner,
     createdById: user.id,
+    commercialOwnerId: input.commercialOwnerId || null,
+    projectManagerId: input.projectManagerId || null,
+    designGroupId: input.designGroupId || null,
+    contentGroupId: input.contentGroupId || null,
+    effectsGroupId: input.effectsGroupId || null,
+    qaId: input.qaId || null,
     status: input.status || "规划中",
     executionTeams: input.executionTeams || [],
     startDate: input.startDate || "",

@@ -117,7 +117,7 @@ const costRecords: CostRecord[] = [
 
 export const seedState: AppState = {
   organization: { id: ORGANIZATION_ID, name: "GridProject Dev Organization" },
-  settings: { platformName: "GridProject", logoText: "G" },
+  settings: { platformName: "GridProject", logoText: "G", logoUrl: "" },
   users: DEMO_USERS,
   projects,
   projectMembers,
