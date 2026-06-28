@@ -70,6 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<AppState>(() => loadLocalState());
   const [currentUser, setCurrentUser] = React.useState<User | null>(() => (apiMode ? null : loadLocalUser()));
   const [authenticated, setAuthenticated] = React.useState(() => !apiMode && Boolean(loadLocalUser()));
+  const [bootstrapReady, setBootstrapReady] = React.useState(!apiMode);
 
   const meQuery = useQuery({
     queryKey: queryKeys.me,
@@ -90,6 +91,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onUnauthorized(() => {
       setAuthenticated(false);
       setCurrentUser(null);
+      setBootstrapReady(false);
       queryClient.clear();
     });
     return () => {
@@ -108,6 +110,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else if (meQuery.isError) {
       setAuthenticated(false);
       setCurrentUser(null);
+      setBootstrapReady(false);
     }
   }, [apiMode, meQuery.data, meQuery.isError]);
 
@@ -116,6 +119,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { currentUser: bootstrapUser, ...bootstrapState } = bootstrapQuery.data as Partial<AppState> & { currentUser?: User };
     setState(normalizeState(bootstrapState));
     if (bootstrapUser) setCurrentUser(bootstrapUser);
+    setBootstrapReady(true);
   }, [apiMode, bootstrapQuery.data]);
 
   React.useEffect(() => {
@@ -125,7 +129,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const context = React.useMemo(() => buildAccessContext(currentUser, state.organization.id), [currentUser, state.organization.id]);
   const effectiveAuthenticated = apiMode ? Boolean(authenticated || currentUser || meQuery.data?.user) : authenticated;
-  const bootstrapPending = effectiveAuthenticated && !bootstrapQuery.data && !bootstrapQuery.isError;
+  const bootstrapPending = effectiveAuthenticated && !bootstrapReady && !bootstrapQuery.isError;
   const initializing = apiMode && (
     meQuery.isLoading
     || Boolean(meQuery.data?.user && !currentUser)
@@ -155,6 +159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: async () => {
+      setBootstrapReady(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.me });
       await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap });
       setAuthenticated(true);
@@ -186,6 +191,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!apiMode) window.localStorage.removeItem(LOCAL_USER_KEY);
       setAuthenticated(false);
       setCurrentUser(null);
+      setBootstrapReady(false);
       queryClient.clear();
       toast.success(apiMode ? "已退出登录" : "本地演示模式无需退出");
     },
@@ -597,7 +603,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [state, currentUser, context, apiMode, authenticated, meQuery.isLoading, bootstrapQuery.isLoading, queryClient]);
+  }), [state, currentUser, context, apiMode, authenticated, bootstrapReady, meQuery.data, meQuery.isLoading, bootstrapQuery.isError, bootstrapQuery.isLoading, queryClient]);
 
   return <AppStoreContext.Provider value={store}>{children}</AppStoreContext.Provider>;
 }
