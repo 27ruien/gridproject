@@ -100,17 +100,18 @@ assert.equal(ownerChanged.project.ownerId, zhoucheng.id);
 assert.equal(ownerChanged.projectMember.status, "ACTIVE");
 
 const adminWhere = TimeEntryAccessPolicy.timeEntryWhereForUser(adminContext, projects);
-assert.equal(timeEntries.filter(adminWhere).length, 6, "ADMIN sees all non-deleted org time entries");
+assert.equal(timeEntries.filter(adminWhere).length, 5, "ADMIN sees submitted-or-later org time entries but not other users' drafts");
 const ownerWhere = TimeEntryAccessPolicy.timeEntryWhereForUser(ownerContext, projects);
-assert.deepEqual(timeEntries.filter(ownerWhere).map((item) => item.id).sort(), ["te1", "te7"]);
+assert.deepEqual(timeEntries.filter(ownerWhere).map((item) => item.id).sort(), ["te1", "te2", "te4", "te7"]);
 const ownerBoardWhere = TimeEntryAccessPolicy.timeEntryWhereForOwnedProjects(ownerContext, projects);
-assert.deepEqual(timeEntries.filter(ownerBoardWhere).map((item) => item.id).sort(), ["te1", "te2", "te3", "te4"]);
+assert.deepEqual(timeEntries.filter(ownerBoardWhere).map((item) => item.id).sort(), ["te1", "te2", "te4"]);
 const memberWhere = TimeEntryAccessPolicy.timeEntryWhereForUser(memberContext, projects);
 assert.deepEqual(timeEntries.filter(memberWhere).map((item) => item.id).sort(), ["te2", "te3", "te4"]);
 assert.equal(TimeEntryAccessPolicy.canCreateTimeEntry(memberContext, { userId: zhoucheng.id }, projects[0], projectMembers), true);
 assert.equal(TimeEntryAccessPolicy.canCreateTimeEntry(nonMemberContext, { userId: chen.id }, projects[0], projectMembers), false);
 assert.equal(TimeEntryAccessPolicy.canEditTimeEntry(memberContext, timeEntries[2]), true);
 assert.equal(TimeEntryAccessPolicy.canEditTimeEntry(memberContext, timeEntries[1]), false);
+assert.equal(TimeEntryAccessPolicy.canEditTimeEntry(memberContext, timeEntries[3]), true);
 assert.equal(TimeEntryAccessPolicy.canApproveTimeEntry(ownerContext, timeEntries[1], projects[0]), true);
 assert.equal(TimeEntryAccessPolicy.canApproveTimeEntry(memberContext, timeEntries[1], projects[0]), false);
 assert.deepEqual(

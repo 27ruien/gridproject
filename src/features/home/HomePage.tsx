@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { addDays, format, startOfWeek } from "date-fns";
 import { ArrowRight, CalendarClock, FolderKanban, Plus, TimerReset } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
-import { PageHeading } from "@/components/shared/page-heading";
 import { ProjectCard } from "@/components/shared/project-card";
 import { StatusBadge, priorityTone } from "@/components/shared/status";
 import { Button } from "@/components/ui/button";
@@ -38,15 +37,27 @@ export function HomePage() {
     .reduce((sum, entry) => sum + Number(entry.hours || 0), 0);
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekLabel = `${format(weekStart, "MM-dd")} - ${format(addDays(weekStart, 4), "MM-dd")}`;
+  const userName = store.currentUser?.name || "成员";
+  const greetingText = greeting();
 
   return (
     <div className="min-w-0">
-      <PageHeading
-        eyebrow={format(new Date(), "yyyy年M月d日")}
-        title={`${greeting()}，${store.currentUser?.name || "成员"}`}
-        description="从到期待办、自己的工时和项目工作流进入今天真正要处理的事情。"
-        actions={<Button onClick={() => navigate("/projects")}><FolderKanban className="h-4 w-4" />项目库</Button>}
-      />
+      <section className="border-b bg-background px-4 py-4 md:px-6">
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="grid size-12 shrink-0 place-items-center rounded-md bg-primary/10 text-2xl text-primary">{timeEmoji()}</span>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{format(new Date(), "yyyy年M月d日")} · {format(new Date(), "HH:mm")}</p>
+              <h1 className="mt-1 text-[24px] font-semibold leading-tight tracking-normal">工作台</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{greetingText}，{userName} {greetingEmoji()} · {dailyPrompt()}</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button variant="outline" asChild><Link to="/timesheets"><CalendarClock className="h-4 w-4" />补工时</Link></Button>
+            <Button onClick={() => navigate("/projects")}><FolderKanban className="h-4 w-4" />项目列表</Button>
+          </div>
+        </div>
+      </section>
       <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
         <section className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-3">
@@ -136,6 +147,27 @@ function greeting() {
   if (hour < 12) return "早上好";
   if (hour < 18) return "下午好";
   return "晚上好";
+}
+
+function greetingEmoji() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "☀️";
+  if (hour < 18) return "🌤️";
+  return "🌙";
+}
+
+function timeEmoji() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "☀️";
+  if (hour < 18) return "⚡";
+  return "🌙";
+}
+
+function dailyPrompt() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "先挑一件最重要的事，把今天开个好头。";
+  if (hour < 18) return "适合收拢进度、处理协作卡点，然后稳稳推进。";
+  return "把今天的项目推进和工时补齐，给自己一个清爽收尾。";
 }
 
 function dueText(value?: string) {

@@ -98,7 +98,7 @@ export function normalizeTimeEntryStatus(status: TimeEntry["status"]): "DRAFT" |
 
 export function canEditTimeEntry(context: AuthContext, entry: TimeEntry | null | undefined) {
   if (!context.isActiveUser || !entry || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
-  return entry.userId === context.userId && normalizeTimeEntryStatus(entry.status) === "DRAFT";
+  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(normalizeTimeEntryStatus(entry.status));
 }
 
 export function canSubmitTimeEntry(context: AuthContext, entry: TimeEntry | null | undefined) {
@@ -108,7 +108,7 @@ export function canSubmitTimeEntry(context: AuthContext, entry: TimeEntry | null
 export function canApproveTimeEntry(context: AuthContext, entry: TimeEntry | null | undefined, project: Project | null | undefined) {
   if (!context.isActiveUser || !entry || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
   if (normalizeTimeEntryStatus(entry.status) !== "SUBMITTED") return false;
-  return context.isAdmin || isProjectOwner(context, project);
+  return context.isAdmin || isProjectOwner(context, project) || project?.projectManagerId === context.userId;
 }
 
 export function visibleProjectsForUser(context: AuthContext, projects: Project[], members: ProjectMember[]) {

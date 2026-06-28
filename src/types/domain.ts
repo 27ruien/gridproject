@@ -11,6 +11,7 @@ export type Preferences = {
   defaultNav: "expanded" | "collapsed" | "auto";
   homeDueRange: "all" | "mine" | "others";
   avatarColor?: string;
+  avatarUrl?: string;
 };
 
 export type User = {

@@ -24,14 +24,16 @@ export const TIME_ENTRY_PERMISSIONS = {
 
 export const TimeEntryAccessPolicy = {
   timeEntryWhereForUser(context, projects = []) {
-    if (context.isAdmin) {
-      return (entry) => entry.organizationId === context.organizationId && !entry.deletedAt;
-    }
-
     return (entry) => (
       entry.organizationId === context.organizationId &&
       !entry.deletedAt &&
-      entry.userId === context.userId
+      (
+        entry.userId === context.userId ||
+        (
+          normalizeTimeEntryStatus(entry.status) !== TIME_ENTRY_STATUS.DRAFT &&
+          (context.isAdmin || isProjectRelated(context, projects.find((project) => project.id === entry.projectId)))
+        )
+      )
     );
   },
 
@@ -47,7 +49,8 @@ export const TimeEntryAccessPolicy = {
     return (entry) => (
       entry.organizationId === context.organizationId &&
       !entry.deletedAt &&
-      ownedProjectIds.has(entry.projectId)
+      ownedProjectIds.has(entry.projectId) &&
+      (entry.userId === context.userId || normalizeTimeEntryStatus(entry.status) !== TIME_ENTRY_STATUS.DRAFT)
     );
   },
 
@@ -64,7 +67,7 @@ export const TimeEntryAccessPolicy = {
   canEditTimeEntry(context, timeEntry) {
     if (!context?.isActiveUser || timeEntry?.organizationId !== context.organizationId || timeEntry?.deletedAt) return false;
     if (timeEntry.userId !== context.userId) return false;
-    return normalizeTimeEntryStatus(timeEntry.status) === TIME_ENTRY_STATUS.DRAFT;
+    return [TIME_ENTRY_STATUS.DRAFT, TIME_ENTRY_STATUS.REJECTED].includes(normalizeTimeEntryStatus(timeEntry.status));
   },
 
   canDeleteTimeEntry(context, timeEntry) {
@@ -79,7 +82,7 @@ export const TimeEntryAccessPolicy = {
   canApproveTimeEntry(context, timeEntry, project) {
     if (!context?.isActiveUser || timeEntry?.organizationId !== context.organizationId || timeEntry?.deletedAt) return false;
     if (normalizeTimeEntryStatus(timeEntry.status) !== TIME_ENTRY_STATUS.SUBMITTED) return false;
-    return context.isAdmin || isProjectOwner(context, project);
+    return context.isAdmin || isProjectOwner(context, project) || project?.projectManagerId === context.userId;
   },
 
   canRejectTimeEntry(context, timeEntry, project) {
@@ -90,6 +93,15 @@ export const TimeEntryAccessPolicy = {
     return Boolean(context?.isActiveUser && project?.organizationId === context.organizationId && (context.isAdmin || isProjectOwner(context, project)));
   },
 };
+
+function isProjectRelated(context, project) {
+  return Boolean(project && (
+    project.ownerId === context.userId ||
+    project.createdById === context.userId ||
+    project.projectManagerId === context.userId ||
+    project.members?.some((member) => member.userId === context.userId && member.status === "ACTIVE")
+  ));
+}
 
 export function normalizeTimeEntryStatus(status) {
   const legacyStatusMap = {

@@ -17,6 +17,7 @@ const loginSchema = z.object({
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(80),
   avatarColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+  avatarUrl: z.string().max(2_000_000).optional(),
 }).strict();
 
 const preferenceSchema = z.object({
@@ -124,9 +125,11 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
     const parsed = profileSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("个人资料参数不正确。", parsed.error.flatten());
     const currentPreferences = jsonObject(context.user.preferences);
-    const preferences = toJsonInput(parsed.data.avatarColor
-      ? { ...currentPreferences, avatarColor: parsed.data.avatarColor }
-      : currentPreferences);
+    const preferences = toJsonInput({
+      ...currentPreferences,
+      ...(parsed.data.avatarColor ? { avatarColor: parsed.data.avatarColor } : {}),
+      ...(parsed.data.avatarUrl !== undefined ? { avatarUrl: parsed.data.avatarUrl } : {}),
+    });
     const user = await app.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: context.userId },
@@ -151,7 +154,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRouteOptions
   app.patch("/preferences", async (request) => {
     const context = requireAuth(request);
     const parsed = preferenceSchema.safeParse(request.body);
-    if (!parsed.success) throw badRequest("偏好设置参数不正确。", parsed.error.flatten());
+    if (!parsed.success) throw badRequest("个人设置参数不正确。", parsed.error.flatten());
     const preferences = toJsonInput({ ...jsonObject(context.user.preferences), ...parsed.data });
     const user = await app.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({ where: { id: context.userId }, data: { preferences } });

@@ -17,7 +17,7 @@ export function isProjectOwner(context: AuthContext, project: { ownerId?: string
 }
 
 export function isProjectManager(context: AuthContext, project: { ownerId?: string | null; createdById?: string | null } | null | undefined) {
-  return Boolean(project && (project.ownerId === context.userId || project.createdById === context.userId));
+  return Boolean(project && projectManagerId(project) === context.userId);
 }
 
 export function isProjectMember(context: AuthContext, project: { id?: string | null } | null | undefined, members: Array<{ projectId?: string | null; userId?: string | null; status?: string | null }> = []) {
@@ -47,13 +47,14 @@ export function canViewCost(context: AuthContext, project: { organizationId: str
 
 export function canViewTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null; createdById?: string | null } | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
-  if (context.isAdmin || isProjectManager(context, project)) return true;
+  if ((entry as any).status === "DRAFT") return entry.userId === context.userId;
+  if (context.isAdmin || isProjectOwner(context, project) || isProjectManager(context, project) || (project as any)?.createdById === context.userId || isProjectMember(context, project as any, (project as any)?.members || [])) return true;
   return entry.userId === context.userId;
 }
 
 export function canEditTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }, _project: { ownerId?: string | null } | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
-  return entry.userId === context.userId && entry.status === "DRAFT";
+  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
 }
 
 export function canDeleteTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }, _project: { ownerId?: string | null } | null | undefined) {
@@ -63,14 +64,19 @@ export function canDeleteTimeEntry(context: AuthContext, entry: { organizationId
 
 export function canSubmitTimeEntry(context: AuthContext, entry: { organizationId: string; userId: string; status: string; deletedAt?: Date | string | null }) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
-  return entry.userId === context.userId && entry.status === "DRAFT";
+  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
 }
 
 export function canApproveTimeEntry(context: AuthContext, entry: { organizationId: string; status: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
-  return entry.status === "SUBMITTED" && (context.isAdmin || isProjectOwner(context, project));
+  return entry.status === "SUBMITTED" && (context.isAdmin || isProjectOwner(context, project) || isProjectManager(context, project as any));
 }
 
 export function canRejectTimeEntry(context: AuthContext, entry: { organizationId: string; status: string; deletedAt?: Date | string | null }, project: { ownerId?: string | null } | null | undefined) {
   return canApproveTimeEntry(context, entry, project);
+}
+
+function projectManagerId(project: any) {
+  const config = project?.config && typeof project.config === "object" && !Array.isArray(project.config) ? project.config : {};
+  return String(config.projectManagerId || project?.projectManagerId || "");
 }

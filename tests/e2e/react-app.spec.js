@@ -29,7 +29,7 @@ test("member can use the React project and time workspaces", async ({ page }) =>
   await expect(page.getByRole("heading", { name: /林夏/ })).toBeVisible();
 
   await gotoHealthy(page, "/projects");
-  await expect(page.getByRole("heading", { name: "项目库" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "项目列表" })).toBeVisible();
   await page.getByRole("button", { name: "创建项目" }).click();
   await expect(page.getByRole("dialog", { name: "创建项目" })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -76,7 +76,7 @@ test("mobile navigation and 404 render correctly", async ({ page }) => {
 
   await gotoHealthy(page, "/");
   await page.getByRole("button", { name: "打开导航" }).click();
-  await expect(page.getByRole("dialog").getByText("项目库")).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("项目列表")).toBeVisible();
   await page.getByRole("dialog").getByText("人员管理").click();
   await expect(page.getByRole("heading", { name: "人员管理" })).toBeVisible();
 

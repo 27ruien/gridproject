@@ -31,7 +31,6 @@ export const router = createBrowserRouter(
             { path: "timesheets", element: <TimesheetPage /> },
             { path: "timesheet-list", element: <TimesheetListPage /> },
             { path: "profile", element: <ProfileSettingsPage section="profile" /> },
-            { path: "profile/preferences", element: <ProfileSettingsPage section="preferences" /> },
             { path: "profile/security", element: <ProfileSettingsPage section="security" /> },
             { path: "trash", element: <TrashPage /> },
             { path: "forbidden", element: <ForbiddenPage /> },

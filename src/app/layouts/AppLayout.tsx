@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   CalendarClock,
   Command,
+  ChevronRight,
   FolderKanban,
   Home,
   LogOut,
@@ -15,7 +16,7 @@ import {
   UsersRound,
   WalletCards,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
@@ -32,7 +33,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +44,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -54,6 +56,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
@@ -65,12 +70,15 @@ import { canAccessAdminPage } from "@/lib/permissions/policies";
 import { useAppStore } from "@/lib/state/app-store";
 import { cn } from "@/lib/utils";
 
-const primaryNavItems = [
-  { label: "首页", href: "/", icon: Home },
-  { label: "项目库", href: "/projects", icon: FolderKanban },
+const workspaceNavItems = [
+  { label: "工作台", href: "/", icon: Home },
+  { label: "回收站", href: "/trash", icon: Trash2 },
+];
+
+const projectNavItems = [
+  { label: "项目列表", href: "/projects", icon: FolderKanban },
   { label: "工时填报", href: "/timesheets", icon: CalendarClock },
   { label: "工时列表", href: "/timesheet-list", icon: BriefcaseBusiness },
-  { label: "回收站", href: "/trash", icon: Trash2 },
 ];
 
 const adminNavItems = [
@@ -79,7 +87,7 @@ const adminNavItems = [
   { label: "平台设置", href: "/settings", icon: Settings },
 ];
 
-type NavItem = (typeof primaryNavItems | typeof adminNavItems)[number];
+type NavItem = (typeof workspaceNavItems | typeof projectNavItems | typeof adminNavItems)[number];
 
 export function AppLayout() {
   const store = useAppStore();
@@ -90,7 +98,8 @@ export function AppLayout() {
   const platformName = store.state.settings.platformName || "GridProject";
   const organizationName = store.state.organization.name || "组织工作台";
   const showAdmin = canAccessAdminPage(store.context);
-  const visibleNav = showAdmin ? [...primaryNavItems, ...adminNavItems] : primaryNavItems;
+  const visibleNav = showAdmin ? [...workspaceNavItems, ...projectNavItems, ...adminNavItems] : [...workspaceNavItems, ...projectNavItems];
+  const avatarUrl = store.currentUser?.preferences?.avatarUrl || "";
 
   React.useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -139,7 +148,8 @@ export function AppLayout() {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarNav label="工作区" items={primaryNavItems} pathname={location.pathname} />
+          <SidebarNav label="工作区" items={workspaceNavItems} pathname={location.pathname} />
+          <SidebarProjectManagement items={projectNavItems} pathname={location.pathname} />
           {showAdmin ? (
             <>
               <SidebarSeparator />
@@ -154,6 +164,7 @@ export function AppLayout() {
               <SidebarMenuButton asChild tooltip="个人设置">
                 <Link to="/profile">
                   <Avatar className="size-6">
+                    {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
                     <AvatarFallback className="bg-muted text-xs text-muted-foreground">
                       {store.currentUser?.name?.slice(0, 1) || "用"}
                     </AvatarFallback>
@@ -173,7 +184,6 @@ export function AppLayout() {
       <SidebarInset className="min-w-0 flex-1 overflow-x-hidden">
         <header className="sticky top-0 z-20 flex h-14 min-w-0 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
           <SidebarTrigger aria-label="切换导航" />
-          <Separator orientation="vertical" className="hidden h-5 md:block" />
           <Breadcrumb className="min-w-0 flex-1">
             <BreadcrumbList>
               <BreadcrumbItem className="hidden sm:inline-flex">{platformName}</BreadcrumbItem>
@@ -197,6 +207,7 @@ export function AppLayout() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 gap-2 px-2">
                 <Avatar className="size-6">
+                  {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
                   <AvatarFallback className="bg-muted text-xs text-muted-foreground">
                     {store.currentUser?.name?.slice(0, 1) || "用"}
                   </AvatarFallback>
@@ -211,7 +222,6 @@ export function AppLayout() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/profile")}><User />个人资料</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/profile/preferences")}><Settings />偏好设置</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/profile/security")}><ShieldAlert />安全设置</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => store.logout()}><LogOut />退出登录</DropdownMenuItem>
@@ -235,7 +245,7 @@ export function AppLayout() {
               </CommandItem>
             ))}
           </CommandGroup>
-          <Separator />
+          <CommandSeparator />
           <CommandGroup heading="项目">
             {store.state.projects.map((project) => (
               <CommandItem key={project.id} value={`${project.name} ${project.code}`} onSelect={() => { navigate(`/projects/${project.id}`); setCommandOpen(false); }}>
@@ -282,15 +292,54 @@ function SidebarNav({ label, items, pathname }: { label: string; items: NavItem[
   );
 }
 
+function SidebarProjectManagement({ items, pathname }: { items: NavItem[]; pathname: string }) {
+  const { isMobile, setOpenMobile } = useSidebar();
+  const active = items.some((item) => isActiveHref(pathname, item.href));
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>项目管理</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <Collapsible defaultOpen={active} className="group/collapsible">
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton isActive={active} tooltip="项目管理">
+                  <FolderKanban />
+                  <span>项目管理</span>
+                  <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {items.map((item) => (
+                    <SidebarMenuSubItem key={item.href}>
+                      <SidebarMenuSubButton asChild isActive={isActiveHref(pathname, item.href)}>
+                        <NavLink to={item.href} onClick={() => isMobile && setOpenMobile(false)}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  ))}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </Collapsible>
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
 function isActiveHref(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function pageTitle(pathname: string) {
-  if (pathname === "/") return "首页";
+  if (pathname === "/") return "工作台";
   if (pathname.startsWith("/projects/")) return "项目详情";
-  if (pathname === "/projects") return "项目库";
+  if (pathname === "/projects") return "项目列表";
   if (pathname === "/timesheets") return "工时填报";
   if (pathname === "/timesheet-list") return "工时列表";
   if (pathname === "/costs") return "成本管理";

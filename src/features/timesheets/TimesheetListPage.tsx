@@ -1,20 +1,19 @@
-import { useMemo, useState } from "react";
-import { CalendarPlus, CheckCircle2, Search, Trash2, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Search, XCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
+import { RichTextEditor, RichTextView } from "@/components/shared/rich-text-editor";
 import { StatusBadge, statusTone } from "@/components/shared/status";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { canApproveTimeEntry, canEditTimeEntry, normalizeTimeEntryStatus, visibleProjectsForUser } from "@/lib/permissions/policies";
+import { canApproveTimeEntry, normalizeTimeEntryStatus, visibleProjectsForUser } from "@/lib/permissions/policies";
 import { round } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
 import type { TimeEntry } from "@/types/domain";
-import { TimeEntryDialog, plainTimeDescription } from "./TimeEntryDialog";
+import { plainTimeDescription } from "./TimeEntryDialog";
 
 const statusOptions = [
   { value: "all", label: "全部状态" },
@@ -32,8 +31,7 @@ export function TimesheetListPage() {
   const [userId, setUserId] = useState(store.context.isAdmin ? "all" : store.context.userId);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [rejecting, setRejecting] = useState<TimeEntry | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const visibleProjects = useMemo(
     () => visibleProjectsForUser(store.context, store.state.projects, store.state.projectMembers),
     [store.context, store.state.projectMembers, store.state.projects],
@@ -41,7 +39,10 @@ export function TimesheetListPage() {
   const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
   const rows = store.state.timeEntries
     .filter((entry) => !entry.deletedAt)
-    .filter((entry) => store.context.isAdmin || entry.userId === store.context.userId || visibleProjectIds.has(entry.projectId))
+    .filter((entry) => {
+      if (normalizeTimeEntryStatus(entry.status) === "DRAFT") return entry.userId === store.context.userId;
+      return store.context.isAdmin || entry.userId === store.context.userId || visibleProjectIds.has(entry.projectId);
+    })
     .filter((entry) => projectId === "all" || entry.projectId === projectId)
     .filter((entry) => status === "all" || normalizeTimeEntryStatus(entry.status) === status)
     .filter((entry) => userId === "all" || entry.userId === userId)
@@ -64,7 +65,6 @@ export function TimesheetListPage() {
         eyebrow="Timesheet Review"
         title="工时列表"
         description="查看团队工时、筛选项目和人员，并完成提交工时的审批或驳回。"
-        actions={<Button onClick={() => setCreateOpen(true)}><CalendarPlus className="h-4 w-4" />新建工时</Button>}
       />
       <section className="border-b bg-card px-4 py-3 md:px-6">
         <div className="grid min-w-0 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(5,minmax(140px,160px))]">
@@ -105,7 +105,6 @@ export function TimesheetListPage() {
                 <TableHead>事项</TableHead>
                 <TableHead className="text-right">小时</TableHead>
                 <TableHead>状态</TableHead>
-                <TableHead className="w-32">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -113,10 +112,8 @@ export function TimesheetListPage() {
                 const project = store.state.projects.find((item) => item.id === entry.projectId);
                 const issue = store.state.issues.find((item) => item.id === entry.issueId);
                 const user = store.state.users.find((item) => item.id === entry.userId);
-                const canApprove = canApproveTimeEntry(store.context, entry, project);
-                const canDelete = canEditTimeEntry(store.context, entry);
                 return (
-                  <TableRow key={entry.id}>
+                  <TableRow key={entry.id} role="button" tabIndex={0} className="cursor-pointer" onClick={() => setSelectedEntry(entry)} onKeyDown={(event) => event.key === "Enter" && setSelectedEntry(entry)}>
                     <TableCell>{entry.workDate}</TableCell>
                     <TableCell>{user?.name || entry.reporter || "-"}</TableCell>
                     <TableCell>{project?.name || "-"}</TableCell>
@@ -126,13 +123,6 @@ export function TimesheetListPage() {
                     </TableCell>
                     <TableCell className="text-right">{entry.hours}</TableCell>
                     <TableCell><StatusBadge label={statusLabel(entry.status)} tone={statusTone(normalizeTimeEntryStatus(entry.status))} /></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" disabled={!canApprove} aria-label="审批通过" onClick={() => store.approveTimeEntry(entry.id)}><CheckCircle2 className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" disabled={!canApprove} aria-label="驳回工时" onClick={() => setRejecting(entry)}><XCircle className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" disabled={!canDelete} aria-label="删除草稿" onClick={() => store.deleteTimeEntry(entry.id)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -152,40 +142,99 @@ export function TimesheetListPage() {
           </section>
         </aside>
       </div>
-      <RejectDialog entry={rejecting} onOpenChange={(open) => !open && setRejecting(null)} />
-      <TimeEntryDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <TimeEntryDetailDialog entry={selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)} />
     </div>
   );
 }
 
-function RejectDialog({ entry, onOpenChange }: { entry: TimeEntry | null; onOpenChange: (open: boolean) => void }) {
+function TimeEntryDetailDialog({ entry, onOpenChange }: { entry: TimeEntry | null; onOpenChange: (open: boolean) => void }) {
   const store = useAppStore();
-  const [reason, setReason] = useState("");
-  async function submit() {
-    if (!entry || !reason.trim()) return;
-    const ok = await store.rejectTimeEntry(entry.id, reason);
+  const [comment, setComment] = useState("");
+  const project = entry ? store.state.projects.find((item) => item.id === entry.projectId) : null;
+  const issue = entry ? store.state.issues.find((item) => item.id === entry.issueId) : null;
+  const user = entry ? store.state.users.find((item) => item.id === entry.userId) : null;
+  const canApprove = entry ? canApproveTimeEntry(store.context, entry, project) : false;
+
+  useEffect(() => {
+    setComment("");
+  }, [entry?.id]);
+
+  async function approve() {
+    if (!entry) return;
+    const ok = await store.approveTimeEntry(entry.id, comment);
     if (ok) {
-      setReason("");
+      setComment("");
       onOpenChange(false);
     }
   }
+
+  async function reject() {
+    if (!entry) return;
+    const ok = await store.rejectTimeEntry(entry.id, comment);
+    if (ok) {
+      setComment("");
+      onOpenChange(false);
+    }
+  }
+
   return (
     <Dialog open={Boolean(entry)} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>驳回工时</DialogTitle>
-          <DialogDescription>请填写清晰的修正原因，成员会在记录中看到该说明。</DialogDescription>
+          <DialogTitle>工时详情</DialogTitle>
+          <DialogDescription>查看工时内容、提交状态和审批意见。</DialogDescription>
         </DialogHeader>
-        <div>
-          <Label className="mb-2 block">驳回原因</Label>
-          <Textarea rows={4} value={reason} onChange={(event) => setReason(event.target.value)} />
-        </div>
+        {entry ? (
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded-md border bg-muted/20 p-3 text-sm md:grid-cols-2">
+              <Detail label="日期" value={entry.workDate} />
+              <Detail label="人员" value={user?.name || entry.reporter || "-"} />
+              <Detail label="项目" value={project?.name || "-"} />
+              <Detail label="事项" value={issue ? `${issue.code} · ${issue.title}` : "未关联事项"} />
+              <Detail label="工时" value={`${entry.hours}h`} />
+              <div>
+                <p className="text-xs text-muted-foreground">状态</p>
+                <StatusBadge label={statusLabel(entry.status)} tone={statusTone(normalizeTimeEntryStatus(entry.status))} />
+              </div>
+            </div>
+            <section>
+              <h3 className="mb-2 text-sm font-semibold">描述</h3>
+              <RichTextView value={entry.description || entry.note} className="rounded-md border bg-background p-3" />
+            </section>
+            {entry.correctionReason ? (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold">审批评论</h3>
+                <RichTextView value={entry.correctionReason} className="rounded-md border bg-muted/30 p-3" />
+              </section>
+            ) : null}
+            {canApprove ? (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold">审批评论（可选）</h3>
+                <RichTextEditor value={comment} onChange={setComment} placeholder="补充审批意见，可留空" minHeight="min-h-24" />
+              </section>
+            ) : null}
+          </div>
+        ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button disabled={!reason.trim()} onClick={submit}>确认驳回</Button>
+          {canApprove ? (
+            <>
+              <Button variant="outline" onClick={reject}><XCircle className="h-4 w-4" />驳回</Button>
+              <Button onClick={approve}><CheckCircle2 className="h-4 w-4" />审批通过</Button>
+            </>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="truncate font-medium">{value}</p>
+    </div>
   );
 }
 

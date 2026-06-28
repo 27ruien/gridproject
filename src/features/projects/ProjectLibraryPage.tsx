@@ -47,7 +47,7 @@ export function ProjectLibraryPage() {
     <div className="min-w-0">
       <PageHeading
         eyebrow="Projects"
-        title="项目库"
+        title="项目列表"
         description="以项目卡片组织工作流，支持搜索、筛选、创建、编辑和权限控制。"
         actions={canCreateProject(store.context) ? <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" />创建项目</Button> : null}
       />

@@ -31,6 +31,10 @@ const timeEntryMoveSchema = z.object({
   correctionReason: z.string().min(1),
 }).strict();
 
+const timeEntryReviewSchema = z.object({
+  correctionReason: z.string().optional().nullable(),
+}).strict();
+
 export async function timeEntryRoutes(app: FastifyInstance) {
   app.get("/", async (request) => {
     const context = requireAuth(request);
@@ -50,14 +54,36 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       } : {}),
     };
 
-    if (!context.isAdmin && query.scope === "owned") {
+    const projectAccessWhere = {
+      organizationId: context.organizationId,
+      deletedAt: null,
+      OR: [
+        { ownerId: context.userId },
+        { createdById: context.userId },
+        { members: { some: { userId: context.userId, status: "ACTIVE" } } },
+      ],
+    };
+
+    if (context.isAdmin) {
+      where.OR = [
+        { userId: context.userId },
+        { status: { not: "DRAFT" } },
+      ];
+    } else if (query.scope === "owned") {
       const repository = new TimeEntryRepository(app.prisma);
       const projectIds = await repository.visibleProjectIds(context.organizationId, context.userId);
       where.projectId = query.projectId && projectIds.includes(query.projectId) ? query.projectId : { in: projectIds };
       if (query.projectId && !projectIds.includes(query.projectId)) where.projectId = { in: [] };
       if (!projectIds.length) where.projectId = { in: [] };
+      where.OR = [
+        { userId: context.userId },
+        { status: { not: "DRAFT" } },
+      ];
     } else if (!context.isAdmin) {
-      where.userId = context.userId;
+      where.OR = [
+        { userId: context.userId },
+        { status: { not: "DRAFT" }, project: projectAccessWhere },
+      ];
     }
 
     const [entries, totalCount] = await Promise.all([
@@ -285,10 +311,13 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
     if (!canApproveTimeEntry(context, entry, entry.project)) throw forbidden("没有权限审批该工时。");
+    const parsed = timeEntryReviewSchema.safeParse(request.body || {});
+    if (!parsed.success) throw validationError("审批参数不正确。", parsed.error.flatten());
+    const comment = parsed.data.correctionReason || "";
     const updated = await app.prisma.$transaction(async (tx) => {
       const row = await tx.timeEntry.update({
         where: { id: entry.id },
-        data: { status: "APPROVED", approvedAt: new Date(), approvedById: context.userId },
+        data: { status: "APPROVED", approvedAt: new Date(), approvedById: context.userId, correctionReason: comment },
         include: { user: true, project: true, issue: true },
       });
       await tx.auditLog.create({
@@ -298,7 +327,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
           action: "time_entry.approve",
           entityType: "TimeEntry",
           entityId: entry.id,
-          data: {},
+          data: { comment },
           requestId: request.id,
         },
       });
@@ -338,7 +367,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
 async function getEntry(app: FastifyInstance, context: any, id: string) {
   const entry = await app.prisma.timeEntry.findFirst({
     where: { id, organizationId: context.organizationId, deletedAt: null },
-    include: { project: true, user: true, issue: true },
+    include: { project: { include: { members: true } }, user: true, issue: true },
   });
   if (!entry) throw notFound("工时不存在。");
   if (!canViewTimeEntry(context, entry, entry.project)) throw notFound("工时不存在。");

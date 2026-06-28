@@ -7,7 +7,7 @@ export const authApi = {
   bootstrap: () => apiRequest<BootstrapPayload>("/bootstrap"),
   login: (input: LoginInput) => apiRequest<UserPayload>("/auth/login", { method: "POST", body: input }),
   logout: () => apiRequest<{ ok: true }>("/auth/logout", { method: "POST" }),
-  updateProfile: (input: { name: string; avatarColor?: string }) => apiRequest<UserPayload>("/auth/profile", { method: "PATCH", body: input }),
+  updateProfile: (input: { name: string; avatarColor?: string; avatarUrl?: string }) => apiRequest<UserPayload>("/auth/profile", { method: "PATCH", body: input }),
   updatePreferences: (input: Preferences) => apiRequest<UserPayload>("/auth/preferences", { method: "PATCH", body: input }),
   updatePassword: (input: { currentPassword: string; newPassword: string; confirmPassword: string }) =>
     apiRequest<UserPayload>("/auth/password", { method: "PATCH", body: input }),

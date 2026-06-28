@@ -28,7 +28,7 @@ type AppStore = {
   refresh: () => Promise<void>;
   login: (input: { email: string; password: string }) => Promise<boolean>;
   logout: () => Promise<void>;
-  updateProfile: (input: { name: string; avatarColor?: string }) => Promise<boolean>;
+  updateProfile: (input: { name: string; avatarColor?: string; avatarUrl?: string }) => Promise<boolean>;
   updatePreferences: (input: Preferences) => Promise<boolean>;
   updatePassword: (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => Promise<boolean>;
   getProjectPermissions: (projectId: string) => ReturnType<typeof permissionsForProject>;
@@ -45,8 +45,8 @@ type AppStore = {
   createTimeEntry: (input: Partial<TimeEntry> & { submit?: boolean }) => Promise<TimeEntry | null>;
   updateTimeEntry: (entryId: string, patch: Partial<TimeEntry>) => Promise<TimeEntry | null>;
   submitTimeEntry: (entryId: string) => Promise<boolean>;
-  approveTimeEntry: (entryId: string) => Promise<boolean>;
-  rejectTimeEntry: (entryId: string, reason: string) => Promise<boolean>;
+  approveTimeEntry: (entryId: string, comment?: string) => Promise<boolean>;
+  rejectTimeEntry: (entryId: string, reason?: string) => Promise<boolean>;
   deleteTimeEntry: (entryId: string) => Promise<boolean>;
   createCostRecord: (input: Partial<CostRecord>) => Promise<boolean>;
   updateCostRecord: (recordId: string, patch: Partial<CostRecord>) => Promise<boolean>;
@@ -212,14 +212,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setState((previous) => upsertUser(previous, payload.user));
         return true;
       }
-      setState((previous) => upsertUser(previous, { ...context.user!, name: input.name }));
-      setCurrentUser((user) => user ? { ...user, name: input.name } : user);
+      const preferences = { ...(context.user?.preferences || {}), ...(input.avatarColor ? { avatarColor: input.avatarColor } : {}), ...("avatarUrl" in input ? { avatarUrl: input.avatarUrl } : {}) };
+      setState((previous) => upsertUser(previous, { ...context.user!, name: input.name, preferences }));
+      setCurrentUser((user) => user ? { ...user, name: input.name, preferences } : user);
       toast.success("个人资料已保存");
       return true;
     },
     updatePreferences: async (input) => {
       if (apiMode) {
-        const payload = await run("保存偏好", () => authApi.updatePreferences(input), "偏好设置已保存");
+        const payload = await run("保存设置", () => authApi.updatePreferences(input), "设置已保存");
         if (!payload?.user) return false;
         setCurrentUser(payload.user);
         setState((previous) => upsertUser(previous, payload.user));
@@ -227,7 +228,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       setCurrentUser((user) => user ? { ...user, preferences: input } : user);
       setState((previous) => upsertUser(previous, { ...context.user!, preferences: input }));
-      toast.success("偏好设置已保存");
+      toast.success("设置已保存");
       return true;
     },
     updatePassword: async (input) => {
@@ -491,18 +492,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toast.success("工时已提交");
       return true;
     },
-    approveTimeEntry: async (entryId) => {
+    approveTimeEntry: async (entryId, comment = "") => {
       if (apiMode) {
-        const payload = await run("审批工时", () => timesheetsApi.approve(entryId), "工时已审批");
+        const payload = await run("审批工时", () => timesheetsApi.approve(entryId, comment), "工时已审批");
         if (!payload?.entry) return false;
+        setState((previous) => replaceById(previous, "timeEntries", payload.entry));
+        return true;
       }
-      setState((previous) => ({ ...previous, timeEntries: previous.timeEntries.map((entry) => entry.id === entryId ? { ...entry, status: "APPROVED" } : entry) }));
+      setState((previous) => ({ ...previous, timeEntries: previous.timeEntries.map((entry) => entry.id === entryId ? { ...entry, status: "APPROVED", correctionReason: comment } : entry) }));
       return true;
     },
-    rejectTimeEntry: async (entryId, reason) => {
+    rejectTimeEntry: async (entryId, reason = "") => {
       if (apiMode) {
         const payload = await run("驳回工时", () => timesheetsApi.reject(entryId, reason), "工时已驳回");
         if (!payload?.entry) return false;
+        setState((previous) => replaceById(previous, "timeEntries", payload.entry));
+        return true;
       }
       setState((previous) => ({ ...previous, timeEntries: previous.timeEntries.map((entry) => entry.id === entryId ? { ...entry, status: "REJECTED", correctionReason: reason } : entry) }));
       return true;

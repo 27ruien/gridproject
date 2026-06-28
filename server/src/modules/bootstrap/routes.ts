@@ -50,7 +50,17 @@ export async function bootstrapRoutes(app: FastifyInstance) {
         where: {
           organizationId: context.organizationId,
           deletedAt: null,
-          ...(context.isAdmin ? {} : { OR: [{ userId: context.userId }, { project: ownedProjectWhere }] }),
+          ...(context.isAdmin ? {
+            OR: [
+              { userId: context.userId },
+              { status: { not: "DRAFT" } },
+            ],
+          } : {
+            OR: [
+              { userId: context.userId },
+              { status: { not: "DRAFT" }, project: projectAccessWhere },
+            ],
+          }),
         },
         include: { user: true, issue: true },
         orderBy: { workDate: "desc" },

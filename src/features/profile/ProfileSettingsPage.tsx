@@ -1,22 +1,19 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { Palette, Save, ShieldCheck, UserRound } from "lucide-react";
+import { ImagePlus, Save, ShieldCheck, UserRound } from "lucide-react";
 import { PageHeading } from "@/components/shared/page-heading";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { DEFAULT_PREFERENCES } from "@/lib/state/seed";
 import { useAppStore } from "@/lib/state/app-store";
 import { cn } from "@/lib/utils";
-import type { Preferences } from "@/types/domain";
 
-type ProfileSection = "profile" | "preferences" | "security";
+type ProfileSection = "profile" | "security";
 
 const navItems = [
   { href: "/profile", value: "profile", label: "个人资料", icon: UserRound },
-  { href: "/profile/preferences", value: "preferences", label: "偏好设置", icon: Palette },
   { href: "/profile/security", value: "security", label: "安全设置", icon: ShieldCheck },
 ];
 
@@ -27,7 +24,7 @@ export function ProfileSettingsPage({ section }: { section: ProfileSection }) {
       <PageHeading
         eyebrow="Profile"
         title="个人设置"
-        description="管理你的个人资料、显示偏好和账号安全设置。"
+        description="管理你的个人资料、头像和账号安全设置。"
       />
       <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="rounded-md border bg-card p-2">
@@ -45,7 +42,6 @@ export function ProfileSettingsPage({ section }: { section: ProfileSection }) {
         </aside>
         <main>
           {section === "profile" ? <ProfilePanel /> : null}
-          {section === "preferences" ? <PreferencesPanel /> : null}
           {section === "security" ? <SecurityPanel apiMode={store.apiMode} /> : null}
         </main>
       </div>
@@ -55,13 +51,16 @@ export function ProfileSettingsPage({ section }: { section: ProfileSection }) {
 
 function ProfilePanel() {
   const store = useAppStore();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: store.currentUser?.name || "",
+    avatarUrl: store.currentUser?.preferences?.avatarUrl || "",
   });
 
   useEffect(() => {
     setForm({
       name: store.currentUser?.name || "",
+      avatarUrl: store.currentUser?.preferences?.avatarUrl || "",
     });
   }, [store.currentUser]);
 
@@ -69,87 +68,39 @@ function ProfilePanel() {
     await store.updateProfile(form);
   }
 
+  async function selectAvatar(file?: File) {
+    if (!file) return;
+    const avatarUrl = await resizeAvatar(file);
+    setForm((current) => ({ ...current, avatarUrl }));
+  }
+
   return (
     <Panel title="个人资料" description="这些信息会用于导航头像、项目所有人和协作上下文展示。" action={<Button onClick={submit}><Save className="h-4 w-4" />保存资料</Button>}>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_260px]">
         <Field label="姓名"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
+        <div>
+          <Label className="mb-2 block">头像</Label>
+          <input ref={fileRef} className="hidden" type="file" accept="image/*" onChange={(event) => selectAvatar(event.target.files?.[0])} />
+          <div className="flex items-center gap-3">
+            <Avatar className="size-12">
+              {form.avatarUrl ? <AvatarImage src={form.avatarUrl} alt="" /> : null}
+              <AvatarFallback>{form.name.slice(0, 1) || "用"}</AvatarFallback>
+            </Avatar>
+            <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}><ImagePlus className="h-4 w-4" />替换头像</Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">上传后会裁切为 100x100。</p>
+        </div>
       </div>
       <Separator className="my-4" />
       <div className="flex items-center gap-3 rounded-md border bg-background p-4">
-        <span className="grid h-12 w-12 place-items-center rounded-md bg-muted text-base font-semibold text-muted-foreground">{form.name.slice(0, 1) || "用"}</span>
+        <Avatar className="size-12">
+          {form.avatarUrl ? <AvatarImage src={form.avatarUrl} alt="" /> : null}
+          <AvatarFallback>{form.name.slice(0, 1) || "用"}</AvatarFallback>
+        </Avatar>
         <div>
           <strong className="block text-sm">{form.name || "未命名用户"}</strong>
           <span className="text-xs text-muted-foreground">{store.currentUser?.email}</span>
         </div>
-      </div>
-    </Panel>
-  );
-}
-
-function PreferencesPanel() {
-  const store = useAppStore();
-  const current = { ...DEFAULT_PREFERENCES, ...store.currentUser?.preferences } as Preferences;
-  const [form, setForm] = useState<Preferences>(current);
-
-  useEffect(() => {
-    setForm({ ...DEFAULT_PREFERENCES, ...store.currentUser?.preferences } as Preferences);
-  }, [store.currentUser]);
-
-  async function submit() {
-    await store.updatePreferences(form);
-  }
-
-  return (
-    <Panel title="偏好设置" description="控制列表密度、日期显示和首页待办范围。" action={<Button onClick={submit}><Save className="h-4 w-4" />保存偏好</Button>}>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="界面密度">
-          <Select value={form.density} onValueChange={(value) => setForm({ ...form, density: value as Preferences["density"] })}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="comfortable">舒适</SelectItem>
-              <SelectItem value="compact">紧凑</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="日期格式">
-          <Select value={form.dateFormat} onValueChange={(value) => setForm({ ...form, dateFormat: value as Preferences["dateFormat"] })}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="yyyy-mm-dd">yyyy-mm-dd</SelectItem>
-              <SelectItem value="mm-dd-yyyy">mm-dd-yyyy</SelectItem>
-              <SelectItem value="dd-mm-yyyy">dd-mm-yyyy</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="周起始日">
-          <Select value={form.weekStart} onValueChange={(value) => setForm({ ...form, weekStart: value as Preferences["weekStart"] })}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="monday">周一</SelectItem>
-              <SelectItem value="sunday">周日</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="默认导航">
-          <Select value={form.defaultNav} onValueChange={(value) => setForm({ ...form, defaultNav: value as Preferences["defaultNav"] })}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">自动</SelectItem>
-              <SelectItem value="expanded">展开</SelectItem>
-              <SelectItem value="collapsed">收起</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="首页到期范围">
-          <Select value={form.homeDueRange} onValueChange={(value) => setForm({ ...form, homeDueRange: value as Preferences["homeDueRange"] })}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部</SelectItem>
-              <SelectItem value="mine">我的</SelectItem>
-              <SelectItem value="others">他人</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
       </div>
     </Panel>
   );
@@ -191,4 +142,32 @@ function Panel({ title, description, action, children }: { title: string; descri
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <div><Label className="mb-2 block">{label}</Label>{children}</div>;
+}
+
+function resizeAvatar(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 100;
+        canvas.height = 100;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("无法处理头像图片。"));
+          return;
+        }
+        const side = Math.min(image.width, image.height);
+        const sourceX = (image.width - side) / 2;
+        const sourceY = (image.height - side) / 2;
+        context.drawImage(image, sourceX, sourceY, side, side, 0, 0, 100, 100);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      image.onerror = () => reject(new Error("无法读取头像图片。"));
+      image.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
 }

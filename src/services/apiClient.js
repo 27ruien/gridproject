@@ -198,8 +198,8 @@ export const apiClient = {
     submit(entryId) {
       return request(`/time-entries/${encodeURIComponent(entryId)}/submit`, { method: "POST" });
     },
-    approve(entryId) {
-      return request(`/time-entries/${encodeURIComponent(entryId)}/approve`, { method: "POST" });
+    approve(entryId, correctionReason = "") {
+      return request(`/time-entries/${encodeURIComponent(entryId)}/approve`, { method: "POST", ...(correctionReason ? { body: { correctionReason } } : {}) });
     },
     reject(entryId, correctionReason = "") {
       return request(`/time-entries/${encodeURIComponent(entryId)}/reject`, { method: "POST", body: { correctionReason } });

@@ -1,44 +1,61 @@
 import { useMemo, useState } from "react";
-import { addDays, format, parseISO, startOfWeek } from "date-fns";
-import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { addDays, format, isValid, parseISO, startOfWeek } from "date-fns";
+import { CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
 import { StatusBadge, statusTone } from "@/components/shared/status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { normalizeTimeEntryStatus } from "@/lib/permissions/policies";
+import { canEditTimeEntry, normalizeTimeEntryStatus } from "@/lib/permissions/policies";
 import { formatDate, monthWorkdays, round, weekDays } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
-import type { Project } from "@/types/domain";
+import type { Project, TimeEntry } from "@/types/domain";
 import { TimeEntryDialog, plainTimeDescription } from "./TimeEntryDialog";
 
 export function TimesheetPage() {
   const store = useAppStore();
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [createOpen, setCreateOpen] = useState(false);
-  const weekStart = formatDate(startOfWeek(parseISO(selectedDate), { weekStartsOn: 1 }));
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [missingExpanded, setMissingExpanded] = useState(false);
+  const today = formatDate(new Date());
+  const selectedDateValue = isValidDateValue(selectedDate) ? selectedDate : today;
+  const weekStart = formatDate(startOfWeek(parseISO(selectedDateValue), { weekStartsOn: 1 }));
   const days = weekDays(parseISO(weekStart));
-  const monthKey = selectedDate.slice(0, 7) || format(new Date(), "yyyy-MM");
+  const monthKey = selectedDateValue.slice(0, 7) || format(new Date(), "yyyy-MM");
   const monthWorkdayCount = monthWorkdays(monthKey).length;
   const myEntries = store.state.timeEntries
     .filter((entry) => entry.userId === store.context.userId && !entry.deletedAt)
     .sort((a, b) => String(b.workDate).localeCompare(String(a.workDate)));
-  const dayEntries = myEntries.filter((entry) => entry.workDate === selectedDate);
+  const dayEntries = myEntries.filter((entry) => entry.workDate === selectedDateValue);
   const weekEntries = myEntries.filter((entry) => days.some((day) => day.date === entry.workDate));
   const monthEntries = myEntries.filter((entry) => String(entry.workDate).startsWith(monthKey));
   const submittedStatuses = new Set(["SUBMITTED", "APPROVED"]);
   const dayTotal = sumHours(dayEntries);
   const weekSubmitted = sumHours(weekEntries.filter((entry) => submittedStatuses.has(normalizeTimeEntryStatus(entry.status))));
   const monthSubmitted = sumHours(monthEntries.filter((entry) => submittedStatuses.has(normalizeTimeEntryStatus(entry.status))));
+  const submittedDates = new Set(monthEntries.filter((entry) => submittedStatuses.has(normalizeTimeEntryStatus(entry.status))).map((entry) => entry.workDate));
+  const missingWorkdays = monthWorkdays(monthKey).filter((date) => date <= today && !submittedDates.has(date));
+  const visibleMissingWorkdays = missingExpanded ? missingWorkdays : missingWorkdays.slice(0, 10);
 
   function shiftDay(offset: number) {
-    setSelectedDate(formatDate(addDays(parseISO(selectedDate), offset)));
+    setSelectedDate(formatDate(addDays(parseISO(selectedDateValue), offset)));
   }
 
   const dayTitle = useMemo(() => {
-    const day = days.find((item) => item.date === selectedDate);
-    return day ? `周${day.label} · ${day.shortDate}` : selectedDate;
-  }, [days, selectedDate]);
+    const date = parseISO(selectedDateValue);
+    return `周${["日", "一", "二", "三", "四", "五", "六"][date.getDay()]} · ${format(date, "M-d")}`;
+  }, [selectedDateValue]);
+
+  function createForDate(date: string) {
+    if (!isValidDateValue(date)) return;
+    setSelectedDate(date);
+    setCreateOpen(true);
+  }
+
+  function selectDate(date: string) {
+    if (isValidDateValue(date)) setSelectedDate(date);
+  }
 
   return (
     <div className="min-w-0">
@@ -48,6 +65,26 @@ export function TimesheetPage() {
         description="按日填写自己的项目工时；草稿不进入成本统计，提交后等待项目所有人或管理员审批。"
         actions={<Button onClick={() => setCreateOpen(true)}><CalendarPlus className="h-4 w-4" />新建工时</Button>}
       />
+      <section className="mx-4 mt-4 rounded-md border bg-card px-4 py-3 md:mx-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 shrink-0">
+            <h2 className="text-sm font-semibold">本月待补工作日</h2>
+          </div>
+          <div className={`flex min-w-0 flex-1 gap-2 ${missingExpanded ? "flex-wrap" : "overflow-hidden"}`}>
+            {visibleMissingWorkdays.map((date) => (
+              <Button key={date} type="button" variant="outline" size="xs" className="shrink-0" onClick={() => createForDate(date)}>
+                {format(parseISO(date), "M-d")}
+              </Button>
+            ))}
+            {!missingWorkdays.length ? <span className="text-sm text-muted-foreground">本月已没有待补工作日。</span> : null}
+          </div>
+          {missingWorkdays.length > visibleMissingWorkdays.length ? (
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="展开待补日期" onClick={() => setMissingExpanded(true)}>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      </section>
       <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="overflow-hidden rounded-md border bg-card">
           <header className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 md:flex-row md:items-center md:justify-between">
@@ -57,7 +94,7 @@ export function TimesheetPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="icon" variant="outline" aria-label="前一天" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-              <Input type="date" className="w-40" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+              <Input type="date" className="w-40" value={selectedDateValue} onChange={(event) => selectDate(event.target.value)} />
               <Button size="icon" variant="outline" aria-label="后一天" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </header>
@@ -75,7 +112,14 @@ export function TimesheetPage() {
                     </p>
                     <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{plainTimeDescription(entry.note || entry.description)}</p>
                   </div>
-                  <StatusBadge label={statusLabel(entry.status)} tone={statusTone(normalizeTimeEntryStatus(entry.status))} />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StatusBadge label={statusLabel(entry.status)} tone={statusTone(normalizeTimeEntryStatus(entry.status))} />
+                    {canEditTimeEntry(store.context, entry) ? (
+                      <Button type="button" variant="outline" size="sm" onClick={() => setEditingEntry(entry)}>
+                        <Pencil className="h-4 w-4" />编辑
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             ))}
@@ -122,7 +166,8 @@ export function TimesheetPage() {
           </section>
         </aside>
       </div>
-      <TimeEntryDialog open={createOpen} onOpenChange={setCreateOpen} defaultDate={selectedDate} />
+      <TimeEntryDialog open={createOpen} onOpenChange={setCreateOpen} defaultDate={selectedDateValue} />
+      <TimeEntryDialog open={Boolean(editingEntry)} onOpenChange={(open) => !open && setEditingEntry(null)} entry={editingEntry} />
     </div>
   );
 }
@@ -152,4 +197,8 @@ function statusLabel(status: unknown) {
 
 function sumHours(entries: { hours?: number | string }[]) {
   return entries.reduce((sum, entry) => sum + Number(entry.hours || 0), 0);
+}
+
+function isValidDateValue(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && isValid(parseISO(value));
 }

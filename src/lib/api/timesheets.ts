@@ -8,6 +8,6 @@ export const timesheetsApi = {
   update: (entryId: string, patch: Partial<TimeEntry>) => apiRequest<TimeEntryPayload>(`/time-entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: patch }),
   delete: (entryId: string, correctionReason = "") => apiRequest<TimeEntryPayload>(`/time-entries/${encodeURIComponent(entryId)}`, { method: "DELETE", body: correctionReason ? { correctionReason } : undefined }),
   submit: (entryId: string) => apiRequest<TimeEntryPayload>(`/time-entries/${encodeURIComponent(entryId)}/submit`, { method: "POST" }),
-  approve: (entryId: string) => apiRequest<TimeEntryPayload>(`/time-entries/${encodeURIComponent(entryId)}/approve`, { method: "POST" }),
+  approve: (entryId: string, comment = "") => apiRequest<TimeEntryPayload>(`/time-entries/${encodeURIComponent(entryId)}/approve`, { method: "POST", body: comment ? { correctionReason: comment } : undefined }),
   reject: (entryId: string, correctionReason = "") => apiRequest<TimeEntryPayload>(`/time-entries/${encodeURIComponent(entryId)}/reject`, { method: "POST", body: { correctionReason } }),
 };
