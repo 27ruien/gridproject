@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { KeyRound, Plus, Search, Trash2, UserRoundCog } from "lucide-react";
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
+import { Eye, EyeOff, KeyRound, Plus, Search, Trash2, UserRoundCog } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
 import { StatusBadge } from "@/components/shared/status";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { managedProjectsForUser } from "@/lib/permissions/policies";
-import { round } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
 import type { OrganizationRole, User, UserStatus } from "@/types/domain";
 
@@ -29,8 +28,7 @@ export function PeopleManagementPage() {
   const stats = useMemo(() => ({
     active: store.state.users.filter((user) => user.status === "ACTIVE").length,
     admins: store.state.users.filter((user) => user.role === "ADMIN" && user.status === "ACTIVE").length,
-    hours: store.state.timeEntries.reduce((sum, entry) => sum + Number(entry.hours || 0), 0),
-  }), [store.state.timeEntries, store.state.users]);
+  }), [store.state.users]);
 
   return (
     <div>
@@ -47,7 +45,7 @@ export function PeopleManagementPage() {
             <Input className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索姓名、邮箱或角色" />
           </label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
               <SelectItem value="ACTIVE">启用</SelectItem>
@@ -84,9 +82,9 @@ export function PeopleManagementPage() {
                     <TableCell className="text-right">{memberProjects.length}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" aria-label="编辑人员" onClick={() => setEditing(user)}><UserRoundCog className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" aria-label="重置密码" onClick={() => setResetting(user)}><KeyRound className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" aria-label="停用人员" disabled={ownerProjects.length > 0} onClick={() => store.deleteUser(user.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="编辑人员" onClick={(event) => { event.stopPropagation(); setEditing(user); }}><UserRoundCog className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="重置密码" onClick={(event) => { event.stopPropagation(); setResetting(user); }}><KeyRound className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="停用人员" disabled={ownerProjects.length > 0} onClick={(event) => { event.stopPropagation(); store.deleteUser(user.id); }}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -103,7 +101,6 @@ export function PeopleManagementPage() {
             <div className="mt-4 grid gap-3">
               <Metric label="启用人员" value={`${stats.active}`} />
               <Metric label="管理员" value={`${stats.admins}`} />
-              <Metric label="全部工时" value={`${round(stats.hours, 1)}h`} />
               <Metric label="可管理项目" value={`${managedProjects.length}`} />
             </div>
           </section>
@@ -166,7 +163,7 @@ function UserDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange:
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="角色">
               <Select value={form.role} onValueChange={(value) => setForm({ ...form, role: value as OrganizationRole })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MEMBER">成员</SelectItem>
                   <SelectItem value="ADMIN">管理员</SelectItem>
@@ -176,7 +173,7 @@ function UserDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange:
             {user ? (
               <Field label="状态">
                 <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value as UserStatus })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">启用</SelectItem>
                     <SelectItem value="INACTIVE">停用</SelectItem>
@@ -187,8 +184,8 @@ function UserDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange:
           </div>
           {!user ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="初始密码"><Input type="password" value={form.initialPassword} onChange={(event) => setForm({ ...form, initialPassword: event.target.value })} /></Field>
-              <Field label="确认密码"><Input type="password" value={form.confirmInitialPassword} onChange={(event) => setForm({ ...form, confirmInitialPassword: event.target.value })} /></Field>
+              <Field label="初始密码"><PasswordInput value={form.initialPassword} onChange={(event) => setForm({ ...form, initialPassword: event.target.value })} /></Field>
+              <Field label="确认密码"><PasswordInput value={form.confirmInitialPassword} onChange={(event) => setForm({ ...form, confirmInitialPassword: event.target.value })} /></Field>
             </div>
           ) : null}
         </div>
@@ -204,6 +201,11 @@ function UserDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange:
 function PasswordDialog({ user, onOpenChange }: { user: User | null; onOpenChange: (open: boolean) => void }) {
   const store = useAppStore();
   const [form, setForm] = useState({ newPassword: "", confirmNewPassword: "" });
+
+  useEffect(() => {
+    if (user) setForm({ newPassword: "", confirmNewPassword: "" });
+  }, [user]);
+
   async function submit() {
     if (!user) return;
     const ok = await store.resetUserPassword(user.id, form);
@@ -220,8 +222,8 @@ function PasswordDialog({ user, onOpenChange }: { user: User | null; onOpenChang
           <DialogDescription>{user?.name} 下次登录可使用新密码。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="新密码"><Input type="password" value={form.newPassword} onChange={(event) => setForm({ ...form, newPassword: event.target.value })} /></Field>
-          <Field label="确认新密码"><Input type="password" value={form.confirmNewPassword} onChange={(event) => setForm({ ...form, confirmNewPassword: event.target.value })} /></Field>
+          <Field label="新密码"><PasswordInput value={form.newPassword} onChange={(event) => setForm({ ...form, newPassword: event.target.value })} /></Field>
+          <Field label="确认新密码"><PasswordInput value={form.confirmNewPassword} onChange={(event) => setForm({ ...form, confirmNewPassword: event.target.value })} /></Field>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
@@ -243,4 +245,25 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <div><Label className="mb-2 block">{label}</Label>{children}</div>;
+}
+
+function PasswordInput(props: ComponentProps<typeof Input>) {
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <div className="relative">
+      <Input className="pr-10" type={visible ? "text" : "password"} {...props} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute right-1 top-1/2 size-6 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        aria-label={visible ? "隐藏密码" : "查看密码"}
+        onClick={() => setVisible((value) => !value)}
+      >
+        <Icon className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }

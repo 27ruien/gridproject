@@ -44,27 +44,27 @@ export function ProjectLibraryPage() {
         actions={canCreateProject(store.context) ? <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" />创建项目</Button> : null}
       />
       <section className="min-w-0 border-b bg-card px-4 py-3 md:px-6">
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(140px,180px)_minmax(140px,180px)_minmax(140px,160px)_auto]">
+        <div className="grid min-w-0 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(320px,1fr)_minmax(150px,180px)_minmax(150px,180px)_minmax(150px,170px)_auto]">
           <label className="relative min-w-0 sm:col-span-2 xl:col-span-1">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="min-w-0 pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索项目名称、代码或描述" />
           </label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="min-w-0"><SelectValue placeholder="项目状态" /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0"><SelectValue placeholder="项目状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
               {PROJECT_STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={ownerId} onValueChange={setOwnerId}>
-            <SelectTrigger className="min-w-0"><SelectValue placeholder="负责人" /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0"><SelectValue placeholder="负责人" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部负责人</SelectItem>
               {store.state.users.filter((user) => user.status === "ACTIVE").map((user) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="min-w-0"><SelectValue placeholder="排序" /></SelectTrigger>
+            <SelectTrigger className="w-full min-w-0"><SelectValue placeholder="排序" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="updated">最近更新</SelectItem>
               <SelectItem value="risk">风险优先</SelectItem>

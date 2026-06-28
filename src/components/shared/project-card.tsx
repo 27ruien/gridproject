@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
-import { StatusBadge } from "@/components/shared/status";
+import { StatusBadge, statusTone } from "@/components/shared/status";
 import { summarizeProject } from "@/lib/state/calculations";
 import type { Issue, Project, User } from "@/types/domain";
 
@@ -28,7 +28,7 @@ export function ProjectCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <StatusBadge label={project.status} tone={summary.overdueCount ? "warn" : "neutral"} />
+              <StatusBadge label={project.status} tone={summary.overdueCount ? "warn" : statusTone(project.status)} />
               {summary.riskCount ? <StatusBadge label={`风险 ${summary.riskCount}`} tone="danger" /> : null}
             </div>
             <h3 className="truncate text-base font-semibold">{project.name}</h3>

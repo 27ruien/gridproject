@@ -204,6 +204,7 @@ export function calculateCostSummary(record: CostRecord, project: Project, entri
       const user = userMap.get(entry.userId);
       return {
         id: entry.id,
+        userId: entry.userId,
         personName: user?.name || entry.reporter || "未知成员",
         projectCode: project.code || project.id,
         issueCode: issue?.code || "",
