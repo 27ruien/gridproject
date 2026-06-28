@@ -70,6 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<AppState>(() => loadLocalState());
   const [currentUser, setCurrentUser] = React.useState<User | null>(() => (apiMode ? null : loadLocalUser()));
   const [authenticated, setAuthenticated] = React.useState(() => !apiMode && Boolean(loadLocalUser()));
+  const [authRejected, setAuthRejected] = React.useState(false);
   const [bootstrapReady, setBootstrapReady] = React.useState(!apiMode);
 
   const meQuery = useQuery({
@@ -91,8 +92,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onUnauthorized(() => {
       setAuthenticated(false);
       setCurrentUser(null);
+      setAuthRejected(true);
       setBootstrapReady(false);
-      queryClient.clear();
     });
     return () => {
       unsubscribe();
@@ -104,12 +105,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (meQuery.data?.user) {
       setCurrentUser(meQuery.data.user);
       setAuthenticated(true);
+      setAuthRejected(false);
       if (meQuery.data.organization) {
         setState((previous) => ({ ...previous, organization: meQuery.data.organization }));
       }
     } else if (meQuery.isError) {
       setAuthenticated(false);
       setCurrentUser(null);
+      setAuthRejected(true);
       setBootstrapReady(false);
     }
   }, [apiMode, meQuery.data, meQuery.isError]);
@@ -128,9 +131,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [apiMode, state]);
 
   const context = React.useMemo(() => buildAccessContext(currentUser, state.organization.id), [currentUser, state.organization.id]);
-  const effectiveAuthenticated = apiMode ? Boolean(authenticated || currentUser || meQuery.data?.user) : authenticated;
+  const effectiveAuthenticated = apiMode ? !authRejected && Boolean(authenticated || currentUser || meQuery.data?.user) : authenticated;
   const bootstrapPending = effectiveAuthenticated && !bootstrapReady && !bootstrapQuery.isError;
-  const initializing = apiMode && (
+  const initializing = apiMode && !authRejected && (
     meQuery.isLoading
     || Boolean(meQuery.data?.user && !currentUser)
     || bootstrapPending
@@ -158,7 +161,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: async () => {
+    onSuccess: async (payload) => {
+      setAuthRejected(false);
+      if (payload.user) {
+        setCurrentUser(payload.user);
+        setAuthenticated(true);
+      }
       setBootstrapReady(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.me });
       await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap });
@@ -191,6 +199,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!apiMode) window.localStorage.removeItem(LOCAL_USER_KEY);
       setAuthenticated(false);
       setCurrentUser(null);
+      setAuthRejected(apiMode);
       setBootstrapReady(false);
       queryClient.clear();
       toast.success(apiMode ? "已退出登录" : "本地演示模式无需退出");
@@ -603,7 +612,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [state, currentUser, context, apiMode, authenticated, bootstrapReady, meQuery.data, meQuery.isLoading, bootstrapQuery.isError, bootstrapQuery.isLoading, queryClient]);
+  }), [state, currentUser, context, apiMode, authenticated, authRejected, bootstrapReady, meQuery.data, meQuery.isLoading, bootstrapQuery.isError, bootstrapQuery.isLoading, queryClient]);
 
   return <AppStoreContext.Provider value={store}>{children}</AppStoreContext.Provider>;
 }
