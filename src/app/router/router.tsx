@@ -14,36 +14,40 @@ import { PlatformSettingsPage } from "@/features/settings/PlatformSettingsPage";
 import { TimesheetListPage } from "@/features/timesheets/TimesheetListPage";
 import { TimesheetPage } from "@/features/timesheets/TimesheetPage";
 import { TrashPage } from "@/features/trash/TrashPage";
+import { appBasePath } from "@/lib/env";
 
-export const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
-  {
-    element: <AuthGuard />,
-    children: [
-      {
-        element: <AppLayout />,
-        children: [
-          { index: true, element: <HomePage /> },
-          { path: "projects", element: <ProjectLibraryPage /> },
-          { path: "projects/:projectId", element: <ProjectWorkspacePage /> },
-          { path: "timesheets", element: <TimesheetPage /> },
-          { path: "timesheet-list", element: <TimesheetListPage /> },
-          { path: "profile", element: <ProfileSettingsPage section="profile" /> },
-          { path: "profile/preferences", element: <ProfileSettingsPage section="preferences" /> },
-          { path: "profile/security", element: <ProfileSettingsPage section="security" /> },
-          { path: "trash", element: <TrashPage /> },
-          { path: "forbidden", element: <ForbiddenPage /> },
-          {
-            element: <AdminGuard />,
-            children: [
-              { path: "costs", element: <CostManagementPage /> },
-              { path: "people", element: <PeopleManagementPage /> },
-              { path: "settings", element: <PlatformSettingsPage /> },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  { path: "*", element: <NotFoundPage /> },
-]);
+export const router = createBrowserRouter(
+  [
+    { path: "/login", element: <LoginPage /> },
+    {
+      element: <AuthGuard />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [
+            { index: true, element: <HomePage /> },
+            { path: "projects", element: <ProjectLibraryPage /> },
+            { path: "projects/:projectId", element: <ProjectWorkspacePage /> },
+            { path: "timesheets", element: <TimesheetPage /> },
+            { path: "timesheet-list", element: <TimesheetListPage /> },
+            { path: "profile", element: <ProfileSettingsPage section="profile" /> },
+            { path: "profile/preferences", element: <ProfileSettingsPage section="preferences" /> },
+            { path: "profile/security", element: <ProfileSettingsPage section="security" /> },
+            { path: "trash", element: <TrashPage /> },
+            { path: "forbidden", element: <ForbiddenPage /> },
+            {
+              element: <AdminGuard />,
+              children: [
+                { path: "costs", element: <CostManagementPage /> },
+                { path: "people", element: <PeopleManagementPage /> },
+                { path: "settings", element: <PlatformSettingsPage /> },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    { path: "*", element: <NotFoundPage /> },
+  ],
+  { basename: appBasePath() },
+);
