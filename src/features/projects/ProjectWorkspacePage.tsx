@@ -135,8 +135,8 @@ export function ProjectWorkspacePage() {
       />
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as WorkspaceTab)} className="min-w-0">
-        <div className="border-b bg-background px-4 py-2 md:px-6">
-          <TabsList className="h-auto min-h-9 w-full justify-start overflow-x-auto bg-muted/70 p-1">
+        <div className="min-w-0 border-b bg-background px-4 py-2 md:px-6">
+          <TabsList className="h-auto min-h-9 w-full max-w-full justify-start overflow-x-auto bg-muted/70 p-1">
             {tabLabels.map((item) => (
               <TabsTrigger key={item.value} value={item.value} className="h-8 shrink-0 px-3 text-xs sm:text-sm">
                 {item.label}
@@ -157,14 +157,14 @@ export function ProjectWorkspacePage() {
         </TabsContent>
 
         <TabsContent value="items" className="m-0">
-          <section className="border-b bg-card px-4 py-3 md:px-6">
-            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_auto_auto]">
-              <label className="relative">
+          <section className="min-w-0 border-b bg-card px-4 py-3 md:px-6">
+            <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_auto_auto]">
+              <label className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="搜索事项、负责人、类型" value={query} onChange={(event) => setQuery(event.target.value)} />
+                <Input className="min-w-0 pl-9" placeholder="搜索事项、负责人、类型" value={query} onChange={(event) => setQuery(event.target.value)} />
               </label>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="min-w-0"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
                   {ISSUE_STATUSES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
@@ -327,33 +327,35 @@ function WorkItemsPanel({
   onCreate: () => void;
 }) {
   if (!issues.length) {
-    return <div className="p-4 md:p-6"><EmptyState title="没有匹配的事项" description="调整筛选条件，或新建一个任务、需求、风险或交付物。" action="新建事项" onAction={onCreate} /></div>;
+    return <div className="min-w-0 p-4 md:p-6"><EmptyState title="没有匹配的事项" description="调整筛选条件，或新建一个任务、需求、风险或交付物。" action="新建事项" onAction={onCreate} /></div>;
   }
   if (view === "board") {
     return (
-      <div className="grid gap-4 overflow-x-auto p-4 md:p-6 xl:grid-cols-3 2xl:grid-cols-6">
-        {ISSUE_STATUSES.map((status) => {
-          const columnIssues = issues.filter((issue) => issue.status === status);
-          return (
-            <section key={status} className="min-w-72 rounded-md border bg-card">
-              <header className="flex h-11 items-center justify-between border-b px-3">
-                <strong className="text-sm">{status}</strong>
-                <StatusBadge label={`${columnIssues.length}`} />
-              </header>
-              <div className="space-y-2 p-3">
-                {columnIssues.map((issue) => <IssueCard key={issue.id} issue={issue} onOpen={() => onOpenIssue(issue.id)} />)}
-                {!columnIssues.length ? <p className="py-6 text-center text-xs text-muted-foreground">暂无事项</p> : null}
-              </div>
-            </section>
-          );
-        })}
+      <div className="min-w-0 overflow-x-auto p-4 md:p-6">
+        <div className="grid min-w-[64rem] grid-cols-3 gap-4 xl:min-w-0 xl:grid-cols-3 2xl:grid-cols-6">
+          {ISSUE_STATUSES.map((status) => {
+            const columnIssues = issues.filter((issue) => issue.status === status);
+            return (
+              <section key={status} className="min-w-0 rounded-md border bg-card">
+                <header className="flex h-11 items-center justify-between border-b px-3">
+                  <strong className="text-sm">{status}</strong>
+                  <StatusBadge label={`${columnIssues.length}`} />
+                </header>
+                <div className="space-y-2 p-3">
+                  {columnIssues.map((issue) => <IssueCard key={issue.id} issue={issue} onOpen={() => onOpenIssue(issue.id)} />)}
+                  {!columnIssues.length ? <p className="py-6 text-center text-xs text-muted-foreground">暂无事项</p> : null}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
     );
   }
   if (view === "table") {
     return (
-      <div className="p-4 md:p-6">
-        <div className="overflow-hidden rounded-md border bg-card">
+      <div className="min-w-0 p-4 md:p-6">
+        <div className="min-w-0 overflow-hidden rounded-md border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -385,8 +387,8 @@ function WorkItemsPanel({
     );
   }
   return (
-    <div className="p-4 md:p-6">
-      <section className="overflow-hidden rounded-md border bg-card">
+    <div className="min-w-0 p-4 md:p-6">
+      <section className="min-w-0 overflow-hidden rounded-md border bg-card">
         <div className="divide-y">
           {issues.map((issue) => <IssueRow key={issue.id} issue={issue} onOpen={() => onOpenIssue(issue.id)} />)}
         </div>
@@ -414,17 +416,17 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
     });
   }
   return (
-    <div className="p-4 md:p-6">
-      <section className="overflow-hidden rounded-md border bg-card">
-        <header className="flex flex-col gap-3 border-b px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
-          <div>
+    <div className="min-w-0 p-4 md:p-6">
+      <section className="min-w-0 overflow-hidden rounded-md border bg-card">
+        <header className="grid min-w-0 gap-3 border-b px-4 py-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)] xl:items-center">
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold">项目甘特图</h2>
             <p className="text-xs text-muted-foreground">{projectStart || "未设置开始"} 至 {projectEnd || "未设置结束"} · {scaleLabel(scale)} 视图</p>
           </div>
-          <div className="grid gap-2 md:grid-cols-[220px_140px_auto_auto]">
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="筛选任务或负责人" />
+          <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_140px_auto_auto]">
+            <Input className="min-w-0" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="筛选任务或负责人" />
             <Select value={scale} onValueChange={setScale}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="min-w-0"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="day">按天</SelectItem>
                 <SelectItem value="week">按周</SelectItem>
@@ -435,7 +437,7 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
             <Button variant="outline" onClick={() => setQuery("")}>今天</Button>
           </div>
         </header>
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <div className="min-w-[760px] p-4">
             <div className="grid grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 border-b pb-2 text-xs font-medium text-muted-foreground">
               <span>事项</span>
@@ -444,10 +446,10 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
             </div>
             <div className="divide-y">
               {visibleIssues.map((issue) => (
-                <button key={issue.id} type="button" className="grid w-full grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 py-3 text-left hover:bg-muted/40" onClick={() => onOpenIssue(issue.id)}>
+                <button key={issue.id} type="button" className="grid w-full min-w-0 grid-cols-[220px_minmax(420px,1fr)_120px] gap-3 py-3 text-left hover:bg-muted/40" onClick={() => onOpenIssue(issue.id)}>
                   <span className="min-w-0">
                     <strong className="block truncate text-sm">{issue.title}</strong>
-                    <small className="text-xs text-muted-foreground">{issue.code} · {issue.owner || "未分配"} · {issue.next || "无依赖说明"}</small>
+                    <small className="block truncate text-xs text-muted-foreground">{issue.code} · {issue.owner || "未分配"} · {issue.next || "无依赖说明"}</small>
                   </span>
                   <span className="relative h-8 rounded bg-muted">
                     <span
@@ -485,8 +487,8 @@ function MembersTab({ project, members, canManage }: { project: Project; members
     if (ok) setUserId("none");
   }
   return (
-    <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-md border bg-card">
+    <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+      <section className="min-w-0 overflow-hidden rounded-md border bg-card">
         <header className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">项目成员</h2>
           <p className="text-xs text-muted-foreground">成员可访问项目并填报自己的工时。</p>
@@ -522,7 +524,7 @@ function MembersTab({ project, members, canManage }: { project: Project; members
         </Table>
       </section>
 
-      <section className="rounded-md border bg-card p-4">
+      <section className="min-w-0 rounded-md border bg-card p-4">
         <h2 className="text-sm font-semibold">添加成员</h2>
         <p className="mt-1 text-xs text-muted-foreground">仅项目 Owner 或管理员可以管理成员。</p>
         <div className="mt-4 space-y-3">
@@ -547,24 +549,24 @@ function MilestonesTab({ project, canUpdate }: { project: Project; canUpdate: bo
     await store.updateProject(project.id, { milestones });
   }
   return (
-    <div className="p-4 md:p-6">
-      <section className="rounded-md border bg-card">
+    <div className="min-w-0 p-4 md:p-6">
+      <section className="min-w-0 rounded-md border bg-card">
         <header className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">里程碑推进</h2>
           <p className="text-xs text-muted-foreground">根据项目模板生成，可随项目阶段更新状态。</p>
         </header>
-        <div className="grid gap-3 p-4 md:grid-cols-3">
+        <div className="grid min-w-0 gap-3 p-4 md:grid-cols-3">
           {project.milestones.map((milestone, index) => (
-            <article key={milestone.id || milestone.name} className="rounded-md border bg-background p-4">
+            <article key={milestone.id || milestone.name} className="min-w-0 rounded-md border bg-background p-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-semibold">{milestone.title || milestone.name}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">{milestone.window || milestone.dueDate || "未设置窗口"}</p>
                 </div>
                 <StatusBadge label={milestone.status} tone={statusTone(milestone.status)} />
               </div>
               <p className="mt-4 min-h-10 text-sm text-muted-foreground">{milestone.focus || "等待补充重点。"}</p>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" disabled={!canUpdate} onClick={() => updateMilestone(index, "进行中")}>进行中</Button>
                 <Button size="sm" disabled={!canUpdate} onClick={() => updateMilestone(index, "已完成")}>完成</Button>
               </div>
@@ -579,8 +581,8 @@ function MilestonesTab({ project, canUpdate }: { project: Project; canUpdate: bo
 function DeliveryTab({ project, issues }: { project: Project; issues: Issue[] }) {
   const deliverables = issues.filter((issue) => /交付|验收|发布|上线|需求确认/.test(`${issue.type} ${issue.title}`));
   return (
-    <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <section className="rounded-md border bg-card p-4">
+    <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <section className="min-w-0 rounded-md border bg-card p-4">
         <h2 className="text-sm font-semibold">交付节点</h2>
         <div className="mt-4 space-y-3">
           <DateTile label="测试" value={project.testDate} />
@@ -588,7 +590,7 @@ function DeliveryTab({ project, issues }: { project: Project; issues: Issue[] })
           <DateTile label="上线" value={project.releaseDate || project.dueDate} />
         </div>
       </section>
-      <section className="rounded-md border bg-card">
+      <section className="min-w-0 overflow-hidden rounded-md border bg-card">
         <header className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">交付与验收事项</h2>
           <p className="text-xs text-muted-foreground">从事项类型和标题中识别交付、验收、上线相关工作。</p>
@@ -606,7 +608,7 @@ function RiskTab({ project, issues, onOpenIssue }: { project: Project; issues: I
   const risky = issues.filter(isIssueRisky);
   const overdue = issues.filter((issue) => !isClosedStatus(issue.status) && daysUntil(issue.dueDate) < 0);
   return (
-    <div className="p-4 md:p-6">
+    <div className="min-w-0 p-4 md:p-6">
       {risky.length || overdue.length ? (
         <Alert className="mb-4 border-amber-200 bg-amber-50 text-amber-900">
           <AlertTriangle className="h-4 w-4" />
@@ -614,7 +616,7 @@ function RiskTab({ project, issues, onOpenIssue }: { project: Project; issues: I
           <AlertDescription>优先处理逾期、P0 和风险类型事项，避免影响验收与上线窗口。</AlertDescription>
         </Alert>
       ) : null}
-      <section className="rounded-md border bg-card">
+      <section className="min-w-0 overflow-hidden rounded-md border bg-card">
         <header className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">风险列表</h2>
           <p className="text-xs text-muted-foreground">包含 P0、风险类型、逾期和排期临近事项。</p>
@@ -646,8 +648,8 @@ function SettingsTab({
   onDelete: () => void;
 }) {
   return (
-    <div className="grid gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-md border bg-card p-4">
+    <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+      <section className="min-w-0 rounded-md border bg-card p-4">
         <h2 className="text-sm font-semibold">项目资料</h2>
         <dl className="mt-4 grid gap-3 md:grid-cols-2">
           <Info label="项目名称" value={project.name} />
@@ -660,7 +662,7 @@ function SettingsTab({
         <Separator className="my-4" />
         <p className="text-sm text-muted-foreground">{project.description || "暂无项目概述。"}</p>
       </section>
-      <section className="rounded-md border bg-card p-4">
+      <section className="min-w-0 rounded-md border bg-card p-4">
         <h2 className="text-sm font-semibold">管理操作</h2>
         <div className="mt-4 space-y-3">
           <Button className="w-full" disabled={!canUpdate} onClick={onEdit}><Settings className="h-4 w-4" />编辑项目</Button>
