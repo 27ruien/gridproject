@@ -22,7 +22,7 @@ export function LoginPage() {
   });
   const from = (location.state as { from?: string } | null)?.from || "/";
 
-  if (store.authenticated && !searchParams.has("preview")) return <Navigate to="/" replace />;
+  if (store.authenticated && !searchParams.has("preview")) return <Navigate to={from} replace />;
 
   async function submit(values: z.infer<typeof loginSchema>) {
     const ok = await store.login(values);

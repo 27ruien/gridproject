@@ -124,6 +124,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [apiMode, state]);
 
   const context = React.useMemo(() => buildAccessContext(currentUser, state.organization.id), [currentUser, state.organization.id]);
+  const effectiveAuthenticated = apiMode ? Boolean(authenticated || currentUser || meQuery.data?.user) : authenticated;
+  const initializing = apiMode && (
+    meQuery.isLoading
+    || Boolean(meQuery.data?.user && !currentUser)
+    || (effectiveAuthenticated && bootstrapQuery.isLoading)
+  );
 
   async function refresh() {
     if (!apiMode) return;
@@ -158,8 +164,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     currentUser,
     context,
     apiMode,
-    initializing: apiMode && (meQuery.isLoading || (authenticated && bootstrapQuery.isLoading)),
-    authenticated,
+    initializing,
+    authenticated: effectiveAuthenticated,
     refresh,
     login: async (input) => {
       if (!apiMode) {
