@@ -57,13 +57,11 @@ function ProfilePanel() {
   const store = useAppStore();
   const [form, setForm] = useState({
     name: store.currentUser?.name || "",
-    avatarColor: store.currentUser?.preferences?.avatarColor || DEFAULT_PREFERENCES.avatarColor,
   });
 
   useEffect(() => {
     setForm({
       name: store.currentUser?.name || "",
-      avatarColor: store.currentUser?.preferences?.avatarColor || DEFAULT_PREFERENCES.avatarColor,
     });
   }, [store.currentUser]);
 
@@ -73,13 +71,12 @@ function ProfilePanel() {
 
   return (
     <Panel title="个人资料" description="这些信息会用于导航头像、项目 Owner 和协作上下文展示。" action={<Button onClick={submit}><Save className="h-4 w-4" />保存资料</Button>}>
-      <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
         <Field label="姓名"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-        <Field label="头像颜色"><Input type="color" className="h-10 p-1" value={form.avatarColor} onChange={(event) => setForm({ ...form, avatarColor: event.target.value })} /></Field>
       </div>
       <Separator className="my-4" />
       <div className="flex items-center gap-3 rounded-md border bg-background p-4">
-        <span className="grid h-12 w-12 place-items-center rounded-md text-base font-semibold text-white" style={{ background: form.avatarColor }}>{form.name.slice(0, 1) || "用"}</span>
+        <span className="grid h-12 w-12 place-items-center rounded-md bg-muted text-base font-semibold text-muted-foreground">{form.name.slice(0, 1) || "用"}</span>
         <div>
           <strong className="block text-sm">{form.name || "未命名用户"}</strong>
           <span className="text-xs text-muted-foreground">{store.currentUser?.email}</span>

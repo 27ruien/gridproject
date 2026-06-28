@@ -4,7 +4,6 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   weekStart: "monday",
   defaultNav: "auto",
   homeDueRange: "all",
-  avatarColor: "#315a9f",
 });
 
 export function normalizePreferences(value = {}) {
@@ -15,7 +14,6 @@ export function normalizePreferences(value = {}) {
     weekStart: ["monday", "sunday"].includes(preferences.weekStart) ? preferences.weekStart : DEFAULT_PREFERENCES.weekStart,
     defaultNav: ["expanded", "collapsed", "auto"].includes(preferences.defaultNav) ? preferences.defaultNav : DEFAULT_PREFERENCES.defaultNav,
     homeDueRange: ["all", "mine", "others"].includes(preferences.homeDueRange) ? preferences.homeDueRange : DEFAULT_PREFERENCES.homeDueRange,
-    avatarColor: /^#[0-9a-f]{6}$/i.test(preferences.avatarColor || "") ? preferences.avatarColor : DEFAULT_PREFERENCES.avatarColor,
   };
 }
 
