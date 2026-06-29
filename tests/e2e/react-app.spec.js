@@ -26,7 +26,7 @@ test("member can use the React project and time workspaces", async ({ page }) =>
   await asUser(page, "user-linxia");
 
   await gotoHealthy(page, "/");
-  await expect(page.getByRole("heading", { name: /林夏/ })).toBeVisible();
+  await expect(page.getByText(/好，林夏/)).toBeVisible();
 
   await gotoHealthy(page, "/projects");
   await expect(page.getByRole("heading", { name: "项目列表" })).toBeVisible();
@@ -75,9 +75,10 @@ test("mobile navigation and 404 render correctly", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
   await gotoHealthy(page, "/");
-  await page.getByRole("button", { name: "打开导航" }).click();
-  await expect(page.getByRole("dialog").getByText("项目列表")).toBeVisible();
-  await page.getByRole("dialog").getByText("人员管理").click();
+  await page.getByRole("button", { name: "切换导航" }).click();
+  const sidebarDialog = page.getByRole("dialog", { name: "Sidebar" });
+  await expect(sidebarDialog.getByText("人员管理")).toBeVisible();
+  await sidebarDialog.getByText("人员管理").click();
   await expect(page.getByRole("heading", { name: "人员管理" })).toBeVisible();
 
   await gotoHealthy(page, "/not-a-real-page");
