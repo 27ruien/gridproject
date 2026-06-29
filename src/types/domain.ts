@@ -5,6 +5,16 @@ export type ProjectMemberRole = "MANAGER" | "MEMBER" | "VIEWER";
 export type TimeEntryStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "草稿" | "已提交" | "已审批" | "已驳回";
 export type CostRecordStatus = "ACTIVE" | "ARCHIVED";
 
+export type TimeEntryAttachment = {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  kind: "image" | "file";
+  dataUrl: string;
+  createdAt?: string | null;
+};
+
 export type Preferences = {
   density: "compact" | "comfortable";
   dateFormat: "yyyy-mm-dd" | "mm-dd-yyyy" | "dd-mm-yyyy";
@@ -158,6 +168,7 @@ export type TimeEntry = {
   hours: number;
   note?: string;
   description?: string;
+  attachments?: TimeEntryAttachment[];
   status: TimeEntryStatus;
   correctionReason?: string;
   deletedAt?: string | null;

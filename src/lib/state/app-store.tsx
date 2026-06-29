@@ -511,6 +511,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         workDate: input.workDate || input.spentDate!,
         hours: Number(input.hours),
         description: input.description || input.note || "",
+        attachments: input.attachments || [],
       };
       if (apiMode) {
         const result = await run("保存工时", () => timesheetsApi.create(payload), input.submit ? undefined : "工时草稿已保存");
@@ -531,6 +532,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         spentDate: payload.workDate,
         hours: payload.hours,
         note: payload.description,
+        description: payload.description,
+        attachments: payload.attachments,
         status: input.submit ? "SUBMITTED" : "DRAFT",
         createdAt: new Date().toISOString(),
       };

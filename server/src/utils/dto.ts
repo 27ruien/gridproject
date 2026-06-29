@@ -1,4 +1,5 @@
 import type { Prisma } from "../../generated/prisma/client.js";
+import { randomUUID } from "node:crypto";
 
 export function toIsoDateTime(value: unknown) {
   if (!value) return null;
@@ -156,11 +157,29 @@ export function timeEntryDto(entry: any) {
     spentDate: toDateOnly(entry.workDate),
     hours: toNumber(entry.hours),
     note: entry.description || "",
+    attachments: normalizeAttachments(entry.attachments),
     approvedAt: toIsoDateTime(entry.approvedAt),
     deletedAt: toIsoDateTime(entry.deletedAt),
     createdAt: toIsoDateTime(entry.createdAt),
     updatedAt: toIsoDateTime(entry.updatedAt),
   };
+}
+
+function normalizeAttachments(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 9).map((attachment) => {
+    const item = attachment && typeof attachment === "object" ? attachment as Record<string, unknown> : {};
+    const type = String(item.type || "");
+    return {
+      id: String(item.id || randomUUID()),
+      name: String(item.name || "未命名附件"),
+      size: toNumber(item.size),
+      type,
+      kind: item.kind === "image" || type.startsWith("image/") ? "image" : "file",
+      dataUrl: String(item.dataUrl || ""),
+      createdAt: item.createdAt ? toIsoDateTime(item.createdAt) : undefined,
+    };
+  });
 }
 
 export function costRecordDto(record: any) {

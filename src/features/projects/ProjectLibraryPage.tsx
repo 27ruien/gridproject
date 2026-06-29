@@ -161,12 +161,12 @@ export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>{project ? "编辑项目" : "创建项目"}</DialogTitle>
           <DialogDescription>创建后可在项目详情中导入排期；项目所有人默认是创建人，编辑时可转移。</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-4 md:grid-cols-2">
           <Field label="项目名称"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="项目代码"><Input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></Field>
           {project ? (
@@ -195,7 +195,7 @@ export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; 
           <Field label="上线日期"><Input type="date" value={form.releaseDate} onChange={(event) => setForm({ ...form, releaseDate: event.target.value })} /></Field>
           <Field label="项目描述" className="md:col-span-2"><Input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           <Button onClick={submit} disabled={!form.name.trim()}>{project ? "保存" : "创建"}</Button>
         </DialogFooter>

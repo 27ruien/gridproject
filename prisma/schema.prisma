@@ -253,6 +253,7 @@ model TimeEntry {
   status           TimeEntryStatus @default(DRAFT)
   description      String?
   correctionReason String?
+  attachments      Json?
   approvedAt       DateTime?       @db.Timestamptz(3)
   approvedById     String?
   deletedAt        DateTime?       @db.Timestamptz(3)

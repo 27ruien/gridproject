@@ -28,6 +28,7 @@ export async function buildApp(config: ServerConfig = getConfig()) {
   const app = Fastify({
     logger: config.nodeEnv === "test" ? false : true,
     genReqId: () => crypto.randomUUID(),
+    bodyLimit: 12 * 1024 * 1024,
   });
 
   app.setErrorHandler((error, request, reply) => {

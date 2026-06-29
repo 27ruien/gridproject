@@ -152,12 +152,12 @@ function UserDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>{user ? "编辑人员" : "新建人员"}</DialogTitle>
           <DialogDescription>{user ? "调整用户基础资料、角色和启停状态。" : "创建用户时需要提供初始密码并由后端安全保存。"}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-4">
           <Field label="姓名"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="邮箱"><Input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field>
           <div className="grid gap-4 md:grid-cols-2">
@@ -189,7 +189,7 @@ function UserDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange:
             </div>
           ) : null}
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           <Button onClick={submit}>保存</Button>
         </DialogFooter>
@@ -216,16 +216,16 @@ function PasswordDialog({ user, onOpenChange }: { user: User | null; onOpenChang
   }
   return (
     <Dialog open={Boolean(user)} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>重置密码</DialogTitle>
           <DialogDescription>{user?.name} 下次登录可使用新密码。</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-4 md:grid-cols-2">
           <Field label="新密码"><PasswordInput value={form.newPassword} onChange={(event) => setForm({ ...form, newPassword: event.target.value })} /></Field>
           <Field label="确认新密码"><PasswordInput value={form.confirmNewPassword} onChange={(event) => setForm({ ...form, confirmNewPassword: event.target.value })} /></Field>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           <Button disabled={!form.newPassword || form.newPassword !== form.confirmNewPassword} onClick={submit}>确认重置</Button>
         </DialogFooter>

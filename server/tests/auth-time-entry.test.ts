@@ -248,10 +248,34 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
     const approvedCreate = await app.inject({ method: "POST", url: "/api/time-entries", headers: { cookie: memberCookie }, payload: { projectId: data.project.id, issueId: data.issue.id, workDate, hours: 2, status: "APPROVED" } });
     assert.equal(approvedCreate.statusCode, 422);
 
-    const create = await app.inject({ method: "POST", url: "/api/time-entries", headers: { cookie: memberCookie }, payload: { projectId: data.project.id, issueId: data.issue.id, workDate, hours: 2, description: "draft" } });
+    const attachment = {
+      id: `att-${data.suffix}`,
+      name: "brief.txt",
+      size: 12,
+      type: "text/plain",
+      kind: "file",
+      dataUrl: "data:text/plain;base64,YnJpZWY=",
+    };
+    const create = await app.inject({ method: "POST", url: "/api/time-entries", headers: { cookie: memberCookie }, payload: { projectId: data.project.id, issueId: data.issue.id, workDate, hours: 2, description: "draft", attachments: [attachment] } });
     assert.equal(create.statusCode, 201, create.body);
     const entry = create.json().entry;
     assert.equal(entry.status, "DRAFT");
+    assert.equal(entry.attachments.length, 1);
+    assert.equal(entry.attachments[0].name, "brief.txt");
+
+    const tooManyAttachments = await app.inject({
+      method: "POST",
+      url: "/api/time-entries",
+      headers: { cookie: memberCookie },
+      payload: {
+        projectId: data.project.id,
+        issueId: data.issue.id,
+        workDate: "2026-06-28",
+        hours: 1,
+        attachments: Array.from({ length: 10 }, (_, index) => ({ ...attachment, id: `too-many-${index}` })),
+      },
+    });
+    assert.equal(tooManyAttachments.statusCode, 422);
 
     const patchStatus = await app.inject({ method: "PATCH", url: `/api/time-entries/${entry.id}`, headers: { cookie: memberCookie }, payload: { status: "APPROVED" } });
     assert.equal(patchStatus.statusCode, 422);
@@ -289,6 +313,10 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
     const submit = await app.inject({ method: "POST", url: `/api/time-entries/${entry.id}/submit`, headers: { cookie: memberCookie } });
     assert.equal(submit.statusCode, 200);
     assert.equal(submit.json().entry.status, "SUBMITTED");
+    const patchSubmitted = await app.inject({ method: "PATCH", url: `/api/time-entries/${entry.id}`, headers: { cookie: memberCookie }, payload: { hours: 1 } });
+    assert.equal(patchSubmitted.statusCode, 403);
+    const adminPatchSubmitted = await app.inject({ method: "PATCH", url: `/api/time-entries/${entry.id}`, headers: { cookie: adminCookie }, payload: { hours: 1, correctionReason: "admin correction" } });
+    assert.equal(adminPatchSubmitted.statusCode, 403);
 
     const approve = await app.inject({ method: "POST", url: `/api/time-entries/${entry.id}/approve`, headers: { cookie: ownerCookie } });
     assert.equal(approve.statusCode, 200);
@@ -302,20 +330,29 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
     assert.equal(ownerApproveOtherProject.statusCode, 403);
 
     const adminEditOtherNoReason = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2 } });
-    assert.equal(adminEditOtherNoReason.statusCode, 400);
+    assert.equal(adminEditOtherNoReason.statusCode, 403);
     const adminEditOther = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2, correctionReason: "fix wrong hours" } });
-    assert.equal(adminEditOther.statusCode, 200, adminEditOther.body);
+    assert.equal(adminEditOther.statusCode, 403);
     const adminPatchProject = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { projectId: data.otherProject.id, correctionReason: "move" } });
-    assert.equal(adminPatchProject.statusCode, 422);
-    const adminMoveNoReason = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id } });
+    assert.equal(adminPatchProject.statusCode, 403);
+    const adminMoveSubmitted = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id, correctionReason: "submitted move" } });
+    assert.equal(adminMoveSubmitted.statusCode, 403);
+
+    const adminDraftEntry = await data.prisma.timeEntry.create({ data: { organizationId: data.organization.id, projectId: data.project.id, issueId: data.issue.id, userId: data.otherMember.id, reporterId: data.otherMember.id, workDate: new Date("2026-06-23T00:00:00.000Z"), hours: 1, status: "DRAFT" } });
+    const adminEditDraftNoReason = await app.inject({ method: "PATCH", url: `/api/time-entries/${adminDraftEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2 } });
+    assert.equal(adminEditDraftNoReason.statusCode, 400);
+    const adminEditDraft = await app.inject({ method: "PATCH", url: `/api/time-entries/${adminDraftEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2, attachments: [attachment], correctionReason: "fix wrong hours" } });
+    assert.equal(adminEditDraft.statusCode, 200, adminEditDraft.body);
+    assert.equal(adminEditDraft.json().entry.attachments.length, 1);
+    const adminMoveNoReason = await app.inject({ method: "POST", url: `/api/time-entries/${adminDraftEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id } });
     assert.equal(adminMoveNoReason.statusCode, 422);
     const adminMoveNotMember = await app.inject({ method: "POST", url: `/api/time-entries/${entry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, correctionReason: "member is not in target project" } });
     assert.equal(adminMoveNotMember.statusCode, 403);
-    const adminMoveCrossOrg = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.outsideProject.id, correctionReason: "cross org" } });
+    const adminMoveCrossOrg = await app.inject({ method: "POST", url: `/api/time-entries/${adminDraftEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.outsideProject.id, correctionReason: "cross org" } });
     assert.equal(adminMoveCrossOrg.statusCode, 404);
-    const adminMoveWrongIssue = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.issue.id, correctionReason: "wrong issue" } });
+    const adminMoveWrongIssue = await app.inject({ method: "POST", url: `/api/time-entries/${adminDraftEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.issue.id, correctionReason: "wrong issue" } });
     assert.equal(adminMoveWrongIssue.statusCode, 400);
-    const adminMove = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id, correctionReason: "move to correct project" } });
+    const adminMove = await app.inject({ method: "POST", url: `/api/time-entries/${adminDraftEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id, correctionReason: "move to correct project" } });
     assert.equal(adminMove.statusCode, 200, adminMove.body);
 
     const crossOrg = await app.inject({ method: "POST", url: "/api/time-entries", headers: { cookie: memberCookie }, payload: { projectId: data.outsideProject.id, workDate: "2026-06-22", hours: 1 } });

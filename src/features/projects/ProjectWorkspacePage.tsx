@@ -739,12 +739,12 @@ function IssueDialog({ open, onOpenChange, project }: { open: boolean; onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>新建事项</DialogTitle>
           <DialogDescription>事项会继承当前项目的模板工作流和权限上下文。</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-4 md:grid-cols-2">
           <Field label="标题" className="md:col-span-2"><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
           <Field label="类型">
             <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
@@ -778,7 +778,7 @@ function IssueDialog({ open, onOpenChange, project }: { open: boolean; onOpenCha
           <Field label="预估工时"><Input type="number" min="0" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: event.target.value })} /></Field>
           <Field label="描述" className="md:col-span-2"><Textarea rows={4} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           <Button disabled={!form.title.trim()} onClick={submit}>创建</Button>
         </DialogFooter>
@@ -796,13 +796,15 @@ function ScheduleImportDialog({ open, onOpenChange, project }: { open: boolean; 
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>导入 Timeline 排期</DialogTitle>
           <DialogDescription>支持粘贴 TSV 或 CSV：模型、标题、负责人、开始日期、截止日期。</DialogDescription>
         </DialogHeader>
-        <Textarea rows={10} value={text} onChange={(event) => setText(event.target.value)} />
-        <DialogFooter>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <Textarea rows={10} value={text} onChange={(event) => setText(event.target.value)} />
+        </div>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           <Button onClick={submit}>导入事项</Button>
         </DialogFooter>

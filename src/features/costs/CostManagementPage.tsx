@@ -281,12 +281,12 @@ function CostDialog({ open, onOpenChange, record }: { open: boolean; onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>{record ? "编辑成本记录" : "新建成本记录"}</DialogTitle>
           <DialogDescription>成本统计以项目和计划工时为基础，保存时按基准小时折算。</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-4">
           <Field label="项目">
             {record ? (
               <ProjectReadout project={selectedProject} />
@@ -312,7 +312,7 @@ function CostDialog({ open, onOpenChange, record }: { open: boolean; onOpenChang
           </div>
           <Field label="备注"><Textarea rows={4} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           <Button onClick={submit} disabled={form.projectId === "none" || plannedHourValue <= 0}>保存</Button>
         </DialogFooter>

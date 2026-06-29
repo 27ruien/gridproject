@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { addDays, format, isValid, parseISO, startOfWeek } from "date-fns";
-import { CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Paperclip, Pencil } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
 import { StatusBadge, statusTone } from "@/components/shared/status";
@@ -43,9 +43,12 @@ export function TimesheetPage() {
     setSelectedDate(formatDate(addDays(parseISO(selectedDateValue), offset)));
   }
 
-  const dayTitle = useMemo(() => {
+  const dayLabel = useMemo(() => {
     const date = parseISO(selectedDateValue);
-    return `周${["日", "一", "二", "三", "四", "五", "六"][date.getDay()]} · ${format(date, "M-d")}`;
+    return {
+      date: format(date, "M/d"),
+      weekday: `周${["日", "一", "二", "三", "四", "五", "六"][date.getDay()]}`,
+    };
   }, [selectedDateValue]);
 
   function createForDate(date: string) {
@@ -90,8 +93,8 @@ export function TimesheetPage() {
         <section className="overflow-hidden rounded-md border bg-card">
           <header className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-sm font-semibold">日填报</h2>
-              <p className="text-xs text-muted-foreground">{dayTitle}</p>
+              <h2 className="text-sm font-semibold">日填报 {dayLabel.date}</h2>
+              <p className="text-xs text-muted-foreground">{dayLabel.weekday}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="icon" variant="outline" aria-label="前一天" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -100,7 +103,7 @@ export function TimesheetPage() {
             </div>
           </header>
           <div className="border-b px-4 py-3">
-            <p className="text-sm text-muted-foreground">当天已记录 <span className="font-medium text-foreground">{round(dayTotal, 1)}h</span>。每次提交都会按日期生成独立工时记录。</p>
+            <p className="text-sm text-muted-foreground">当天已记录 <span className="font-medium text-foreground">{round(dayTotal, 1)}h</span>。草稿、已提交、已审批和已驳回记录都会按当前日期展示。</p>
           </div>
           <div className="divide-y">
             {dayEntries.map((entry) => (
@@ -112,6 +115,12 @@ export function TimesheetPage() {
                       {issueName(entry.issueId, store.state.issues)} · {entry.hours}h
                     </p>
                     <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{plainTimeDescription(entry.note || entry.description)}</p>
+                    {entry.attachments?.length ? (
+                      <p className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Paperclip className="h-3.5 w-3.5" />
+                        {entry.attachments.length} 个附件
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <StatusBadge label={statusLabel(entry.status)} tone={statusTone(normalizeTimeEntryStatus(entry.status))} />

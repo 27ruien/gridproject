@@ -6,6 +6,7 @@ import {
   canCreateIssue,
   canCreateOwnTimeEntry,
   canDeleteIssue,
+  canEditTimeEntry,
   canUpdateIssue,
   normalizeProjectMemberRole,
   permissionsForProject,
@@ -102,6 +103,7 @@ describe("project member role policies", () => {
     expect(canUpdateIssue(context(users.member), assignedIssue, project, members)).toBe(true);
     expect(canUpdateIssue(context(users.member), managerIssue, project, members)).toBe(false);
     expect(canApproveTimeEntry(context(users.member), submittedOtherEntry, project, members)).toBe(false);
+    expect(canEditTimeEntry(context(users.admin), submittedOtherEntry)).toBe(false);
 
     expect(canCreateIssue(context(users.viewer), project, members)).toBe(false);
     expect(canCreateOwnTimeEntry(context(users.viewer), project, members, users.viewer.id)).toBe(false);

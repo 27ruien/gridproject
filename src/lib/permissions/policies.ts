@@ -157,8 +157,9 @@ export function normalizeTimeEntryStatus(status: TimeEntry["status"]): "DRAFT" |
 
 export function canEditTimeEntry(context: AuthContext, entry: TimeEntry | null | undefined) {
   if (!context.isActiveUser || !entry || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
+  if (!["DRAFT", "REJECTED"].includes(normalizeTimeEntryStatus(entry.status))) return false;
   if (context.isAdmin) return true;
-  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(normalizeTimeEntryStatus(entry.status));
+  return entry.userId === context.userId;
 }
 
 export function canDeleteTimeEntry(context: AuthContext, entry: TimeEntry | null | undefined) {

@@ -13,7 +13,7 @@ import { canApproveTimeEntry, normalizeTimeEntryStatus, permissionsForProject, v
 import { round } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
 import type { TimeEntry } from "@/types/domain";
-import { plainTimeDescription } from "./TimeEntryDialog";
+import { TimeEntryAttachmentList, plainTimeDescription } from "./TimeEntryDialog";
 
 const statusOptions = [
   { value: "all", label: "全部状态" },
@@ -179,13 +179,13 @@ function TimeEntryDetailDialog({ entry, onOpenChange }: { entry: TimeEntry | nul
 
   return (
     <Dialog open={Boolean(entry)} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b px-6 py-5 pr-14">
           <DialogTitle>工时详情</DialogTitle>
           <DialogDescription>查看工时内容、提交状态和审批意见。</DialogDescription>
         </DialogHeader>
         {entry ? (
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="grid gap-3 rounded-md border bg-muted/20 p-3 text-sm md:grid-cols-2">
               <Detail label="日期" value={entry.workDate} />
               <Detail label="人员" value={user?.name || entry.reporter || "-"} />
@@ -201,6 +201,10 @@ function TimeEntryDetailDialog({ entry, onOpenChange }: { entry: TimeEntry | nul
               <h3 className="mb-2 text-sm font-semibold">描述</h3>
               <RichTextView value={entry.description || entry.note} className="rounded-md border bg-background p-3" />
             </section>
+            <section>
+              <h3 className="mb-2 text-sm font-semibold">附件</h3>
+              <TimeEntryAttachmentList attachments={entry.attachments} />
+            </section>
             {entry.correctionReason ? (
               <section>
                 <h3 className="mb-2 text-sm font-semibold">审批评论</h3>
@@ -215,7 +219,7 @@ function TimeEntryDetailDialog({ entry, onOpenChange }: { entry: TimeEntry | nul
             ) : null}
           </div>
         ) : null}
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           {canApprove ? (
             <>

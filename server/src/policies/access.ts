@@ -224,8 +224,9 @@ export function canCreateOwnTimeEntry(context: AuthContext, project: ProjectLike
 
 export function canEditTimeEntry(context: AuthContext, entry: TimeEntryLike, _project: ProjectLike | null | undefined) {
   if (!context.isActiveUser || entry.organizationId !== context.organizationId || entry.deletedAt) return false;
+  if (!["DRAFT", "REJECTED"].includes(entry.status)) return false;
   if (context.isAdmin) return true;
-  return entry.userId === context.userId && ["DRAFT", "REJECTED"].includes(entry.status);
+  return entry.userId === context.userId;
 }
 
 export function canDeleteTimeEntry(context: AuthContext, entry: TimeEntryLike, _project: ProjectLike | null | undefined) {

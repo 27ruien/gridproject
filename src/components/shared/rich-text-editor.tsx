@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Bold, Code2, FileUp, ImageUp, Italic, List } from "lucide-react";
+import { Bold, Code2, Italic, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,8 +17,6 @@ export function RichTextEditor({
   minHeight?: string;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -42,19 +40,6 @@ export function RichTextEditor({
     sync();
   }
 
-  async function insertFiles(files: FileList | null, imageOnly: boolean) {
-    if (!files?.length) return;
-    const snippets = await Promise.all(Array.from(files).map(async (file) => {
-      const url = await fileToDataUrl(file);
-      const name = escapeHtml(file.name);
-      if (imageOnly || file.type.startsWith("image/")) {
-        return `<figure><img src="${url}" alt="${name}" /><figcaption>${name}</figcaption></figure>`;
-      }
-      return `<p><a href="${url}" download="${name}" data-attachment="file">附件：${name}</a></p>`;
-    }));
-    insertHtml(snippets.join(""));
-  }
-
   return (
     <div className={cn("overflow-hidden rounded-md border bg-background focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30", className)}>
       <div className="flex flex-wrap items-center gap-1 border-b border-border bg-muted/30 px-2 py-1">
@@ -62,10 +47,6 @@ export function RichTextEditor({
         <Button type="button" size="icon-xs" variant="ghost" aria-label="斜体" onClick={() => command("italic")}><Italic /></Button>
         <Button type="button" size="icon-xs" variant="ghost" aria-label="无序列表" onClick={() => command("insertUnorderedList")}><List /></Button>
         <Button type="button" size="icon-xs" variant="ghost" aria-label="代码块" onClick={() => insertHtml("<pre><code><br></code></pre>")}><Code2 /></Button>
-        <Button type="button" size="icon-xs" variant="ghost" aria-label="上传图片" onClick={() => imageInputRef.current?.click()}><ImageUp /></Button>
-        <Button type="button" size="icon-xs" variant="ghost" aria-label="上传文件" onClick={() => fileInputRef.current?.click()}><FileUp /></Button>
-        <input ref={imageInputRef} className="hidden" type="file" accept="image/*" multiple onChange={(event) => insertFiles(event.target.files, true)} />
-        <input ref={fileInputRef} className="hidden" type="file" multiple onChange={(event) => insertFiles(event.target.files, false)} />
       </div>
       <div
         ref={editorRef}
@@ -119,15 +100,6 @@ export function sanitizeRichHtml(value?: string | null) {
     }
   });
   return doc.body.innerHTML;
-}
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error);
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.readAsDataURL(file);
-  });
 }
 
 function escapeHtml(value: string) {

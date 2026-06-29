@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { TimeEntryRepository } from "../../repositories/timeEntries.js";
 import { requireAuth } from "../../middleware/auth.js";
@@ -7,6 +8,29 @@ import { assertDailyHoursLimit, withDailyTimeEntryLock } from "../../services/ti
 import { badRequest, forbidden, notFound, validationError } from "../../utils/errors.js";
 import { pageEnvelope, pagination, parseDateOnly, timeEntryDto } from "../../utils/dto.js";
 
+const MAX_TIME_ENTRY_ATTACHMENTS = 9;
+const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
+const MAX_ATTACHMENT_TOTAL_BYTES = 6 * 1024 * 1024;
+const editableTimeEntryStatuses = new Set(["DRAFT", "REJECTED"]);
+
+const timeEntryAttachmentSchema = z.object({
+  id: z.string().min(1).max(120),
+  name: z.string().trim().min(1).max(240),
+  size: z.number().int().nonnegative().max(MAX_ATTACHMENT_BYTES),
+  type: z.string().max(120).optional().default(""),
+  kind: z.enum(["image", "file"]).optional(),
+  dataUrl: z.string().max(3_000_000).refine((value) => !value || value.startsWith("data:"), {
+    message: "附件内容必须是 data URL。",
+  }),
+  createdAt: z.string().datetime().optional(),
+}).strict();
+
+const timeEntryAttachmentsSchema = z.array(timeEntryAttachmentSchema)
+  .max(MAX_TIME_ENTRY_ATTACHMENTS)
+  .refine((attachments) => attachments.reduce((sum, attachment) => sum + attachment.size, 0) <= MAX_ATTACHMENT_TOTAL_BYTES, {
+    message: "附件总大小不能超过 6MB。",
+  });
+
 const timeEntrySchema = z.object({
   projectId: z.string().min(1),
   issueId: z.string().optional().nullable(),
@@ -14,6 +38,7 @@ const timeEntrySchema = z.object({
   workDate: z.string().min(1),
   hours: z.number().positive().max(24),
   description: z.string().optional().nullable(),
+  attachments: timeEntryAttachmentsSchema.optional(),
   correctionReason: z.string().optional().nullable(),
 }).strict();
 
@@ -22,6 +47,7 @@ const timeEntryPatchSchema = z.object({
   workDate: z.string().optional(),
   hours: z.number().positive().max(24).optional(),
   description: z.string().optional().nullable(),
+  attachments: timeEntryAttachmentsSchema.optional(),
   correctionReason: z.string().optional().nullable(),
 }).strict();
 
@@ -124,6 +150,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
           hours: input.hours,
           status: "DRAFT",
           description: input.description || "",
+          attachments: sanitizeAttachments(input.attachments || []),
           correctionReason: input.correctionReason || null,
         },
         include: { user: true, project: true, issue: true },
@@ -168,6 +195,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
           ...(input.workDate !== undefined ? { workDate: nextWorkDate } : {}),
           ...(input.hours !== undefined ? { hours: input.hours } : {}),
           ...(input.description !== undefined ? { description: input.description || "" } : {}),
+          ...(input.attachments !== undefined ? { attachments: sanitizeAttachments(input.attachments) } : {}),
           ...(input.correctionReason !== undefined ? { correctionReason: input.correctionReason || "" } : {}),
         },
         include: { user: true, project: true, issue: true },
@@ -192,6 +220,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     if (!context.isAdmin) throw forbidden("只有 ADMIN 可以移动工时所属项目。");
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
+    if (!editableTimeEntryStatuses.has(entry.status)) throw forbidden("已提交或已审批工时不可移动。");
     const parsed = timeEntryMoveSchema.safeParse(request.body);
     if (!parsed.success) throw validationError("移动工时参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -411,5 +440,23 @@ function auditSnapshot(entry: any) {
     status: entry.status,
     description: entry.description,
     correctionReason: entry.correctionReason,
+    attachments: sanitizeAttachments(entry.attachments || []),
   };
+}
+
+function sanitizeAttachments(attachments: unknown) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.slice(0, MAX_TIME_ENTRY_ATTACHMENTS).map((attachment) => {
+    const item = attachment && typeof attachment === "object" ? attachment as Record<string, unknown> : {};
+    const type = String(item.type || "");
+    return {
+      id: String(item.id || randomUUID()).slice(0, 120),
+      name: String(item.name || "未命名附件").trim().slice(0, 240),
+      size: Number(item.size || 0),
+      type: type.slice(0, 120),
+      kind: item.kind === "image" || type.startsWith("image/") ? "image" : "file",
+      dataUrl: String(item.dataUrl || ""),
+      createdAt: String(item.createdAt || new Date().toISOString()),
+    };
+  });
 }
