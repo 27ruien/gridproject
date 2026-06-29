@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { IssuePayload, MilestonePayload, PageEnvelope, ProjectMemberPayload, ProjectPayload } from "./types";
-import type { Issue, Milestone, Project, ProjectMember } from "@/types/domain";
+import type { Issue, Milestone, Project, ProjectMember, ProjectMemberRole } from "@/types/domain";
 
 export const projectsApi = {
   list: (query: Record<string, string | number> = {}) => apiRequest<PageEnvelope<Project>>("/projects", { query }),
@@ -16,7 +16,7 @@ export const projectsApi = {
   }>(`/projects/${encodeURIComponent(projectId)}/board`),
   members: {
     list: (projectId: string) => apiRequest<PageEnvelope<ProjectMember>>(`/projects/${encodeURIComponent(projectId)}/members`),
-    create: (projectId: string, input: { userId: string }) =>
+    create: (projectId: string, input: { userId: string; role?: ProjectMemberRole }) =>
       apiRequest<ProjectMemberPayload>(`/projects/${encodeURIComponent(projectId)}/members`, { method: "POST", body: input }),
     update: (projectId: string, memberId: string, patch: Partial<ProjectMember>) =>
       apiRequest<ProjectMemberPayload>(`/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(memberId)}`, { method: "PATCH", body: patch }),

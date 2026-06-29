@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { canApproveTimeEntry, normalizeTimeEntryStatus, visibleProjectsForUser } from "@/lib/permissions/policies";
+import { canApproveTimeEntry, normalizeTimeEntryStatus, permissionsForProject, visibleProjectsForUser } from "@/lib/permissions/policies";
 import { round } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
 import type { TimeEntry } from "@/types/domain";
@@ -36,12 +36,12 @@ export function TimesheetListPage() {
     () => visibleProjectsForUser(store.context, store.state.projects, store.state.projectMembers),
     [store.context, store.state.projectMembers, store.state.projects],
   );
-  const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
+  const approvableProjectIds = new Set(visibleProjects.filter((project) => permissionsForProject(store.context, project, store.state.projectMembers).canApproveTimeEntries).map((project) => project.id));
   const rows = store.state.timeEntries
     .filter((entry) => !entry.deletedAt)
     .filter((entry) => {
       if (normalizeTimeEntryStatus(entry.status) === "DRAFT") return entry.userId === store.context.userId;
-      return store.context.isAdmin || entry.userId === store.context.userId || visibleProjectIds.has(entry.projectId);
+      return store.context.isAdmin || entry.userId === store.context.userId || approvableProjectIds.has(entry.projectId);
     })
     .filter((entry) => projectId === "all" || entry.projectId === projectId)
     .filter((entry) => status === "all" || normalizeTimeEntryStatus(entry.status) === status)
@@ -153,7 +153,7 @@ function TimeEntryDetailDialog({ entry, onOpenChange }: { entry: TimeEntry | nul
   const project = entry ? store.state.projects.find((item) => item.id === entry.projectId) : null;
   const issue = entry ? store.state.issues.find((item) => item.id === entry.issueId) : null;
   const user = entry ? store.state.users.find((item) => item.id === entry.userId) : null;
-  const canApprove = entry ? canApproveTimeEntry(store.context, entry, project) : false;
+  const canApprove = entry ? canApproveTimeEntry(store.context, entry, project, store.state.projectMembers) : false;
 
   useEffect(() => {
     setComment("");

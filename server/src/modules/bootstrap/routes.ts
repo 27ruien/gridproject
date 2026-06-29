@@ -17,17 +17,22 @@ export async function bootstrapRoutes(app: FastifyInstance) {
           deletedAt: null,
           OR: [
             { ownerId: context.userId },
-            { createdById: context.userId },
             { members: { some: { userId: context.userId, status: ACTIVE_PROJECT_MEMBER_STATUS } } },
           ],
         };
-    const ownedProjectWhere = context.isAdmin
+    const reviewableProjectWhere = context.isAdmin
       ? { organizationId: context.organizationId, deletedAt: null }
       : {
           organizationId: context.organizationId,
           deletedAt: null,
-          OR: [{ ownerId: context.userId }, { createdById: context.userId }],
+          OR: [
+            { ownerId: context.userId },
+            { members: { some: { userId: context.userId, status: ACTIVE_PROJECT_MEMBER_STATUS, role: "MANAGER" as const } } },
+          ],
         };
+    const costProjectWhere = context.isAdmin
+      ? { organizationId: context.organizationId, deletedAt: null }
+      : { organizationId: context.organizationId, deletedAt: null, ownerId: context.userId };
     const [organization, users, projects, issues, timeEntries, projectMembers, costRecords] = await Promise.all([
       app.prisma.organization.findUniqueOrThrow({ where: { id: context.organizationId } }),
       app.prisma.user.findMany({
@@ -58,7 +63,7 @@ export async function bootstrapRoutes(app: FastifyInstance) {
           } : {
             OR: [
               { userId: context.userId },
-              { status: { not: "DRAFT" }, project: projectAccessWhere },
+              { status: { not: "DRAFT" }, project: reviewableProjectWhere },
             ],
           }),
         },
@@ -74,7 +79,7 @@ export async function bootstrapRoutes(app: FastifyInstance) {
         where: {
           organizationId: context.organizationId,
           status: "ACTIVE",
-          ...(context.isAdmin ? {} : { project: ownedProjectWhere }),
+          ...(context.isAdmin ? {} : { project: costProjectWhere }),
         },
         include: { project: { include: { owner: true } } },
         orderBy: { updatedAt: "desc" },

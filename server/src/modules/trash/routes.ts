@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../middleware/auth.js";
-import { canViewCost, isProjectOwner } from "../../policies/access.js";
+import { canDeleteIssue, canManageMilestones, canViewCost } from "../../policies/access.js";
 import { appendIssueActivity, assertIssueCodeAvailable, audit, canRestoreProjectScoped } from "../shared.js";
 import { forbidden, notFound } from "../../utils/errors.js";
 import { costRecordDto, issueDto, milestoneDto, projectDto, sanitizeUserDto, toIsoDateTime } from "../../utils/dto.js";
@@ -21,7 +21,7 @@ export async function trashRoutes(app: FastifyInstance) {
         where: {
           organizationId: context.organizationId,
           deletedAt: { not: null },
-          ...(context.isAdmin ? {} : { project: { ownerId: context.userId } }),
+          ...(context.isAdmin ? {} : { project: { OR: [{ ownerId: context.userId }, { members: { some: { userId: context.userId, status: "ACTIVE", role: "MANAGER" } } }] } }),
         },
         include: { project: true },
       }),
@@ -29,7 +29,7 @@ export async function trashRoutes(app: FastifyInstance) {
         where: {
           organizationId: context.organizationId,
           deletedAt: { not: null },
-          ...(context.isAdmin ? {} : { project: { ownerId: context.userId } }),
+          ...(context.isAdmin ? {} : { project: { OR: [{ ownerId: context.userId }, { members: { some: { userId: context.userId, status: "ACTIVE", role: "MANAGER" } } }] } }),
         },
         include: { project: true },
       }),
@@ -77,10 +77,10 @@ export async function trashRoutes(app: FastifyInstance) {
     if (type === "issue") {
       const issue = await app.prisma.issue.findFirst({
         where: { id, organizationId: context.organizationId, deletedAt: { not: null } },
-        include: { project: true },
+        include: { project: { include: { members: true } } },
       });
       if (!issue || issue.project.deletedAt) throw notFound("事项不存在。");
-      if (!canRestoreProjectScoped(context, issue.project) && issue.creatorId !== context.userId) throw forbidden("没有权限恢复该事项。");
+      if (!canDeleteIssue(context, issue, issue.project)) throw forbidden("没有权限恢复该事项。");
       await assertIssueCodeAvailable(app, issue.projectId, issue.code, issue.id);
       const row = await app.prisma.issue.update({ where: { id }, data: { deletedAt: null, deletedById: null } });
       await appendIssueActivity(app, context, id, "restored", "恢复事项");
@@ -91,10 +91,10 @@ export async function trashRoutes(app: FastifyInstance) {
     if (type === "milestone") {
       const milestone = await app.prisma.milestone.findFirst({
         where: { id, organizationId: context.organizationId, deletedAt: { not: null } },
-        include: { project: true },
+        include: { project: { include: { members: true } } },
       });
       if (!milestone || milestone.project.deletedAt) throw notFound("里程碑不存在。");
-      if (!canRestoreProjectScoped(context, milestone.project)) throw forbidden("没有权限恢复该里程碑。");
+      if (!canManageMilestones(context, milestone.project, milestone.project.members || [])) throw forbidden("没有权限恢复该里程碑。");
       const row = await app.prisma.milestone.update({ where: { id }, data: { deletedAt: null, deletedById: null } });
       await audit(app, context, "milestone.restore", "Milestone", id, {}, request.id);
       return { requestId: request.id, type, entity: milestoneDto(row) };

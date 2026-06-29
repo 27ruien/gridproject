@@ -1,6 +1,7 @@
 export type OrganizationRole = "ADMIN" | "MEMBER";
 export type UserStatus = "ACTIVE" | "INACTIVE";
 export type ProjectMemberStatus = "ACTIVE" | "INACTIVE";
+export type ProjectMemberRole = "MANAGER" | "MEMBER" | "VIEWER";
 export type TimeEntryStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "草稿" | "已提交" | "已审批" | "已驳回";
 export type CostRecordStatus = "ACTIVE" | "ARCHIVED";
 
@@ -92,6 +93,7 @@ export type ProjectMember = {
   projectId: string;
   userId: string;
   status: ProjectMemberStatus;
+  role?: ProjectMemberRole;
   createdAt?: string;
 };
 
@@ -222,7 +224,13 @@ export type ProjectPermissions = {
   canViewBoard: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+  canChangeOwner: boolean;
   canManageMembers: boolean;
+  canManageMemberRoles: boolean;
+  canCreateIssue: boolean;
+  canManageMilestones: boolean;
+  canManageSchedule: boolean;
+  canCreateTimeEntries: boolean;
   canViewProjectTimeEntries: boolean;
   canApproveTimeEntries: boolean;
   canViewCost: boolean;

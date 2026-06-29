@@ -34,6 +34,7 @@ export async function assertActiveProjectMember(app: FastifyInstance, organizati
     where: { organizationId, projectId, userId, status: "ACTIVE" },
   });
   if (!member) throw badRequest("负责人必须是当前项目 ACTIVE 成员。");
+  if ((member as any).role === "VIEWER") throw badRequest("只读成员不能作为事项负责人。");
   return member;
 }
 

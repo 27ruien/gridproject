@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ProjectRepository } from "../../repositories/projects.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { canCreateProject, canManageProject, canViewProjectWorkspace } from "../../policies/access.js";
+import { canCreateProject, canManageProject, canViewCost, canViewProjectWorkspace, canViewTimeEntry, permissionsForProject } from "../../policies/access.js";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, milestoneDto, pageEnvelope, pagination, parseDateOnly, projectDto, projectMemberDto, timeEntryDto, costRecordDto, toJsonObject } from "../../utils/dto.js";
 
@@ -42,8 +42,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const accessWhere = context.isAdmin ? {} : {
       OR: [
         { ownerId: context.userId },
-        { createdById: context.userId },
-          { members: { some: { userId: context.userId, status: ACTIVE_PROJECT_MEMBER_STATUS } } },
+        { members: { some: { userId: context.userId, status: ACTIVE_PROJECT_MEMBER_STATUS } } },
       ],
     };
     const searchWhere = query.search ? {
@@ -118,7 +117,7 @@ export async function projectRoutes(app: FastifyInstance) {
           status: "ACTIVE",
         },
       });
-      await upsertRoleMembers(tx, context.organizationId, project.id, roleUserIds(input));
+      await upsertRoleMembers(tx, context.organizationId, project.id, roleUserEntries(input, ownerId));
       await tx.auditLog.create({
         data: {
           organizationId: context.organizationId,
@@ -199,7 +198,7 @@ export async function projectRoutes(app: FastifyInstance) {
           update: { status: "ACTIVE" },
         });
       }
-      await upsertRoleMembers(tx, context.organizationId, id, roleUserIds(input));
+      await upsertRoleMembers(tx, context.organizationId, id, roleUserEntries(input, input.ownerId || project.ownerId));
       await tx.auditLog.create({
         data: {
           organizationId: context.organizationId,
@@ -259,8 +258,8 @@ export async function projectRoutes(app: FastifyInstance) {
       issues: project!.issues.map(issueDto),
       milestones: project!.milestones.map(milestoneDto),
       members: project!.members.map(projectMemberDto),
-      timeEntries: project!.timeEntries.map(timeEntryDto),
-      costRecord: project!.costRecord ? costRecordDto(project!.costRecord) : null,
+      timeEntries: project!.timeEntries.filter((entry) => canViewTimeEntry(context, entry, project!)).map(timeEntryDto),
+      costRecord: project!.costRecord && canViewCost(context, project) ? costRecordDto(project!.costRecord) : null,
       permissions: permissionsForProject(context, project, project!.members),
     };
   });
@@ -282,23 +281,24 @@ function hasRoleInput(input: z.infer<typeof projectSchema> | z.infer<typeof proj
   return ["commercialOwnerId", "projectManagerId", "designGroupId", "contentGroupId", "effectsGroupId", "qaId"].some((key) => key in input);
 }
 
-function roleUserIds(input: z.infer<typeof projectSchema> | z.infer<typeof projectPatchSchema>) {
-  return [...new Set([
-    input.commercialOwnerId,
-    input.projectManagerId,
-    input.designGroupId,
-    input.contentGroupId,
-    input.effectsGroupId,
-    input.qaId,
-  ].filter(Boolean) as string[])];
+function roleUserEntries(input: z.infer<typeof projectSchema> | z.infer<typeof projectPatchSchema>, ownerId?: string | null) {
+  const entries = [
+    input.commercialOwnerId ? { userId: input.commercialOwnerId, role: "MEMBER" as const } : null,
+    input.projectManagerId ? { userId: input.projectManagerId, role: "MANAGER" as const } : null,
+    input.designGroupId ? { userId: input.designGroupId, role: "MEMBER" as const } : null,
+    input.contentGroupId ? { userId: input.contentGroupId, role: "MEMBER" as const } : null,
+    input.effectsGroupId ? { userId: input.effectsGroupId, role: "MEMBER" as const } : null,
+    input.qaId ? { userId: input.qaId, role: "MEMBER" as const } : null,
+  ].filter(Boolean) as Array<{ userId: string; role: "MANAGER" | "MEMBER" }>;
+  return [...new Map(entries.filter((entry) => entry.userId !== ownerId).map((entry) => [entry.userId, entry])).values()];
 }
 
-async function upsertRoleMembers(tx: any, organizationId: string, projectId: string, userIds: string[]) {
-  for (const userId of userIds) {
+async function upsertRoleMembers(tx: any, organizationId: string, projectId: string, entries: Array<{ userId: string; role: "MANAGER" | "MEMBER" }>) {
+  for (const entry of entries) {
     await tx.projectMember.upsert({
-      where: { projectId_userId: { projectId, userId } },
-      create: { organizationId, projectId, userId, status: "ACTIVE" },
-      update: { status: "ACTIVE" },
+      where: { projectId_userId: { projectId, userId: entry.userId } },
+      create: { organizationId, projectId, userId: entry.userId, status: "ACTIVE", role: entry.role },
+      update: { status: "ACTIVE", ...(entry.role === "MANAGER" ? { role: "MANAGER" } : {}) },
     });
   }
 }
@@ -319,21 +319,4 @@ function sortProject(sort = "updatedAt:desc") {
   if (sort === "health:asc") return { health: "asc" as const };
   if (sort === "createdAt:desc") return { createdAt: "desc" as const };
   return { updatedAt: "desc" as const };
-}
-
-function permissionsForProject(context: any, project: any, members: any[] = []) {
-  const manage = canManageProject(context, project);
-  const ownerOrCreator = manage || project?.createdById === context.userId;
-  return {
-    canView: canViewProjectWorkspace(context, project, members),
-    canViewBoard: canViewProjectWorkspace(context, project, members),
-    canUpdate: manage,
-    canDelete: manage,
-    canManageMembers: manage,
-    canViewProjectTimeEntries: ownerOrCreator,
-    canApproveTimeEntries: false,
-    canViewCost: ownerOrCreator,
-    canManageCost: ownerOrCreator,
-    canExportCost: ownerOrCreator,
-  };
 }

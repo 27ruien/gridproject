@@ -2,105 +2,76 @@
 
 ## Roles
 
-组织级角色仅保留：
+组织级角色：
 
 - `ADMIN`
 - `MEMBER`
 
-项目 Owner 不是全局角色，通过 `Project.ownerId === currentUser.id` 动态判断。
+项目内角色：
+
+- Project Owner：通过 `Project.ownerId === currentUser.id` 动态判断，不存入 `ProjectMember.role`。
+- `ProjectMember.role = MANAGER`
+- `ProjectMember.role = MEMBER`
+- `ProjectMember.role = VIEWER`
+
+旧的 `ProjectMember` 数据缺少 `role` 时按 `MEMBER` 处理。
 
 ## Project Permissions
 
-| Permission | ADMIN | Project Owner | ACTIVE ProjectMember | Other ACTIVE MEMBER |
-| --- | --- | --- | --- | --- |
-| `project.create` | Yes | Yes | Yes | Yes |
-| `project.view` | Yes | Yes | Yes | Yes |
-| `project.board.view` | Yes | Yes | Yes | No |
-| `project.update` | Yes | Yes | No | No |
-| `project.delete` | Yes | Yes | No | No |
-| `project.manage_members` | Yes | Yes | No | No |
-| `issue.view` | Yes | Yes | Yes | Yes |
-| `issue.create/update/assign/change_status` | Yes | Yes | Yes | Yes |
-| `milestone.view` | Yes | Yes | Yes | Yes |
+| Permission | ADMIN | Project Owner | MANAGER | MEMBER | VIEWER | Non-member |
+| --- | --- | --- | --- | --- | --- | --- |
+| `project.create` | Yes | Yes | Yes | Yes | Yes | Yes |
+| `project.view` | Yes | Yes | Yes | Yes | Yes | No |
+| `project.update` | Yes | Yes | No | No | No | No |
+| `project.delete` | Yes | Yes | No | No | No | No |
+| `project.change_owner` | Yes | Yes | No | No | No | No |
+| `project.manage_members` | Yes | Yes | No | No | No | No |
+| `project.manage_member_roles` | Yes | Yes | No | No | No | No |
+| `issue.view` | Yes | Yes | Yes | Yes | Yes | No |
+| `issue.create` | Yes | Yes | Yes | Yes | No | No |
+| `issue.update_any` | Yes | Yes | Yes | No | No | No |
+| `issue.update_own_or_assigned` | Yes | Yes | Yes | Yes | No | No |
+| `issue.delete` | Yes | Yes | Yes | No | No | No |
+| `milestone.manage` | Yes | Yes | Yes | No | No | No |
+| `schedule.import_or_update` | Yes | Yes | Yes | No | No | No |
+| `comment.view` | Yes | Yes | Yes | Yes | Yes | No |
+| `comment.create` | Yes | Yes | Yes | Yes | No | No |
 
-项目查询必须包含：
+私有项目查询必须继续包含：
 
 ```text
 organizationId = currentOrganizationId
 deletedAt IS NULL
+current user is ADMIN, Project.ownerId, or ACTIVE ProjectMember
 ```
 
 ## Time Entry Permissions
 
-| Permission | ADMIN | Project Owner In Owned Project | MEMBER |
-| --- | --- | --- | --- |
-| `time_entry.view_all` | Yes | No | No |
-| `time_entry.view_project` | Yes | Yes | No |
-| `time_entry.view_own` | Yes | Yes | Yes |
-| `time_entry.create_own` | Yes | Yes | Yes |
-| `time_entry.edit_own` | Yes | Own draft/rejected | Own draft/rejected |
-| `time_entry.delete_own` | Yes | Own draft | Own draft |
-| `time_entry.submit_own` | Yes | Own draft/rejected | Own draft/rejected |
-| `time_entry.approve_project` | Yes | Yes | No |
-| `time_entry.reject_project` | Yes | Yes | No |
-| `time_entry.export_project` | Yes | Yes | No |
-| `time_entry.edit_others` | Yes with reason | No by default | No |
-| `time_entry.delete_others` | Yes with reason | No by default | No |
+| Permission | ADMIN | Project Owner | MANAGER | MEMBER | VIEWER | Non-member |
+| --- | --- | --- | --- | --- | --- | --- |
+| `time_entry.view_all` | Yes | No | No | No | No | No |
+| `time_entry.view_project_submitted` | Yes | Yes | Yes | No | No | No |
+| `time_entry.view_own` | Yes | Yes | Yes | Yes | Yes | Own only |
+| `time_entry.create_own` | Yes | Yes | Yes | Yes | No | No |
+| `time_entry.edit_own` | Yes | Own draft/rejected | Own draft/rejected | Own draft/rejected | No | No |
+| `time_entry.delete_own` | Yes | Own draft | Own draft | Own draft | No | No |
+| `time_entry.submit_own` | Yes | Own draft/rejected | Own draft/rejected | Own draft/rejected | No | No |
+| `time_entry.approve_project` | Yes | Yes | Yes | No | No | No |
+| `time_entry.reject_project` | Yes | Yes | Yes | No | No | No |
+| `time_entry.edit_others` | Yes with reason | No | No | No | No | No |
+| `time_entry.delete_others` | Yes with reason | No | No | No | No | No |
 
-普通成员不能通过列表、详情、统计、搜索、导出、审批列表或成本管理读取他人工时。
+非项目成员访问不可见项目继续按现有约定返回不可见响应；可见项目内的越权写操作返回 `403`。
 
 ## Cost Permissions
 
-| Permission | ADMIN | Project Owner | ProjectMember | Other MEMBER |
-| --- | --- | --- | --- | --- |
-| `cost.view_project` | Yes, all org projects | Yes, owned projects | No | No |
-| `cost.create` | Yes | Yes, owned projects | No | No |
-| `cost.update` | Yes | Yes, owned projects | No | No |
-| `cost.export` | Yes | Yes, owned projects | No | No |
-
-普通 ProjectMember 不显示成本管理入口，直接请求成本 API 返回 `403`。
-
-## User Management Permissions
-
-| Permission | ADMIN | MEMBER |
-| --- | --- | --- |
-| `user.view` | Yes | No |
-| `user.create` | Yes | No |
-| `user.update` | Yes | No |
-| `user.delete` | Yes | No |
-| `user.reset_password` | Yes | No |
-
-普通 MEMBER 不显示人员管理入口，直接访问 `/users` 时返回工作台或无权限页面，直接请求人员管理 API 返回 `403`。
-
-后端必须拒绝会导致组织内没有 ACTIVE ADMIN 的操作，并禁止管理员停用或删除自己当前正在使用的账号。
-
-## Auth And Session
-
-- `POST /api/auth/login` 校验 Argon2id 密码，成功后写入 `sessions.tokenHash`，返回 HttpOnly Cookie。
-- Cookie 策略：`HttpOnly`、`SameSite=Lax`、生产环境 `Secure`。
-- `POST /api/auth/logout` 撤销当前 session。
-- 重置用户密码会撤销该用户所有未撤销 session。
-- 后端只使用 request session 判断当前用户；前端权限隐藏只用于体验。
+| Permission | ADMIN | Project Owner | MANAGER | MEMBER | VIEWER |
+| --- | --- | --- | --- | --- | --- |
+| `cost.view_project` | Yes, all org projects | Yes, owned projects | No | No | No |
+| `cost.create` | Yes | Yes, owned projects | No | No | No |
+| `cost.update` | Yes | Yes, owned projects | No | No | No |
+| `cost.export` | Yes | Yes, owned projects | No | No | No |
 
 ## Frontend Permission Shape
 
-项目详情接口应返回：
-
-```json
-{
-  "permissions": {
-    "canView": true,
-    "canViewBoard": true,
-    "canUpdate": false,
-    "canDelete": false,
-    "canManageMembers": false,
-    "canViewProjectTimeEntries": false,
-    "canApproveTimeEntries": false,
-    "canViewCost": false,
-    "canManageCost": false,
-    "canExportCost": false
-  }
-}
-```
-
-前端只做体验隐藏，后端必须再次验证权限。
+项目详情接口返回的 `permissions` 包含项目、成员、事项、里程碑、排期、工时和成本入口能力。前端只做体验隐藏或禁用，后端 route 必须再次通过 `server/src/policies/access.ts` 校验。

@@ -16,7 +16,7 @@
 - `User`：组织内用户，角色仅 `ADMIN`、`MEMBER`，状态为 `ACTIVE` 或 `INACTIVE`，保存 `passwordHash`、可空 `preferences`、`lastLoginAt`、`deletedAt/deletedById`。
 - `Session`：用户会话；管理员重置密码会撤销全部会话，用户自行改密保留当前会话并撤销其他会话。
 - `Project`：项目主表，包含 `organizationId`、`ownerId`、`createdById`、软删除字段 `deletedAt/deletedById`。
-- `ProjectMember`：项目相关人表，`Project.ownerId` 与 ACTIVE ProjectMember 共同定义项目相关人。
+- `ProjectMember`：项目相关人表，新增 `role` 字段表示项目内角色：`MANAGER/MEMBER/VIEWER`，默认 `MEMBER`。`Project.ownerId` 继续单独表示项目 Owner，不通过 `ProjectMember.role` 表示。
 - `Issue`：事项，保留项目事项、状态、优先级、负责人等字段。
 - `TimeEntry`：工时，状态为 `DRAFT/SUBMITTED/APPROVED/REJECTED`，工时使用 Decimal。
 - `ProjectCostRecord`：项目人力投入管理记录，一个项目唯一一条记录，默认 `ACTIVE`。
@@ -72,6 +72,7 @@
 - `TimeEntry(projectId, workDate, status)` index。
 - `TimeEntry(projectId, userId, workDate)` index。
 - `ProjectMember(projectId, userId)` unique。
+- `ProjectMember(organizationId, role)` index。
 
 ## Cost Calculation
 
