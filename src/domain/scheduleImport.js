@@ -296,7 +296,7 @@ export function getIssueScheduleRisks(issue, today = new Date()) {
       tone: "info",
       rank: 3,
       label: "长周期排期",
-      reason: "该事项周期较长，适合拆分中间交付点或里程碑检查点。",
+      reason: "该事项周期较长，适合拆分中间交付点或协作检查点。",
     });
   }
 

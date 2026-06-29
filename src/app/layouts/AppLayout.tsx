@@ -2,6 +2,7 @@ import * as React from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
+  Bell,
   CalendarClock,
   Command,
   ChevronRight,
@@ -65,6 +66,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canAccessAdminPage } from "@/lib/permissions/policies";
 import { useAppStore } from "@/lib/state/app-store";
@@ -72,7 +74,6 @@ import { cn } from "@/lib/utils";
 
 const workspaceNavItems = [
   { label: "工作台", href: "/", icon: Home },
-  { label: "回收站", href: "/trash", icon: Trash2 },
 ];
 
 const projectNavItems = [
@@ -92,6 +93,7 @@ type NavItem = (typeof workspaceNavItems | typeof projectNavItems | typeof admin
 export function AppLayout() {
   const store = useAppStore();
   const [commandOpen, setCommandOpen] = React.useState(false);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const title = pageTitle(location.pathname);
@@ -100,6 +102,7 @@ export function AppLayout() {
   const showAdmin = canAccessAdminPage(store.context);
   const visibleNav = showAdmin ? [...workspaceNavItems, ...projectNavItems, ...adminNavItems] : [...workspaceNavItems, ...projectNavItems];
   const avatarUrl = store.currentUser?.preferences?.avatarUrl || "";
+  const notifications = React.useMemo(() => buildNotifications(store), [store]);
 
   React.useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -202,6 +205,13 @@ export function AppLayout() {
           <Button variant="ghost" size="icon" className="md:hidden" aria-label="搜索" onClick={() => setCommandOpen(true)}>
             <Search />
           </Button>
+          <Button variant="ghost" size="icon" aria-label="回收站" onClick={() => navigate("/trash")}>
+            <Trash2 />
+          </Button>
+          <Button variant="ghost" size="icon" className="relative" aria-label="站内通知" onClick={() => setNotificationsOpen(true)}>
+            <Bell />
+            {notifications.length ? <span className="absolute right-1 top-1 size-2 rounded-full bg-primary" /> : null}
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -262,6 +272,7 @@ export function AppLayout() {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+      <NotificationSheet open={notificationsOpen} onOpenChange={setNotificationsOpen} notifications={notifications} />
     </SidebarProvider>
   );
 }
@@ -290,6 +301,90 @@ function SidebarNav({ label, items, pathname }: { label: string; items: NavItem[
       </SidebarGroupContent>
     </SidebarGroup>
   );
+}
+
+function NotificationSheet({
+  open,
+  onOpenChange,
+  notifications,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  notifications: Array<{ id: string; title: string; description: string; tone: "info" | "warn" | "success"; href?: string }>;
+}) {
+  const navigate = useNavigate();
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full max-w-full data-[side=right]:sm:max-w-md">
+        <SheetHeader className="border-b">
+          <SheetTitle>站内通知</SheetTitle>
+          <SheetDescription>聚合工时审批、任务风险和协作评论。</SheetDescription>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+          {notifications.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="w-full rounded-md border bg-background p-3 text-left transition hover:border-primary/40 hover:shadow-sm"
+              onClick={() => {
+                if (item.href) navigate(item.href);
+                onOpenChange(false);
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <strong className="text-sm">{item.title}</strong>
+                <Badge variant={item.tone === "warn" ? "destructive" : "secondary"}>{item.tone === "warn" ? "关注" : item.tone === "success" ? "完成" : "提醒"}</Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+            </button>
+          ))}
+          {!notifications.length ? (
+            <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
+              暂无新的站内通知。
+            </div>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function buildNotifications(store: ReturnType<typeof useAppStore>) {
+  const submitted = store.state.timeEntries
+    .filter((entry) => String(entry.status) === "SUBMITTED")
+    .slice(0, 3)
+    .map((entry) => {
+      const project = store.state.projects.find((item) => item.id === entry.projectId);
+      return {
+        id: `time-${entry.id}`,
+        title: "工时待审批",
+        description: `${entry.reporter || "成员"} 提交了 ${entry.hours}h · ${project?.name || "未知项目"}`,
+        tone: "info" as const,
+        href: "/timesheet-list",
+      };
+    });
+  const due = store.state.issues
+    .filter((issue) => !issue.deletedAt && !["已完成", "已验收"].includes(issue.status) && issue.dueDate)
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))
+    .slice(0, 3)
+    .map((issue) => ({
+      id: `issue-${issue.id}`,
+      title: "任务临近截止",
+      description: `${issue.title} · ${issue.dueDate} · ${issue.ownerLabel || issue.owner || "未分配"}`,
+      tone: "warn" as const,
+      href: `/projects/${issue.projectId}?issue=${issue.id}`,
+    }));
+  const comments = store.state.issues
+    .flatMap((issue) => (issue.comments || []).slice(0, 1).map((comment) => ({ issue, comment })))
+    .slice(0, 3)
+    .map(({ issue, comment }) => ({
+      id: `comment-${comment.id}`,
+      title: "新的任务评论",
+      description: `${comment.actor || "成员"} 评论了 ${issue.title}`,
+      tone: "success" as const,
+      href: `/projects/${issue.projectId}?issue=${issue.id}`,
+    }));
+  return [...submitted, ...due, ...comments].slice(0, 8);
 }
 
 function SidebarProjectManagement({ items, pathname }: { items: NavItem[]; pathname: string }) {

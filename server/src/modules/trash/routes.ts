@@ -93,8 +93,8 @@ export async function trashRoutes(app: FastifyInstance) {
         where: { id, organizationId: context.organizationId, deletedAt: { not: null } },
         include: { project: { include: { members: true } } },
       });
-      if (!milestone || milestone.project.deletedAt) throw notFound("里程碑不存在。");
-      if (!canManageMilestones(context, milestone.project, milestone.project.members || [])) throw forbidden("没有权限恢复该里程碑。");
+      if (!milestone || milestone.project.deletedAt) throw notFound("相关方事项不存在。");
+      if (!canManageMilestones(context, milestone.project, milestone.project.members || [])) throw forbidden("没有权限恢复该相关方事项。");
       const row = await app.prisma.milestone.update({ where: { id }, data: { deletedAt: null, deletedById: null } });
       await audit(app, context, "milestone.restore", "Milestone", id, {}, request.id);
       return { requestId: request.id, type, entity: milestoneDto(row) };

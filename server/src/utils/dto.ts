@@ -44,6 +44,7 @@ export function projectDto(project: any) {
   return {
     ...safeProject,
     templateId: String(config.templateId || "agile"),
+    coverUrl: String(config.coverUrl || ""),
     executionTeams: Array.isArray(config.executionTeams) ? config.executionTeams.map(String) : [],
     commercialOwnerId: String(config.commercialOwnerId || ""),
     projectManagerId: String(config.projectManagerId || ""),
@@ -69,6 +70,9 @@ export function issueDto(issue: any) {
   const schedule = toJsonObject(scheduleData);
   return {
     ...safeIssue,
+    owner: issue.owner || String(schedule.ownerLabel || ""),
+    ownerLabel: String(schedule.ownerLabel || issue.owner || ""),
+    parentIssueId: String(schedule.parentIssueId || ""),
     scheduleKey: String(schedule.scheduleKey || ""),
     scheduleModel: String(schedule.scheduleModel || ""),
     scheduleOwners: Array.isArray(schedule.scheduleOwners) ? schedule.scheduleOwners.map(String) : [],

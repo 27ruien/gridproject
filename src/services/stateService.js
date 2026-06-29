@@ -87,7 +87,7 @@ const seedState = {
   issues: [
     {
       id: "i1",
-      code: "AGL-118",
+      code: "TASK-118",
       projectId: "crm",
       type: "需求",
       title: "批量分配线索",
@@ -104,7 +104,7 @@ const seedState = {
     },
     {
       id: "i2",
-      code: "AGL-124",
+      code: "TASK-124",
       projectId: "crm",
       type: "任务",
       title: "迭代燃尽图数据接口",
@@ -121,7 +121,7 @@ const seedState = {
     },
     {
       id: "i3",
-      code: "AGL-130",
+      code: "TASK-130",
       projectId: "crm",
       type: "缺陷",
       title: "客户归属变更后看板未刷新",
@@ -138,7 +138,7 @@ const seedState = {
     },
     {
       id: "i4",
-      code: "WAT-203",
+      code: "TASK-203",
       projectId: "mall",
       type: "交付物",
       title: "客户需求确认书",
@@ -155,7 +155,7 @@ const seedState = {
     },
     {
       id: "i5",
-      code: "WAT-219",
+      code: "TASK-219",
       projectId: "mall",
       type: "风险",
       title: "设计确认延期",

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, RotateCcw, Search } from "lucide-react";
+import { ImagePlus, Plus, RotateCcw, Search } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
 import { ProjectCard } from "@/components/shared/project-card";
@@ -102,10 +102,12 @@ export function ProjectLibraryPage() {
 
 export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; onOpenChange: (open: boolean) => void; project?: Project | null }) {
   const store = useAppStore();
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const activeUsers = store.state.users.filter((user) => user.status === "ACTIVE");
   const [form, setForm] = useState({
     name: project?.name || "",
     code: project?.code || "",
+    coverUrl: project?.coverUrl || "",
     ownerId: project?.ownerId || store.context.userId,
     status: project?.status || "规划中",
     commercialOwnerId: project?.commercialOwnerId || EMPTY_USER,
@@ -126,6 +128,7 @@ export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; 
     setForm({
       name: project?.name || "",
       code: project?.code || "",
+      coverUrl: project?.coverUrl || "",
       ownerId: project?.ownerId || store.context.userId,
       status: project?.status || "规划中",
       commercialOwnerId: project?.commercialOwnerId || EMPTY_USER,
@@ -159,6 +162,12 @@ export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; 
     if (result) onOpenChange(false);
   }
 
+  async function selectCover(file?: File) {
+    if (!file) return;
+    const coverUrl = await resizeProjectCover(file);
+    setForm((current) => ({ ...current, coverUrl }));
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -169,6 +178,18 @@ export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; 
         <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-6 py-4 md:grid-cols-2">
           <Field label="项目名称"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="项目代码"><Input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></Field>
+          <Field label="项目封面" className="md:col-span-2">
+            <input ref={coverInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => selectCover(event.target.files?.[0])} />
+            <div className="overflow-hidden rounded-md border bg-background">
+              <div className="h-32 bg-muted">
+                {form.coverUrl ? <img src={form.coverUrl} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center text-sm text-muted-foreground">上传项目识别图</div>}
+              </div>
+              <div className="flex items-center justify-between gap-3 px-3 py-2">
+                <span className="text-xs text-muted-foreground">建议使用品牌图、产品图或项目视觉图。</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => coverInputRef.current?.click()}><ImagePlus className="h-4 w-4" />替换图片</Button>
+              </div>
+            </div>
+          </Field>
           {project ? (
             <Field label="项目所有人">
               <UserSelect value={form.ownerId} users={activeUsers} onChange={(ownerId) => setForm({ ...form, ownerId })} allowEmpty={false} />
@@ -222,4 +243,35 @@ function UserSelect({ value, users, onChange, allowEmpty = true }: { value: stri
 
 function normalizeUserId(value: string) {
   return value === EMPTY_USER ? null : value;
+}
+
+function resizeProjectCover(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 960;
+        canvas.height = 360;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("无法处理项目封面。"));
+          return;
+        }
+        const targetRatio = canvas.width / canvas.height;
+        const sourceRatio = image.width / image.height;
+        const sourceWidth = sourceRatio > targetRatio ? image.height * targetRatio : image.width;
+        const sourceHeight = sourceRatio > targetRatio ? image.height : image.width / targetRatio;
+        const sourceX = (image.width - sourceWidth) / 2;
+        const sourceY = (image.height - sourceHeight) / 2;
+        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      image.onerror = () => reject(new Error("无法读取项目封面。"));
+      image.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
 }

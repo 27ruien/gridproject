@@ -1,4 +1,5 @@
 import { CalendarDays, MoreHorizontal, UsersRound } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -24,6 +25,21 @@ export function ProjectCard({
   return (
     <Card className="group relative min-w-0 transition-colors hover:ring-foreground/10" size="sm">
       <button type="button" className="absolute inset-0 z-10 rounded-[inherit]" aria-label={`打开项目 ${project.name}`} onClick={onOpen} />
+      <div className="pointer-events-none relative z-20 h-28 overflow-hidden rounded-t-[inherit] border-b bg-muted">
+        {project.coverUrl ? (
+          <img src={project.coverUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <div className="flex size-full items-end justify-between bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--accent)),hsl(var(--muted)))] p-4">
+            <div className="min-w-0">
+              <span className="text-3xl font-semibold text-primary/85">{project.name.slice(0, 2).toUpperCase()}</span>
+              <p className="mt-1 truncate text-xs font-medium text-muted-foreground">{project.code || project.id}</p>
+            </div>
+            <Avatar className="size-10 border bg-background shadow-sm">
+              <AvatarFallback className="bg-background text-xs text-muted-foreground">{owner?.name?.slice(0, 1) || project.owner?.slice(0, 1) || "项"}</AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+      </div>
       <CardContent className="pointer-events-none relative z-20 flex flex-1 flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

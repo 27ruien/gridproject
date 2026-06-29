@@ -13,13 +13,17 @@ export const PRIORITY_TONE = {
 export function normalizeIssue(issue) {
   return {
     id: issue.id,
-    code: issue.code || "ISSUE",
+    code: issue.code || `TASK-${Math.floor(Math.random() * 900 + 100)}`,
     projectId: issue.projectId,
     type: issue.type || "任务",
     title: issue.title || "未命名事项",
     status: normalizeStatus(issue.status),
     owner: issue.owner || "未分配",
+    ownerLabel: issue.ownerLabel || issue.owner || "",
+    ownerId: issue.ownerId || null,
+    parentIssueId: issue.parentIssueId || null,
     creator: issue.creator || issue.createdBy || issue.owner || "本地用户",
+    creatorId: issue.creatorId || null,
     priority: PRIORITIES.includes(issue.priority) ? issue.priority : "P2",
     startDate: issue.startDate || issue.createdAt?.slice(0, 10) || "",
     dueDate: issue.dueDate || "",

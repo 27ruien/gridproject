@@ -71,6 +71,7 @@ export type Project = {
   organizationId: string;
   name: string;
   code?: string;
+  coverUrl?: string;
   templateId: ProjectTemplateId;
   ownerId: string;
   owner?: string;
@@ -110,6 +111,7 @@ export type ProjectMember = {
 export type IssueComment = {
   id: string;
   actor?: string;
+  authorName?: string;
   authorId?: string;
   text: string;
   at?: string;
@@ -132,7 +134,9 @@ export type Issue = {
   title: string;
   status: string;
   owner?: string;
+  ownerLabel?: string;
   ownerId?: string | null;
+  parentIssueId?: string | null;
   creator?: string;
   creatorId?: string | null;
   priority: "P0" | "P1" | "P2" | "P3";

@@ -53,7 +53,7 @@ export function TrashPage() {
             <div className="p-4">
               <EmptyState
                 title="回收站为空"
-                description="删除的项目、任务、里程碑、人员或成本记录会在这里保留 30 天。"
+                description="删除的项目、任务、相关方事项、人员或成本记录会在这里保留 30 天。"
                 className="min-h-80"
               />
             </div>
@@ -80,7 +80,7 @@ function typeLabel(type: TrashItem["type"]) {
   return {
     project: "项目",
     issue: "事项",
-    milestone: "里程碑",
+    milestone: "相关方事项",
     costRecord: "成本记录",
     user: "人员",
   }[type];

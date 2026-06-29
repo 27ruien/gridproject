@@ -34,7 +34,7 @@ function CommandDialog({
   description = "Search for a command to run...",
   children,
   className,
-  showCloseButton = false,
+  showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string
@@ -46,7 +46,7 @@ function CommandDialog({
     <Dialog {...props}>
       <DialogContent
         className={cn(
-          "top-[22%] translate-y-0 overflow-hidden p-0",
+          "top-[18%] translate-y-0 overflow-hidden rounded-xl border bg-popover p-0 shadow-2xl sm:max-w-2xl",
           className
         )}
         showCloseButton={showCloseButton}
@@ -68,7 +68,7 @@ function CommandInput({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div data-slot="command-input-wrapper" className="flex h-11 items-center gap-2 border-b px-3">
+    <div data-slot="command-input-wrapper" className="flex h-12 items-center gap-2 border-b bg-background px-4">
       <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
       <CommandPrimitive.Input
         data-slot="command-input"

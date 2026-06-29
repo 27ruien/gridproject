@@ -42,7 +42,7 @@ type AppStore = {
   updateIssue: (issueId: string, patch: Partial<Issue>) => Promise<Issue | null>;
   deleteIssue: (issueId: string) => Promise<boolean>;
   addIssueComment: (issueId: string, text: string) => Promise<boolean>;
-  importSchedule: (projectId: string, text: string) => Promise<number>;
+  importSchedule: (projectId: string, source: string | ScheduleImportSource) => Promise<number>;
   createTimeEntry: (input: Partial<TimeEntry> & { submit?: boolean }) => Promise<TimeEntry | null>;
   updateTimeEntry: (entryId: string, patch: Partial<TimeEntry>) => Promise<TimeEntry | null>;
   submitTimeEntry: (entryId: string) => Promise<boolean>;
@@ -59,6 +59,23 @@ type AppStore = {
   deleteUser: (userId: string) => Promise<boolean>;
   resetUserPassword: (userId: string, input: { newPassword: string; confirmNewPassword: string }) => Promise<boolean>;
   updateSettings: (patch: Partial<PlatformSettings>) => Promise<boolean>;
+};
+
+type ScheduleTask = {
+  model?: string;
+  name?: string;
+  owners?: string[];
+  startDate?: string;
+  dueDate?: string;
+  workdays?: number;
+  status?: string;
+  category?: string;
+  color?: string;
+};
+
+type ScheduleImportSource = {
+  tasks?: ScheduleTask[];
+  warnings?: string[];
 };
 
 const AppStoreContext = React.createContext<AppStore | null>(null);
@@ -394,9 +411,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const issue = normalizeIssue({
         ...input,
         id: `issue-${Date.now()}`,
-        code: `${getTemplateById(state.projects.find((project) => project.id === projectId)?.templateId).id === "agile" ? "AGL" : "WAT"}-${Math.floor(Math.random() * 700 + 200)}`,
+        code: input.code || nextTaskCode(),
         projectId,
         title: input.title || "未命名事项",
+        ownerLabel: input.ownerLabel || input.owner || "",
         creator: context.user?.name,
         creatorId: context.userId,
       });
@@ -462,13 +480,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState((previous) => ({ ...previous, issues: previous.issues.map((issue) => issue.id === issueId ? { ...issue, comments: [{ id: `comment-${Date.now()}`, actor: context.user?.name, text, at: new Date().toISOString() }, ...(issue.comments || [])] } : issue) }));
       return true;
     },
-    importSchedule: async (projectId, text) => {
+    importSchedule: async (projectId, source) => {
       const project = state.projects.find((item) => item.id === projectId);
       if (!canManageSchedule(context, project, state.projectMembers)) {
         toast.error("没有权限导入该项目排期");
         return 0;
       }
-      const rows = parseScheduleText(text, projectId, context.user);
+      const rows = scheduleIssuesFromSource(source, projectId, context.user);
       if (!rows.length) {
         toast.error("没有可导入的排期事项");
         return 0;
@@ -484,13 +502,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toast.success(`已导入 ${imported.length} 个排期事项`);
         return imported.length;
       }
-      const prefix = getTemplateById(project?.templateId).id === "agile" ? "AGL" : "WAT";
       const imported = rows.map((row, index) => normalizeIssue({
         ...row,
         id: `issue-${Date.now()}-${index}`,
-        code: `${prefix}-${Math.floor(Math.random() * 700 + 200)}`,
+        code: row.code || nextTaskCode(index),
         projectId,
         title: row.title || `导入任务 ${index + 1}`,
+        owner: row.owner || row.ownerLabel || "未分配",
+        ownerLabel: row.ownerLabel || row.owner || "",
         creator: context.user?.name,
         creatorId: context.userId,
       }));
@@ -821,6 +840,7 @@ function projectPayload(input: Partial<Project>) {
     name: input.name,
     code: input.code,
     templateId: input.templateId,
+    coverUrl: input.coverUrl,
     ownerId: input.ownerId,
     status: input.status,
     description: input.description,
@@ -841,11 +861,14 @@ function projectPayload(input: Partial<Project>) {
 
 function issuePayload(input: Partial<Issue>) {
   return {
+    code: input.code,
     title: input.title,
     type: input.type,
     status: input.status,
     priority: input.priority,
     ownerId: input.ownerId || null,
+    ownerLabel: input.ownerLabel || input.owner,
+    parentIssueId: input.parentIssueId || null,
     startDate: input.startDate,
     dueDate: input.dueDate,
     estimatedHours: input.estimatedHours,
@@ -869,6 +892,7 @@ function localProject(input: Partial<Project>, user: User): Project {
     organizationId: user.organizationId,
     name: input.name || "未命名项目",
     code: input.code || id.slice(-6).toUpperCase(),
+    coverUrl: input.coverUrl || "",
     templateId: template.id,
     ownerId: input.ownerId || user.id,
     owner: input.owner,
@@ -896,33 +920,102 @@ function localProject(input: Partial<Project>, user: User): Project {
   };
 }
 
-function parseScheduleText(text: string, projectId: string, user: User | null): Partial<Issue>[] {
+function scheduleIssuesFromSource(source: string | ScheduleImportSource, projectId: string, user: User | null): Partial<Issue>[] {
+  const tasks = typeof source === "string" ? scheduleTasksFromText(source, user) : (source.tasks || []);
+  return tasks.flatMap((task, index) => scheduleTaskToIssues(task, projectId, index));
+}
+
+function scheduleTasksFromText(text: string, user: User | null): ScheduleTask[] {
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .slice(0, 80)
-    .map((line, index) => {
+    .map((line) => {
       const cells = line.split(/\t|,/).map((cell) => cell.trim());
-      const [model, title, owner, startDate, dueDate] = cells.length >= 5 ? cells : ["Timeline", cells[0], user?.name || "", "", ""];
-      return {
-        title: title || `导入任务 ${index + 1}`,
-        type: /验收|交付/.test(title) ? "交付物" : "任务",
-        status: "未开始",
-        priority: index === 0 ? "P1" : "P2",
-        owner,
-        startDate,
-        dueDate,
-        description: `从 Timeline 导入：${line}`,
-        next: "确认排期并推进状态",
-        scheduleKey: `${projectId}-${index}-${title}`,
-        scheduleModel: model,
-        scheduleOwners: owner ? [owner] : [],
-        scheduleWorkdays: 1,
-        scheduleImportedAt: new Date().toISOString(),
-        scheduleSource: "gridtimeline",
-      };
+      const [model, name, owner, startDate, dueDate] = cells.length >= 5 ? cells : ["Timeline", cells[0], user?.name || "", "", ""];
+      return { model, name, owners: owner ? [owner] : [], startDate, dueDate, workdays: 1 };
     });
+}
+
+function scheduleTaskToIssues(task: ScheduleTask, projectId: string, index: number): Partial<Issue>[] {
+  const owners = normalizeScheduleOwners(task.owners);
+  const hasKivisense = !owners.length || owners.includes("Kivisense");
+  const stakeholderOwners = owners.filter((owner) => owner !== "Kivisense");
+  const base = {
+    title: task.name || `导入任务 ${index + 1}`,
+    status: mapScheduleStatus(task.status),
+    priority: Number(task.workdays || 0) >= 10 ? "P1" as const : "P2" as const,
+    startDate: task.startDate || "",
+    dueDate: task.dueDate || task.startDate || "",
+    estimatedHours: Math.max(1, Number(task.workdays || 1)) * 8,
+    actualHours: 0,
+    description: [
+      `从 Excel Timeline 导入：${task.model || "Timeline"}`,
+      `相关方：${owners.join("、") || "未标注"}`,
+      task.category ? `分类：${task.category}` : "",
+      task.color ? `颜色：${task.color}` : "",
+    ].filter(Boolean).join("\n"),
+    next: "确认排期并推进状态",
+    scheduleModel: task.model || "Timeline",
+    scheduleOwners: owners,
+    scheduleWorkdays: Number(task.workdays || 1),
+    scheduleImportedAt: new Date().toISOString(),
+    scheduleSource: "gridtimeline" as const,
+  };
+  const rows: Partial<Issue>[] = [];
+  if (hasKivisense) {
+    rows.push({
+      ...base,
+      code: nextTaskCode(index * 2),
+      type: inferScheduleIssueType(task, false),
+      owner: "Kivisense",
+      ownerLabel: "Kivisense",
+      scheduleKey: `${projectId}:${task.model || "Timeline"}:${task.name || index}:kivisense`,
+    });
+  }
+  stakeholderOwners.forEach((owner, ownerIndex) => {
+    rows.push({
+      ...base,
+      code: nextTaskCode(index * 2 + ownerIndex + 1),
+      type: "相关方事项",
+      owner,
+      ownerLabel: owner,
+      scheduleKey: `${projectId}:${task.model || "Timeline"}:${task.name || index}:${owner.toLowerCase()}`,
+    });
+  });
+  return rows;
+}
+
+function normalizeScheduleOwners(owners: unknown) {
+  const values = Array.isArray(owners) ? owners : String(owners || "").split(/[,，/+&、\s]+/);
+  return [...new Set(values.map((owner) => {
+    const text = String(owner || "").trim();
+    const normalized = text.toLowerCase();
+    if (["kivisense", "kv", "弥知科技", "我方"].includes(normalized)) return "Kivisense";
+    if (["brand", "brands", "client", "客户", "品牌方"].includes(normalized)) return "客户";
+    if (!text) return "";
+    return text;
+  }).filter(Boolean))];
+}
+
+function inferScheduleIssueType(task: ScheduleTask, stakeholder: boolean) {
+  if (stakeholder) return "相关方事项";
+  const text = `${task.model || ""} ${task.name || ""}`.toLowerCase();
+  if (/验收|uat|acceptance/.test(text)) return "验收项";
+  if (/交付|launch|release|上线|code/.test(text)) return "交付物";
+  return "任务";
+}
+
+function mapScheduleStatus(status?: string) {
+  const text = String(status || "").trim().toLowerCase();
+  if (["完成", "已完成", "done", "complete", "√"].includes(text)) return "已完成";
+  if (["进行中", "in progress", "doing"].includes(text)) return "进行中";
+  return "未开始";
+}
+
+function nextTaskCode(offset = 0) {
+  return `TASK-${String((Date.now() + offset) % 1000000).padStart(6, "0")}`;
 }
 
 function trashItem(type: TrashItem["type"], entity: { id: string }): TrashItem {

@@ -7,6 +7,8 @@ import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, pageEnvelope, pagination, parseDateOnly, toJsonObject } from "../../utils/dto.js";
 
 const scheduleFields = {
+  ownerLabel: z.string().optional(),
+  parentIssueId: z.string().optional().nullable(),
   scheduleKey: z.string().optional(),
   scheduleModel: z.string().optional(),
   scheduleOwners: z.array(z.string()).optional(),
@@ -60,9 +62,9 @@ export async function issueRoutes(app: FastifyInstance) {
     const parsed = issueCreateSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
-    const ownerId = input.ownerId || context.userId;
-    await assertActiveProjectMember(app, context.organizationId, project.id, ownerId);
-    const code = (input.code || `ISS-${Date.now().toString().slice(-5)}`).trim().toUpperCase();
+    const ownerId = input.ownerId || null;
+    if (ownerId) await assertActiveProjectMember(app, context.organizationId, project.id, ownerId);
+    const code = (input.code || `TASK-${Date.now().toString().slice(-5)}`).trim().toUpperCase();
     await assertIssueCodeAvailable(app, project.id, code);
     const issue = await app.prisma.$transaction(async (tx) => {
       const created = await tx.issue.create({
@@ -246,6 +248,8 @@ function hasSchedulePatch(input: any) {
 
 function scheduleDataForInput(input: any) {
   return {
+    ...(input.ownerLabel !== undefined ? { ownerLabel: input.ownerLabel } : {}),
+    ...(input.parentIssueId !== undefined ? { parentIssueId: input.parentIssueId || "" } : {}),
     ...(input.scheduleKey !== undefined ? { scheduleKey: input.scheduleKey } : {}),
     ...(input.scheduleModel !== undefined ? { scheduleModel: input.scheduleModel } : {}),
     ...(input.scheduleOwners !== undefined ? { scheduleOwners: input.scheduleOwners } : {}),

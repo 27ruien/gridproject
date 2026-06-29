@@ -4,11 +4,6 @@ import { getTemplateById } from "../domain/template.js";
 import { getNextStatus } from "../domain/workflow.js";
 import { addDays, formatDate } from "./projectService.js";
 
-const PREFIX_BY_TEMPLATE = {
-  agile: "AGL",
-  waterfall: "WAT",
-};
-
 export const issueService = {
   normalize(issue) {
     return normalizeIssue(issue);
@@ -19,13 +14,17 @@ export const issueService = {
 
     return normalizeIssue({
       id: `issue-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      code: `${PREFIX_BY_TEMPLATE[template.id] || "ISS"}-${Math.floor(Math.random() * 800 + 200)}`,
+      code: input.code || nextTaskCode(),
       projectId: project.id,
       type: input.type || template.defaultIssueType,
       title: input.title.trim(),
       status: input.status || template.workflow[0],
       owner: input.owner || project.owner,
+      ownerLabel: input.ownerLabel || input.owner || "",
+      ownerId: input.ownerId || null,
+      parentIssueId: input.parentIssueId || null,
       creator: input.creator || project.owner,
+      creatorId: input.creatorId || null,
       priority: input.priority || "P2",
       startDate: input.startDate || formatDate(new Date()),
       dueDate: input.dueDate || formatDate(addDays(new Date(), 7)),
@@ -93,9 +92,8 @@ export const issueService = {
       };
     }
 
-    parsed.tasks.forEach((task) => {
-      const input = createScheduleIssueInput(task, project, template);
-      const existing = behavior === "merge" ? findExistingScheduleIssue(existingIssues, project.id, task) : null;
+    parsed.tasks.flatMap((task, index) => splitScheduleIssueInputs(task, project, template, index)).forEach((input) => {
+      const existing = behavior === "merge" ? findExistingScheduleIssue(existingIssues, project.id, input) : null;
 
       if (existing) {
         if (wasEditedAfterImport(existing)) {
@@ -164,7 +162,7 @@ export const issueService = {
 };
 
 function findExistingScheduleIssue(issues, projectId, task) {
-  const scheduleKey = buildScheduleKey(projectId, task);
+  const scheduleKey = task.scheduleKey || buildScheduleKey(projectId, task);
   return issues.find((issue) => isTimelineIssue(issue) && issue.scheduleKey === scheduleKey);
 }
 
@@ -186,4 +184,52 @@ function createActivity(type, text, at = new Date().toISOString(), actor = "本�
     at,
     actor,
   };
+}
+
+function splitScheduleIssueInputs(task, project, template, index) {
+  const owners = normalizeScheduleOwners(task.owners);
+  const hasKivisense = !owners.length || owners.includes("Kivisense");
+  const stakeholderOwners = owners.filter((owner) => owner !== "Kivisense");
+  const base = createScheduleIssueInput({ ...task, owners }, project, template);
+  const rows = [];
+
+  if (hasKivisense) {
+    rows.push({
+      ...base,
+      code: nextTaskCode(index * 2),
+      owner: project.owner || "Kivisense",
+      ownerLabel: "Kivisense",
+      scheduleOwners: owners,
+      scheduleKey: `${base.scheduleKey}:kivisense`,
+    });
+  }
+
+  stakeholderOwners.forEach((owner, ownerIndex) => {
+    rows.push({
+      ...base,
+      code: nextTaskCode(index * 2 + ownerIndex + 1),
+      type: "相关方事项",
+      owner,
+      ownerLabel: owner,
+      scheduleOwners: owners,
+      scheduleKey: `${base.scheduleKey}:${String(owner).toLowerCase()}`,
+    });
+  });
+
+  return rows;
+}
+
+function normalizeScheduleOwners(owners) {
+  const values = Array.isArray(owners) ? owners : String(owners || "").split(/[,，/+&、\s]+/);
+  return [...new Set(values.map((owner) => {
+    const text = String(owner || "").trim();
+    const normalized = text.toLowerCase();
+    if (["kivisense", "kv", "弥知科技", "我方"].includes(normalized)) return "Kivisense";
+    if (["brand", "brands", "client", "客户", "品牌方"].includes(normalized)) return "客户";
+    return text;
+  }).filter(Boolean))];
+}
+
+function nextTaskCode(offset = 0) {
+  return `TASK-${String((Date.now() + offset) % 1000000).padStart(6, "0")}`;
 }

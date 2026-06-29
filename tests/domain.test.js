@@ -18,8 +18,8 @@ const waterfall = getTemplateById("waterfall");
 
 assert.equal(PROJECT_TEMPLATES.length, 2);
 assert.deepEqual(agile.workflow, ISSUE_STATUSES);
-assert.deepEqual(agile.views, ["概览", "工作项", "里程碑", "交付与验收", "风险"]);
-assert.deepEqual(waterfall.views, ["概览", "工作项", "里程碑", "交付与验收", "风险"]);
+assert.deepEqual(agile.views, ["概览", "工作项", "相关方事项", "交付与验收", "风险", "项目设置"]);
+assert.deepEqual(waterfall.views, ["概览", "工作项", "相关方事项", "交付与验收", "风险", "项目设置"]);
 assert.ok(!waterfall.views.includes("阶段计划"));
 assert.ok(!waterfall.views.includes("甘特图"));
 assert.ok(!waterfall.views.includes("验收"));
@@ -55,12 +55,13 @@ assert.equal(parsedSchedule.tasks[1].status, "未完成");
 assert.equal(parseScheduleText("事项名称，Kivisense，开始日期 2026-06-01，周期 5天").tasks[0].dueDate, "2026-06-05");
 
 const scheduleImport = issueService.importSchedule(scheduleText, project, []);
-assert.equal(scheduleImport.created.length, 2);
+assert.equal(scheduleImport.created.length, 3);
 assert.equal(scheduleImport.created[0].scheduleSource, "gridtimeline");
 assert.equal(scheduleImport.created[0].estimatedHours, 32);
+assert.equal(scheduleImport.created[2].type, "相关方事项");
 const scheduleMerge = issueService.importSchedule(scheduleText, project, scheduleImport.created);
 assert.equal(scheduleMerge.created.length, 0);
-assert.equal(scheduleMerge.updated.length, 2);
+assert.equal(scheduleMerge.updated.length, 3);
 const delayedScheduleIssue = {
   ...scheduleImport.created[0],
   startDate: "2026-06-10",
@@ -80,6 +81,7 @@ const issue = issueService.createIssue({
 }, project);
 
 assert.equal(issue.projectId, project.id);
+assert.ok(issue.code.startsWith("TASK-"));
 assert.equal(issue.status, "未开始");
 assert.equal(issue.creator, "周程");
 assert.equal(issue.startDate, "2026-05-11");

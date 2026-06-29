@@ -39,9 +39,9 @@ export async function milestoneRoutes(app: FastifyInstance) {
   app.post("/projects/:projectId/milestones", async (request, reply) => {
     const context = requireAuth(request);
     const project = await requireVisibleProject(app, context, (request.params as { projectId: string }).projectId);
-    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目相关方事项。");
     const parsed = milestoneCreateSchema.safeParse(request.body);
-    if (!parsed.success) throw badRequest("里程碑参数不正确。", parsed.error.flatten());
+    if (!parsed.success) throw badRequest("相关方事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
     const row = await app.prisma.milestone.create({
       data: {
@@ -64,9 +64,9 @@ export async function milestoneRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const current = await requireMilestone(app, context.organizationId, (request.params as { milestoneId: string }).milestoneId);
     const project = await requireVisibleProject(app, context, current.projectId);
-    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目相关方事项。");
     const parsed = milestonePatchSchema.safeParse(request.body);
-    if (!parsed.success) throw badRequest("里程碑参数不正确。", parsed.error.flatten());
+    if (!parsed.success) throw badRequest("相关方事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
     const nextStatus = input.status ?? current.status;
     const row = await app.prisma.milestone.update({
@@ -88,7 +88,7 @@ export async function milestoneRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const current = await requireMilestone(app, context.organizationId, (request.params as { milestoneId: string }).milestoneId);
     const project = await requireVisibleProject(app, context, current.projectId);
-    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目相关方事项。");
     const row = await app.prisma.milestone.update({
       where: { id: current.id },
       data: { deletedAt: new Date(), deletedById: context.userId },
@@ -101,7 +101,7 @@ export async function milestoneRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const current = await requireMilestone(app, context.organizationId, (request.params as { milestoneId: string }).milestoneId, true);
     const project = await requireVisibleProject(app, context, current.projectId);
-    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目相关方事项。");
     const row = await app.prisma.milestone.update({
       where: { id: current.id },
       data: { deletedAt: null, deletedById: null },
@@ -115,7 +115,7 @@ async function requireMilestone(app: FastifyInstance, organizationId: string, id
   const row = await app.prisma.milestone.findFirst({
     where: { id, organizationId, ...(includeDeleted ? {} : { deletedAt: null }) },
   });
-  if (!row) throw notFound("里程碑不存在。");
+  if (!row) throw notFound("相关方事项不存在。");
   return row;
 }
 

@@ -14,6 +14,7 @@ const projectSchema = z.object({
   name: z.string().min(1),
   code: z.string().min(1).optional(),
   templateId: z.string().optional(),
+  coverUrl: z.string().max(2_500_000).optional().nullable(),
   executionTeams: z.array(executionTeamSchema).max(4).optional(),
   description: z.string().optional(),
   status: projectStatusSchema.optional(),
@@ -101,6 +102,7 @@ export async function projectRoutes(app: FastifyInstance) {
           releaseDate: parseDateOnly(input.releaseDate),
           config: {
             templateId: input.templateId || "agile",
+            coverUrl: input.coverUrl || "",
             executionTeams: input.executionTeams || [],
             ...roleConfig(input),
           },
@@ -184,6 +186,7 @@ export async function projectRoutes(app: FastifyInstance) {
             config: {
               ...currentConfig,
               ...(input.templateId !== undefined ? { templateId: input.templateId || "agile" } : {}),
+              ...(input.coverUrl !== undefined ? { coverUrl: input.coverUrl || "" } : {}),
               ...(input.executionTeams !== undefined ? { executionTeams: input.executionTeams } : {}),
               ...roleConfig(input),
             },

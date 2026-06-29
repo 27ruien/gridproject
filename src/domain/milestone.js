@@ -25,7 +25,7 @@ export function normalizeMilestones(milestones, template, startDate) {
     const templateMilestone = template.milestones[index] || {};
     return normalizeMilestone({
       id: milestone.id || `${template.id}-milestone-${index + 1}`,
-      name: milestone.name || templateMilestone.name || `里程碑 ${index + 1}`,
+      name: milestone.name || templateMilestone.name || `相关方事项 ${index + 1}`,
       window: milestone.window || templateMilestone.window || "",
       focus: milestone.focus || templateMilestone.focus || "明确阶段目标和交付口径",
       dueDate: milestone.dueDate || (startDate ? addDays(startDate, (index + 1) * 7) : ""),
