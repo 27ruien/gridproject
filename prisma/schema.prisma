@@ -23,6 +23,12 @@ enum ProjectMemberStatus {
   INACTIVE
 }
 
+enum ProjectMemberRole {
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
 enum TimeEntryStatus {
   DRAFT
   SUBMITTED
@@ -130,6 +136,7 @@ model ProjectMember {
   projectId      String
   userId         String
   status         ProjectMemberStatus @default(ACTIVE)
+  role           ProjectMemberRole   @default(MEMBER)
   joinedAt       DateTime            @default(now()) @db.Timestamptz(3)
   createdAt      DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
@@ -140,6 +147,7 @@ model ProjectMember {
 
   @@unique([projectId, userId])
   @@index([organizationId, status])
+  @@index([organizationId, role])
   @@map("project_members")
 }
 

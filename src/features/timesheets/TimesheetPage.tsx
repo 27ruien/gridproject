@@ -37,6 +37,7 @@ export function TimesheetPage() {
   const submittedDates = new Set(monthEntries.filter((entry) => submittedStatuses.has(normalizeTimeEntryStatus(entry.status))).map((entry) => entry.workDate));
   const missingWorkdays = monthWorkdays(monthKey).filter((date) => date <= today && !submittedDates.has(date));
   const visibleMissingWorkdays = missingExpanded ? missingWorkdays : missingWorkdays.slice(0, 10);
+  const canCreateAnyTimeEntry = store.state.projects.some((project) => store.getProjectPermissions(project.id).canCreateTimeEntries);
 
   function shiftDay(offset: number) {
     setSelectedDate(formatDate(addDays(parseISO(selectedDateValue), offset)));
@@ -63,7 +64,7 @@ export function TimesheetPage() {
         eyebrow="Timesheet"
         title="工时填报"
         description="按日填写自己的项目工时；草稿不进入成本统计，提交后等待项目所有人或管理员审批。"
-        actions={<Button onClick={() => setCreateOpen(true)}><CalendarPlus className="h-4 w-4" />新建工时</Button>}
+        actions={canCreateAnyTimeEntry ? <Button onClick={() => setCreateOpen(true)}><CalendarPlus className="h-4 w-4" />新建工时</Button> : null}
       />
       <section className="mx-4 mt-4 rounded-md border bg-card px-4 py-3 md:mx-6">
         <div className="flex min-w-0 items-center gap-2">
@@ -72,7 +73,7 @@ export function TimesheetPage() {
           </div>
           <div className={`flex min-w-0 flex-1 gap-2 ${missingExpanded ? "flex-wrap" : "overflow-hidden"}`}>
             {visibleMissingWorkdays.map((date) => (
-              <Button key={date} type="button" variant="outline" size="xs" className="shrink-0" onClick={() => createForDate(date)}>
+              <Button key={date} type="button" variant="outline" size="xs" className="shrink-0" disabled={!canCreateAnyTimeEntry} onClick={() => createForDate(date)}>
                 {format(parseISO(date), "M-d")}
               </Button>
             ))}
@@ -125,7 +126,7 @@ export function TimesheetPage() {
             ))}
             {!dayEntries.length ? (
               <div className="p-4">
-                <EmptyState title="当天暂无工时" description="点击新建工时，为选中的日期补充项目记录。" action="新建工时" onAction={() => setCreateOpen(true)} />
+                <EmptyState title="当天暂无工时" description="点击新建工时，为选中的日期补充项目记录。" action={canCreateAnyTimeEntry ? "新建工时" : undefined} onAction={canCreateAnyTimeEntry ? () => setCreateOpen(true) : undefined} />
               </div>
             ) : null}
           </div>

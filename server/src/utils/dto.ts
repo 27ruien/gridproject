@@ -90,6 +90,7 @@ export function projectMemberDto(member: any) {
   const { user, ...safeMember } = member;
   return {
     ...safeMember,
+    role: ["MANAGER", "MEMBER", "VIEWER"].includes(String(member.role)) ? member.role : "MEMBER",
     user: user ? minimalUserDto(user) : undefined,
     joinedAt: toIsoDateTime(member.joinedAt),
     createdAt: toIsoDateTime(member.createdAt),

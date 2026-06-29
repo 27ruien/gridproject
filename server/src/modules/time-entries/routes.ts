@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { TimeEntryRepository } from "../../repositories/timeEntries.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { canApproveTimeEntry, canDeleteTimeEntry, canEditTimeEntry, canRejectTimeEntry, canSubmitTimeEntry, canViewProjectWorkspace, canViewTimeEntry } from "../../policies/access.js";
+import { canApproveTimeEntry, canCreateOwnTimeEntry, canDeleteTimeEntry, canEditTimeEntry, canRejectTimeEntry, canSubmitTimeEntry, canViewProjectWorkspace, canViewTimeEntry } from "../../policies/access.js";
 import { assertDailyHoursLimit, withDailyTimeEntryLock } from "../../services/timeEntryConsistency.js";
 import { badRequest, forbidden, notFound, validationError } from "../../utils/errors.js";
 import { pageEnvelope, pagination, parseDateOnly, timeEntryDto } from "../../utils/dto.js";
@@ -54,21 +54,17 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       } : {}),
     };
 
-    const projectAccessWhere = {
+    const manageableProjectWhere = {
       organizationId: context.organizationId,
       deletedAt: null,
       OR: [
         { ownerId: context.userId },
-        { createdById: context.userId },
-        { members: { some: { userId: context.userId, status: "ACTIVE" } } },
+        { members: { some: { userId: context.userId, status: "ACTIVE", role: "MANAGER" } } },
       ],
     };
 
     if (context.isAdmin) {
-      where.OR = [
-        { userId: context.userId },
-        { status: { not: "DRAFT" } },
-      ];
+      delete where.OR;
     } else if (query.scope === "owned") {
       const repository = new TimeEntryRepository(app.prisma);
       const projectIds = await repository.visibleProjectIds(context.organizationId, context.userId);
@@ -82,7 +78,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     } else if (!context.isAdmin) {
       where.OR = [
         { userId: context.userId },
-        { status: { not: "DRAFT" }, project: projectAccessWhere },
+        { status: { not: "DRAFT" }, project: manageableProjectWhere },
       ];
     }
 
@@ -111,7 +107,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       include: { members: true },
     });
     if (!canViewProjectWorkspace(context, project, project?.members || [])) throw notFound("项目不存在。");
-    await assertActiveProjectMember(app, context.organizationId, project!.id, userId);
+    if (!canCreateOwnTimeEntry(context, project, project?.members || [], userId)) throw forbidden("没有权限填报该项目工时。");
     if (input.issueId) await assertIssueBelongsToProject(app, context.organizationId, project!.id, input.issueId);
     const workDate = parseRequiredWorkDate(input.workDate);
 
@@ -196,7 +192,6 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     if (!context.isAdmin) throw forbidden("只有 ADMIN 可以移动工时所属项目。");
     const entry = await getEntry(app, context, (request.params as { id: string }).id);
-    if (entry.userId !== context.userId) throw forbidden("只能调整自己的工时。");
     const parsed = timeEntryMoveSchema.safeParse(request.body);
     if (!parsed.success) throw validationError("移动工时参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -309,7 +304,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
 
   app.post("/:id/approve", async (request) => {
     const context = requireAuth(request);
-    const entry = await getEntry(app, context, (request.params as { id: string }).id);
+    const entry = await getReviewEntry(app, context, (request.params as { id: string }).id);
     if (!canApproveTimeEntry(context, entry, entry.project)) throw forbidden("没有权限审批该工时。");
     const parsed = timeEntryReviewSchema.safeParse(request.body || {});
     if (!parsed.success) throw validationError("审批参数不正确。", parsed.error.flatten());
@@ -338,7 +333,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
 
   app.post("/:id/reject", async (request) => {
     const context = requireAuth(request);
-    const entry = await getEntry(app, context, (request.params as { id: string }).id);
+    const entry = await getReviewEntry(app, context, (request.params as { id: string }).id);
     if (!canRejectTimeEntry(context, entry, entry.project)) throw forbidden("没有权限驳回该工时。");
     const reason = (request.body as any)?.correctionReason || "";
     const updated = await app.prisma.$transaction(async (tx) => {
@@ -374,11 +369,22 @@ async function getEntry(app: FastifyInstance, context: any, id: string) {
   return entry;
 }
 
+async function getReviewEntry(app: FastifyInstance, context: any, id: string) {
+  const entry = await app.prisma.timeEntry.findFirst({
+    where: { id, organizationId: context.organizationId, deletedAt: null },
+    include: { project: { include: { members: true } }, user: true, issue: true },
+  });
+  if (!entry) throw notFound("工时不存在。");
+  if (!canViewProjectWorkspace(context, entry.project, entry.project.members || [])) throw notFound("工时不存在。");
+  return entry;
+}
+
 async function assertActiveProjectMember(app: FastifyInstance, organizationId: string, projectId: string, userId: string) {
   const member = await app.prisma.projectMember.findFirst({
     where: { organizationId, projectId, userId, status: "ACTIVE" },
   });
   if (!member) throw forbidden("工时所属用户必须是项目 ACTIVE 成员。");
+  if ((member as any).role === "VIEWER") throw forbidden("只读成员不能填报项目工时。");
 }
 
 async function assertIssueBelongsToProject(app: FastifyInstance, organizationId: string, projectId: string, issueId: string) {

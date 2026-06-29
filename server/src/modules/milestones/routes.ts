@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { audit, requireManagedProject, requireVisibleProject } from "../shared.js";
-import { badRequest, notFound } from "../../utils/errors.js";
+import { canManageMilestones } from "../../policies/access.js";
+import { audit, requireVisibleProject } from "../shared.js";
+import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { milestoneDto, parseDateOnly } from "../../utils/dto.js";
 
 const milestoneBaseSchema = z.object({
@@ -37,7 +38,8 @@ export async function milestoneRoutes(app: FastifyInstance) {
 
   app.post("/projects/:projectId/milestones", async (request, reply) => {
     const context = requireAuth(request);
-    const project = await requireManagedProject(app, context, (request.params as { projectId: string }).projectId);
+    const project = await requireVisibleProject(app, context, (request.params as { projectId: string }).projectId);
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
     const parsed = milestoneCreateSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("里程碑参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -61,7 +63,8 @@ export async function milestoneRoutes(app: FastifyInstance) {
   app.patch("/milestones/:milestoneId", async (request) => {
     const context = requireAuth(request);
     const current = await requireMilestone(app, context.organizationId, (request.params as { milestoneId: string }).milestoneId);
-    await requireManagedProject(app, context, current.projectId);
+    const project = await requireVisibleProject(app, context, current.projectId);
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
     const parsed = milestonePatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("里程碑参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -84,7 +87,8 @@ export async function milestoneRoutes(app: FastifyInstance) {
   app.delete("/milestones/:milestoneId", async (request) => {
     const context = requireAuth(request);
     const current = await requireMilestone(app, context.organizationId, (request.params as { milestoneId: string }).milestoneId);
-    await requireManagedProject(app, context, current.projectId);
+    const project = await requireVisibleProject(app, context, current.projectId);
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
     const row = await app.prisma.milestone.update({
       where: { id: current.id },
       data: { deletedAt: new Date(), deletedById: context.userId },
@@ -96,7 +100,8 @@ export async function milestoneRoutes(app: FastifyInstance) {
   app.post("/milestones/:milestoneId/restore", async (request) => {
     const context = requireAuth(request);
     const current = await requireMilestone(app, context.organizationId, (request.params as { milestoneId: string }).milestoneId, true);
-    await requireManagedProject(app, context, current.projectId);
+    const project = await requireVisibleProject(app, context, current.projectId);
+    if (!canManageMilestones(context, project, project.members || [])) throw forbidden("没有权限管理该项目里程碑。");
     const row = await app.prisma.milestone.update({
       where: { id: current.id },
       data: { deletedAt: null, deletedById: null },

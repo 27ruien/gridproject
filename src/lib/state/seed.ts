@@ -88,13 +88,13 @@ const timeEntries: TimeEntry[] = [
 ];
 
 const projectMembers: ProjectMember[] = [
-  { id: "pm-crm-linxia", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-linxia", status: "ACTIVE", createdAt: "2026-05-01T00:00:00.000Z" },
-  { id: "pm-crm-zhoucheng", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-zhoucheng", status: "ACTIVE", createdAt: "2026-05-01T00:00:00.000Z" },
-  { id: "pm-crm-hanyue", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-hanyue", status: "ACTIVE", createdAt: "2026-05-01T00:00:00.000Z" },
-  { id: "pm-mall-hanyue", organizationId: ORGANIZATION_ID, projectId: "mall", userId: "user-hanyue", status: "ACTIVE", createdAt: "2026-04-28T00:00:00.000Z" },
-  { id: "pm-mall-chenche", organizationId: ORGANIZATION_ID, projectId: "mall", userId: "user-chenche", status: "ACTIVE", createdAt: "2026-04-28T00:00:00.000Z" },
-  { id: "pm-ai-zhoucheng", organizationId: ORGANIZATION_ID, projectId: "ai", userId: "user-zhoucheng", status: "ACTIVE", createdAt: "2026-05-06T00:00:00.000Z" },
-  { id: "pm-ai-linxia", organizationId: ORGANIZATION_ID, projectId: "ai", userId: "user-linxia", status: "ACTIVE", createdAt: "2026-05-06T00:00:00.000Z" },
+  { id: "pm-crm-linxia", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-linxia", status: "ACTIVE", role: "MEMBER", createdAt: "2026-05-01T00:00:00.000Z" },
+  { id: "pm-crm-zhoucheng", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-zhoucheng", status: "ACTIVE", role: "MANAGER", createdAt: "2026-05-01T00:00:00.000Z" },
+  { id: "pm-crm-hanyue", organizationId: ORGANIZATION_ID, projectId: "crm", userId: "user-hanyue", status: "ACTIVE", role: "MEMBER", createdAt: "2026-05-01T00:00:00.000Z" },
+  { id: "pm-mall-hanyue", organizationId: ORGANIZATION_ID, projectId: "mall", userId: "user-hanyue", status: "ACTIVE", role: "MEMBER", createdAt: "2026-04-28T00:00:00.000Z" },
+  { id: "pm-mall-chenche", organizationId: ORGANIZATION_ID, projectId: "mall", userId: "user-chenche", status: "ACTIVE", role: "VIEWER", createdAt: "2026-04-28T00:00:00.000Z" },
+  { id: "pm-ai-zhoucheng", organizationId: ORGANIZATION_ID, projectId: "ai", userId: "user-zhoucheng", status: "ACTIVE", role: "MEMBER", createdAt: "2026-05-06T00:00:00.000Z" },
+  { id: "pm-ai-linxia", organizationId: ORGANIZATION_ID, projectId: "ai", userId: "user-linxia", status: "ACTIVE", role: "MEMBER", createdAt: "2026-05-06T00:00:00.000Z" },
 ];
 
 const costRecords: CostRecord[] = [

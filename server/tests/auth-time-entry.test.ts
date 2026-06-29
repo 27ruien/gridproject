@@ -16,6 +16,8 @@ async function fixture() {
   const admin = await prisma.user.create({ data: { organizationId: organization.id, name: "Admin", email: `admin-${suffix}@grid.test`, passwordHash, role: "ADMIN", status: "ACTIVE" } });
   const owner = await prisma.user.create({ data: { organizationId: organization.id, name: "Owner", email: `owner-${suffix}@grid.test`, passwordHash, role: "MEMBER", status: "ACTIVE" } });
   const member = await prisma.user.create({ data: { organizationId: organization.id, name: "Member", email: `member-${suffix}@grid.test`, passwordHash, role: "MEMBER", status: "ACTIVE" } });
+  const manager = await prisma.user.create({ data: { organizationId: organization.id, name: "Manager", email: `manager-${suffix}@grid.test`, passwordHash, role: "MEMBER", status: "ACTIVE" } });
+  const viewer = await prisma.user.create({ data: { organizationId: organization.id, name: "Viewer", email: `viewer-${suffix}@grid.test`, passwordHash, role: "MEMBER", status: "ACTIVE" } });
   const otherMember = await prisma.user.create({ data: { organizationId: organization.id, name: "Other", email: `other-${suffix}@grid.test`, passwordHash, role: "MEMBER", status: "ACTIVE" } });
   const outsideOwner = await prisma.user.create({ data: { organizationId: otherOrganization.id, name: "Outside", email: `outside-${suffix}@grid.test`, passwordHash, role: "MEMBER", status: "ACTIVE" } });
   const project = await prisma.project.create({ data: { organizationId: organization.id, name: "Owned Project", code: `OWN${suffix.slice(-5)}`, status: "进行中", ownerId: owner.id, createdById: admin.id } });
@@ -24,13 +26,15 @@ async function fixture() {
   await prisma.projectMember.createMany({ data: [
     { organizationId: organization.id, projectId: project.id, userId: owner.id, status: "ACTIVE" },
     { organizationId: organization.id, projectId: project.id, userId: member.id, status: "ACTIVE" },
+    { organizationId: organization.id, projectId: project.id, userId: manager.id, status: "ACTIVE", role: "MANAGER" },
+    { organizationId: organization.id, projectId: project.id, userId: viewer.id, status: "ACTIVE", role: "VIEWER" },
     { organizationId: organization.id, projectId: otherProject.id, userId: owner.id, status: "ACTIVE" },
     { organizationId: organization.id, projectId: otherProject.id, userId: otherMember.id, status: "ACTIVE" },
     { organizationId: otherOrganization.id, projectId: outsideProject.id, userId: outsideOwner.id, status: "ACTIVE" },
   ] });
   const issue = await prisma.issue.create({ data: { organizationId: organization.id, projectId: project.id, code: `ISS${suffix.slice(-5)}`, title: "Issue", type: "任务", status: "未开始" } });
   const otherIssue = await prisma.issue.create({ data: { organizationId: organization.id, projectId: otherProject.id, code: `OIS${suffix.slice(-5)}`, title: "Other Issue", type: "任务", status: "未开始" } });
-  return { prisma, suffix, password, organization, admin, owner, member, otherMember, project, otherProject, outsideProject, issue, otherIssue };
+  return { prisma, suffix, password, organization, admin, owner, member, manager, viewer, otherMember, project, otherProject, outsideProject, issue, otherIssue };
 }
 
 async function login(app: any, email: string, password: string) {
@@ -295,24 +299,24 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
 
     const otherProjectEntry = await data.prisma.timeEntry.create({ data: { organizationId: data.organization.id, projectId: data.otherProject.id, issueId: data.otherIssue.id, userId: data.otherMember.id, reporterId: data.otherMember.id, workDate: new Date("2026-06-21T00:00:00.000Z"), hours: 1, status: "SUBMITTED" } });
     const ownerApproveOtherProject = await app.inject({ method: "POST", url: `/api/time-entries/${otherProjectEntry.id}/approve`, headers: { cookie: ownerCookie } });
-    assert.equal(ownerApproveOtherProject.statusCode, 404);
+    assert.equal(ownerApproveOtherProject.statusCode, 403);
 
     const adminEditOtherNoReason = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2 } });
-    assert.equal(adminEditOtherNoReason.statusCode, 403);
+    assert.equal(adminEditOtherNoReason.statusCode, 400);
     const adminEditOther = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { hours: 2, correctionReason: "fix wrong hours" } });
-    assert.equal(adminEditOther.statusCode, 403);
+    assert.equal(adminEditOther.statusCode, 200, adminEditOther.body);
     const adminPatchProject = await app.inject({ method: "PATCH", url: `/api/time-entries/${otherEntry.id}`, headers: { cookie: adminCookie }, payload: { projectId: data.otherProject.id, correctionReason: "move" } });
-    assert.equal(adminPatchProject.statusCode, 403);
+    assert.equal(adminPatchProject.statusCode, 422);
     const adminMoveNoReason = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id } });
-    assert.equal(adminMoveNoReason.statusCode, 403);
+    assert.equal(adminMoveNoReason.statusCode, 422);
     const adminMoveNotMember = await app.inject({ method: "POST", url: `/api/time-entries/${entry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, correctionReason: "member is not in target project" } });
     assert.equal(adminMoveNotMember.statusCode, 403);
     const adminMoveCrossOrg = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.outsideProject.id, correctionReason: "cross org" } });
-    assert.equal(adminMoveCrossOrg.statusCode, 403);
+    assert.equal(adminMoveCrossOrg.statusCode, 404);
     const adminMoveWrongIssue = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.issue.id, correctionReason: "wrong issue" } });
-    assert.equal(adminMoveWrongIssue.statusCode, 403);
+    assert.equal(adminMoveWrongIssue.statusCode, 400);
     const adminMove = await app.inject({ method: "POST", url: `/api/time-entries/${otherEntry.id}/move`, headers: { cookie: adminCookie }, payload: { targetProjectId: data.otherProject.id, targetIssueId: data.otherIssue.id, correctionReason: "move to correct project" } });
-    assert.equal(adminMove.statusCode, 403);
+    assert.equal(adminMove.statusCode, 200, adminMove.body);
 
     const crossOrg = await app.inject({ method: "POST", url: "/api/time-entries", headers: { cookie: memberCookie }, payload: { projectId: data.outsideProject.id, workDate: "2026-06-22", hours: 1 } });
     assert.equal(crossOrg.statusCode, 404);
@@ -337,6 +341,229 @@ test("time entry permissions, status transitions and validation", { skip: skipRe
     ]);
     assert.equal(concurrentEdit.filter((response) => response.statusCode === 200).length, 1);
     assert.equal(concurrentEdit.filter((response) => response.statusCode === 400).length, 1);
+  } finally {
+    await app.close();
+    await data.prisma.$disconnect();
+  }
+});
+
+test("project member roles enforce project permissions and audit role changes", { skip: skipReason }, async () => {
+  const data = await fixture();
+  const app = await buildApp(testServerConfig());
+  try {
+    const adminCookie = await login(app, data.admin.email, data.password);
+    const ownerCookie = await login(app, data.owner.email, data.password);
+    const managerCookie = await login(app, data.manager.email, data.password);
+    const memberCookie = await login(app, data.member.email, data.password);
+    const viewerCookie = await login(app, data.viewer.email, data.password);
+
+    const defaultMember = await data.prisma.projectMember.findFirstOrThrow({ where: { projectId: data.project.id, userId: data.member.id } });
+    assert.equal(defaultMember.role, "MEMBER");
+
+    const adminProjectUpdate = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.otherProject.id}`,
+      headers: { cookie: adminCookie },
+      payload: { status: "测试阶段" },
+    });
+    assert.equal(adminProjectUpdate.statusCode, 200, adminProjectUpdate.body);
+
+    const viewerMember = await data.prisma.projectMember.findFirstOrThrow({ where: { projectId: data.project.id, userId: data.viewer.id } });
+    const ownerRoleUpdate = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.project.id}/members/${viewerMember.id}`,
+      headers: { cookie: ownerCookie },
+      payload: { role: "MEMBER" },
+    });
+    assert.equal(ownerRoleUpdate.statusCode, 200, ownerRoleUpdate.body);
+    assert.equal(ownerRoleUpdate.json().member.role, "MEMBER");
+    const roleAudit = await data.prisma.auditLog.findFirst({
+      where: { action: "project_member.role_update", entityId: viewerMember.id },
+      orderBy: { createdAt: "desc" },
+    });
+    assert.equal((roleAudit?.data as any).projectId, data.project.id);
+    assert.equal((roleAudit?.data as any).userId, data.viewer.id);
+    assert.equal((roleAudit?.data as any).oldRole, "VIEWER");
+    assert.equal((roleAudit?.data as any).newRole, "MEMBER");
+
+    const ownerRoleRestore = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.project.id}/members/${viewerMember.id}`,
+      headers: { cookie: ownerCookie },
+      payload: { role: "VIEWER" },
+    });
+    assert.equal(ownerRoleRestore.statusCode, 200, ownerRoleRestore.body);
+
+    const ownerMember = await data.prisma.projectMember.findFirstOrThrow({ where: { projectId: data.project.id, userId: data.owner.id } });
+    const ownerRoleMutation = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.project.id}/members/${ownerMember.id}`,
+      headers: { cookie: ownerCookie },
+      payload: { role: "MANAGER" },
+    });
+    assert.equal(ownerRoleMutation.statusCode, 400);
+
+    const managerRoleUpdate = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${data.project.id}/members/${viewerMember.id}`,
+      headers: { cookie: managerCookie },
+      payload: { role: "MEMBER" },
+    });
+    assert.equal(managerRoleUpdate.statusCode, 403);
+
+    const managerIssueCreate = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/issues`,
+      headers: { cookie: managerCookie },
+      payload: { code: `MGR${data.suffix.slice(-5)}`, title: "Manager issue", ownerId: data.manager.id, status: "未开始" },
+    });
+    assert.equal(managerIssueCreate.statusCode, 201, managerIssueCreate.body);
+    const managerIssue = managerIssueCreate.json().issue;
+
+    const managerIssuePatch = await app.inject({
+      method: "PATCH",
+      url: `/api/issues/${managerIssue.id}`,
+      headers: { cookie: managerCookie },
+      payload: { status: "进行中" },
+    });
+    assert.equal(managerIssuePatch.statusCode, 200, managerIssuePatch.body);
+
+    const managerDeleteProject = await app.inject({ method: "DELETE", url: `/api/projects/${data.project.id}`, headers: { cookie: managerCookie } });
+    assert.equal(managerDeleteProject.statusCode, 403);
+
+    const managerBoard = await app.inject({ method: "GET", url: `/api/projects/${data.project.id}/board`, headers: { cookie: managerCookie } });
+    assert.equal(managerBoard.statusCode, 200, managerBoard.body);
+    assert.equal(managerBoard.json().permissions.canCreateIssue, true);
+    assert.equal(managerBoard.json().permissions.canManageSchedule, true);
+    assert.equal(managerBoard.json().permissions.canApproveTimeEntries, true);
+    assert.equal(managerBoard.json().permissions.canDelete, false);
+
+    const managerMilestone = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/milestones`,
+      headers: { cookie: managerCookie },
+      payload: { name: "Manager milestone", status: "未开始" },
+    });
+    assert.equal(managerMilestone.statusCode, 201, managerMilestone.body);
+
+    const managerSubmittedEntry = await data.prisma.timeEntry.create({
+      data: {
+        organizationId: data.organization.id,
+        projectId: data.project.id,
+        issueId: data.issue.id,
+        userId: data.member.id,
+        reporterId: data.member.id,
+        workDate: new Date("2026-07-03T00:00:00.000Z"),
+        hours: 1,
+        status: "SUBMITTED",
+      },
+    });
+    const managerApprove = await app.inject({ method: "POST", url: `/api/time-entries/${managerSubmittedEntry.id}/approve`, headers: { cookie: managerCookie } });
+    assert.equal(managerApprove.statusCode, 200, managerApprove.body);
+
+    const memberIssueCreate = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/issues`,
+      headers: { cookie: memberCookie },
+      payload: { code: `MEM${data.suffix.slice(-5)}`, title: "Member issue", ownerId: data.member.id, status: "未开始" },
+    });
+    assert.equal(memberIssueCreate.statusCode, 201, memberIssueCreate.body);
+    const memberIssue = memberIssueCreate.json().issue;
+    const memberOwnPatch = await app.inject({
+      method: "PATCH",
+      url: `/api/issues/${memberIssue.id}`,
+      headers: { cookie: memberCookie },
+      payload: { priority: "P1" },
+    });
+    assert.equal(memberOwnPatch.statusCode, 200, memberOwnPatch.body);
+
+    const assignedIssueCreate = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/issues`,
+      headers: { cookie: managerCookie },
+      payload: { code: `ASN${data.suffix.slice(-5)}`, title: "Assigned to member", ownerId: data.member.id, status: "未开始" },
+    });
+    assert.equal(assignedIssueCreate.statusCode, 201, assignedIssueCreate.body);
+    const assignedPatch = await app.inject({
+      method: "PATCH",
+      url: `/api/issues/${assignedIssueCreate.json().issue.id}`,
+      headers: { cookie: memberCookie },
+      payload: { status: "进行中" },
+    });
+    assert.equal(assignedPatch.statusCode, 200, assignedPatch.body);
+
+    const memberPatchOther = await app.inject({
+      method: "PATCH",
+      url: `/api/issues/${managerIssue.id}`,
+      headers: { cookie: memberCookie },
+      payload: { status: "已完成" },
+    });
+    assert.equal(memberPatchOther.statusCode, 403);
+
+    const otherSubmittedEntry = await data.prisma.timeEntry.create({
+      data: {
+        organizationId: data.organization.id,
+        projectId: data.project.id,
+        issueId: data.issue.id,
+        userId: data.manager.id,
+        reporterId: data.manager.id,
+        workDate: new Date("2026-07-04T00:00:00.000Z"),
+        hours: 1,
+        status: "SUBMITTED",
+      },
+    });
+    const memberApproveOther = await app.inject({ method: "POST", url: `/api/time-entries/${otherSubmittedEntry.id}/approve`, headers: { cookie: memberCookie } });
+    assert.equal(memberApproveOther.statusCode, 403);
+
+    const memberBoard = await app.inject({ method: "GET", url: `/api/projects/${data.project.id}/board`, headers: { cookie: memberCookie } });
+    assert.equal(memberBoard.statusCode, 200, memberBoard.body);
+    assert.equal(memberBoard.json().permissions.canCreateIssue, true);
+    assert.equal(memberBoard.json().permissions.canManageSchedule, false);
+    assert.equal(memberBoard.json().permissions.canApproveTimeEntries, false);
+    assert.equal(memberBoard.json().permissions.canCreateTimeEntries, true);
+
+    const viewerBoard = await app.inject({ method: "GET", url: `/api/projects/${data.project.id}/board`, headers: { cookie: viewerCookie } });
+    assert.equal(viewerBoard.statusCode, 200, viewerBoard.body);
+    assert.equal(viewerBoard.json().permissions.canCreateIssue, false);
+    assert.equal(viewerBoard.json().permissions.canCreateTimeEntries, false);
+
+    const viewerIssueCreate = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/issues`,
+      headers: { cookie: viewerCookie },
+      payload: { code: `VEW${data.suffix.slice(-5)}`, title: "Viewer issue" },
+    });
+    assert.equal(viewerIssueCreate.statusCode, 403);
+    const viewerIssuePatch = await app.inject({ method: "PATCH", url: `/api/issues/${memberIssue.id}`, headers: { cookie: viewerCookie }, payload: { status: "进行中" } });
+    assert.equal(viewerIssuePatch.statusCode, 403);
+    const viewerIssueDelete = await app.inject({ method: "DELETE", url: `/api/issues/${memberIssue.id}`, headers: { cookie: viewerCookie } });
+    assert.equal(viewerIssueDelete.statusCode, 403);
+    const viewerMilestone = await app.inject({
+      method: "POST",
+      url: `/api/projects/${data.project.id}/milestones`,
+      headers: { cookie: viewerCookie },
+      payload: { name: "Viewer milestone", status: "未开始" },
+    });
+    assert.equal(viewerMilestone.statusCode, 403);
+    const viewerComment = await app.inject({
+      method: "POST",
+      url: `/api/issues/${memberIssue.id}/comments`,
+      headers: { cookie: viewerCookie },
+      payload: { text: "viewer cannot write" },
+    });
+    assert.equal(viewerComment.statusCode, 403);
+    const viewerTimeEntry = await app.inject({
+      method: "POST",
+      url: "/api/time-entries",
+      headers: { cookie: viewerCookie },
+      payload: { projectId: data.project.id, issueId: data.issue.id, workDate: "2026-07-05", hours: 1 },
+    });
+    assert.equal(viewerTimeEntry.statusCode, 403);
+    const viewerApprove = await app.inject({ method: "POST", url: `/api/time-entries/${otherSubmittedEntry.id}/approve`, headers: { cookie: viewerCookie } });
+    assert.equal(viewerApprove.statusCode, 403);
+
+    const managerIssueDelete = await app.inject({ method: "DELETE", url: `/api/issues/${managerIssue.id}`, headers: { cookie: managerCookie } });
+    assert.equal(managerIssueDelete.statusCode, 200, managerIssueDelete.body);
   } finally {
     await app.close();
     await data.prisma.$disconnect();

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { canViewProjectWorkspace, isProjectOwner } from "../../policies/access.js";
+import { canCreateIssue, canDeleteIssue, canEditIssue, canRestoreIssue, canViewProjectWorkspace } from "../../policies/access.js";
 import { assertActiveProjectMember, assertIssueCodeAvailable, requireVisibleProject } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, pageEnvelope, pagination, parseDateOnly, toJsonObject } from "../../utils/dto.js";
@@ -56,6 +56,7 @@ export async function issueRoutes(app: FastifyInstance) {
   app.post("/projects/:projectId/issues", async (request, reply) => {
     const context = requireAuth(request);
     const project = await requireVisibleProject(app, context, (request.params as { projectId: string }).projectId);
+    if (!canCreateIssue(context, project, project.members || [])) throw forbidden("没有权限创建该项目事项。");
     const parsed = issueCreateSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -107,6 +108,7 @@ export async function issueRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
     if (!issue || issue.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
+    if (!canEditIssue(context, issue, issue.project)) throw forbidden("没有权限编辑该事项。");
     const parsed = issuePatchSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("事项参数不正确。", parsed.error.flatten());
     const input = parsed.data;
@@ -149,7 +151,7 @@ export async function issueRoutes(app: FastifyInstance) {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId);
     if (!issue || issue.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
-    if (!canDeleteIssue(context, issue)) throw forbidden("没有权限删除该事项。");
+    if (!canDeleteIssue(context, issue, issue.project)) throw forbidden("没有权限删除该事项。");
     const updated = await app.prisma.$transaction(async (tx) => {
       const row = await tx.issue.update({
         where: { id: issue.id },
@@ -169,7 +171,8 @@ export async function issueRoutes(app: FastifyInstance) {
   app.post("/issues/:issueId/restore", async (request) => {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId, true);
-    if (!issue || !issue.deletedAt || issue.project.deletedAt || !canDeleteIssue(context, issue)) throw notFound("事项不存在。");
+    if (!issue || !issue.deletedAt || issue.project.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
+    if (!canRestoreIssue(context, issue, issue.project)) throw forbidden("没有权限恢复该事项。");
     await assertIssueCodeAvailable(app, issue.projectId, issue.code, issue.id);
     const updated = await app.prisma.$transaction(async (tx) => {
       const row = await tx.issue.update({ where: { id: issue.id }, data: { deletedAt: null, deletedById: null } });
@@ -226,10 +229,6 @@ async function enrichIssue(app: FastifyInstance, organizationId: string, issue: 
     comments: comments.map((comment: any) => ({ ...comment, authorName: byId.get(comment.authorId)?.name || "" })),
     activities: activities.map((activity: any) => ({ ...activity, actorName: activity.actorId ? byId.get(activity.actorId)?.name || "" : "" })),
   };
-}
-
-function canDeleteIssue(context: any, issue: any) {
-  return context.isAdmin || isProjectOwner(context, issue.project) || issue.creatorId === context.userId;
 }
 
 function issueActivitiesForPatch(issue: any, input: any) {

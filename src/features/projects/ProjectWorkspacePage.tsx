@@ -32,7 +32,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { normalizeTimeEntryStatus } from "@/lib/permissions/policies";
+import { PROJECT_MEMBER_ROLE_LABELS, PROJECT_MEMBER_ROLES, canCommentOnIssue, canDeleteIssue, canUpdateIssue, normalizeProjectMemberRole, normalizeTimeEntryStatus } from "@/lib/permissions/policies";
 import {
   ISSUE_STATUSES,
   daysUntil,
@@ -46,7 +46,7 @@ import {
 } from "@/lib/state/calculations";
 import { useAppStore } from "@/lib/state/app-store";
 import { cn } from "@/lib/utils";
-import type { Issue, Project, ProjectMember } from "@/types/domain";
+import type { Issue, Project, ProjectMember, ProjectMemberRole } from "@/types/domain";
 import { ProjectDialog } from "./ProjectLibraryPage";
 
 type WorkspaceTab = "overview" | "items" | "gantt" | "members" | "milestones" | "delivery" | "risk" | "settings";
@@ -128,8 +128,8 @@ export function ProjectWorkspacePage() {
         description={project.description || template.summary}
         actions={
           <>
-            <Button variant="outline" onClick={() => setImportOpen(true)}><FileSpreadsheet className="h-4 w-4" />导入排期</Button>
-            <Button onClick={() => setCreateIssueOpen(true)}><Plus className="h-4 w-4" />新建事项</Button>
+            {permissions.canManageSchedule ? <Button variant="outline" onClick={() => setImportOpen(true)}><FileSpreadsheet className="h-4 w-4" />导入排期</Button> : null}
+            {permissions.canCreateIssue ? <Button onClick={() => setCreateIssueOpen(true)}><Plus className="h-4 w-4" />新建事项</Button> : null}
           </>
         }
       />
@@ -177,7 +177,7 @@ export function ProjectWorkspacePage() {
                   <TabsTrigger className="h-8 px-2" value="table"><Table2 className="h-4 w-4" /></TabsTrigger>
                 </TabsList>
               </Tabs>
-              <Button onClick={() => setCreateIssueOpen(true)}><Plus className="h-4 w-4" />新建事项</Button>
+              {permissions.canCreateIssue ? <Button onClick={() => setCreateIssueOpen(true)}><Plus className="h-4 w-4" />新建事项</Button> : null}
             </div>
           </section>
           <WorkItemsPanel
@@ -185,19 +185,20 @@ export function ProjectWorkspacePage() {
             view={issueView}
             onOpenIssue={openIssue}
             onCreate={() => setCreateIssueOpen(true)}
+            canCreate={permissions.canCreateIssue}
           />
         </TabsContent>
 
         <TabsContent value="gantt" className="m-0">
-          <GanttTab project={project} issues={projectIssues} onOpenIssue={openIssue} />
+          <GanttTab project={project} issues={projectIssues} canManageSchedule={permissions.canManageSchedule} onOpenIssue={openIssue} />
         </TabsContent>
 
         <TabsContent value="members" className="m-0">
-          <MembersTab project={project} members={activeMembers} canManage={permissions.canManageMembers} />
+          <MembersTab project={project} members={activeMembers} canManage={permissions.canManageMembers} canManageRoles={permissions.canManageMemberRoles} />
         </TabsContent>
 
         <TabsContent value="milestones" className="m-0">
-          <MilestonesTab project={project} canUpdate={permissions.canUpdate} />
+          <MilestonesTab project={project} canUpdate={permissions.canManageMilestones} />
         </TabsContent>
 
         <TabsContent value="delivery" className="m-0">
@@ -320,14 +321,16 @@ function WorkItemsPanel({
   view,
   onOpenIssue,
   onCreate,
+  canCreate,
 }: {
   issues: Issue[];
   view: "list" | "board" | "table";
   onOpenIssue: (issueId: string) => void;
   onCreate: () => void;
+  canCreate: boolean;
 }) {
   if (!issues.length) {
-    return <div className="min-w-0 p-4 md:p-6"><EmptyState title="没有匹配的事项" description="调整筛选条件，或新建一个任务、需求、风险或交付物。" action="新建事项" onAction={onCreate} /></div>;
+    return <div className="min-w-0 p-4 md:p-6"><EmptyState title="没有匹配的事项" description="调整筛选条件，或新建一个任务、需求、风险或交付物。" action={canCreate ? "新建事项" : undefined} onAction={canCreate ? onCreate : undefined} /></div>;
   }
   if (view === "board") {
     return (
@@ -397,7 +400,7 @@ function WorkItemsPanel({
   );
 }
 
-function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: Issue[]; onOpenIssue: (issueId: string) => void }) {
+function GanttTab({ project, issues, canManageSchedule, onOpenIssue }: { project: Project; issues: Issue[]; canManageSchedule: boolean; onOpenIssue: (issueId: string) => void }) {
   const store = useAppStore();
   const [scale, setScale] = useState("week");
   const [query, setQuery] = useState("");
@@ -453,13 +456,13 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
                   </span>
                   <span className="relative h-8 rounded bg-muted">
                     <span
-                      draggable
-                      className={cn("absolute top-1 h-6 cursor-grab rounded bg-primary/75 active:cursor-grabbing", isIssueRisky(issue) && "bg-amber-500")}
+                      draggable={canManageSchedule}
+                      className={cn("absolute top-1 h-6 rounded bg-primary/75", canManageSchedule && "cursor-grab active:cursor-grabbing", isIssueRisky(issue) && "bg-amber-500")}
                       style={ganttStyle(issue, projectStart, projectEnd, scale)}
                       onClick={(event) => event.stopPropagation()}
                       onDragEnd={(event) => {
                         event.preventDefault();
-                        void shiftOneDay(issue);
+                        if (canManageSchedule) void shiftOneDay(issue);
                       }}
                     />
                     <span className="absolute inset-y-0 left-2 flex items-center text-[11px] text-muted-foreground">{issue.startDate || "?"} - {issue.dueDate || "?"}</span>
@@ -477,14 +480,18 @@ function GanttTab({ project, issues, onOpenIssue }: { project: Project; issues: 
   );
 }
 
-function MembersTab({ project, members, canManage }: { project: Project; members: ProjectMember[]; canManage: boolean }) {
+function MembersTab({ project, members, canManage, canManageRoles }: { project: Project; members: ProjectMember[]; canManage: boolean; canManageRoles: boolean }) {
   const store = useAppStore();
   const [userId, setUserId] = useState("none");
+  const [role, setRole] = useState<ProjectMemberRole>("MEMBER");
   const availableUsers = store.state.users.filter((user) => user.status === "ACTIVE" && !members.some((member) => member.userId === user.id));
   async function addMember() {
     if (userId === "none") return;
-    const ok = await store.addProjectMember(project.id, userId);
+    const ok = await store.addProjectMember(project.id, userId, role);
     if (ok) setUserId("none");
+  }
+  async function updateRole(member: ProjectMember, nextRole: string) {
+    await store.updateProjectMemberRole(project.id, member.id, nextRole as ProjectMemberRole);
   }
   return (
     <div className="grid min-w-0 gap-6 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
@@ -510,7 +517,20 @@ function MembersTab({ project, members, canManage }: { project: Project; members
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">{user?.name || member.userId}</TableCell>
                   <TableCell>{user?.email || "-"}</TableCell>
-                  <TableCell>{project.ownerId === member.userId ? "项目所有人" : user?.role === "ADMIN" ? "管理员" : "成员"}</TableCell>
+                  <TableCell>
+                    {project.ownerId === member.userId ? (
+                      "项目所有人"
+                    ) : canManageRoles ? (
+                      <Select value={normalizeProjectMemberRole(member.role)} onValueChange={(value) => updateRole(member, value)}>
+                        <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {PROJECT_MEMBER_ROLES.map((item) => <SelectItem key={item} value={item}>{PROJECT_MEMBER_ROLE_LABELS[item]}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      PROJECT_MEMBER_ROLE_LABELS[normalizeProjectMemberRole(member.role)]
+                    )}
+                  </TableCell>
                   <TableCell>{member.createdAt?.slice(0, 10) || "-"}</TableCell>
                   <TableCell>
                     {canManage && project.ownerId !== member.userId ? (
@@ -533,6 +553,12 @@ function MembersTab({ project, members, canManage }: { project: Project; members
             <SelectContent>
               <SelectItem value="none">选择成员</SelectItem>
               {availableUsers.map((user) => <SelectItem key={user.id} value={user.id}>{user.name} · {user.email}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={role} onValueChange={(value) => setRole(value as ProjectMemberRole)} disabled={!canManageRoles}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PROJECT_MEMBER_ROLES.map((item) => <SelectItem key={item} value={item}>{PROJECT_MEMBER_ROLE_LABELS[item]}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button className="w-full" disabled={!canManage || userId === "none"} onClick={addMember}>加入项目</Button>
@@ -790,20 +816,24 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
   const [comment, setComment] = useState("");
   if (!issue) return null;
   const project = store.state.projects.find((item) => item.id === issue.projectId);
+  const canEdit = canUpdateIssue(store.context, issue, project, store.state.projectMembers);
+  const canRemove = canDeleteIssue(store.context, issue, project, store.state.projectMembers);
+  const canComment = canCommentOnIssue(store.context, issue, project, store.state.projectMembers);
   const ownerOptions = store.state.users.filter((user) => user.status === "ACTIVE");
   async function update(patch: Partial<Issue>) {
     if (!issue) return;
+    if (!canEdit) return;
     await store.updateIssue(issue.id, patch);
   }
   async function deleteIssue() {
-    if (!issue) return;
+    if (!issue || !canRemove) return;
     const ok = window.confirm(`确认删除事项「${issue.title}」？`);
     if (!ok) return;
     const deleted = await store.deleteIssue(issue.id);
     if (deleted) onOpenChange(false);
   }
   async function submitComment() {
-    if (!issue || !comment.trim()) return;
+    if (!issue || !comment.trim() || !canComment) return;
     const ok = await store.addIssueComment(issue.id, comment);
     if (ok) setComment("");
   }
@@ -822,13 +852,13 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="状态">
-              <Select value={issue.status} onValueChange={(value) => update({ status: value })}>
+              <Select value={issue.status} onValueChange={(value) => update({ status: value })} disabled={!canEdit}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>{ISSUE_STATUSES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
             <Field label="优先级">
-              <Select value={issue.priority} onValueChange={(value) => update({ priority: value as Issue["priority"] })}>
+              <Select value={issue.priority} onValueChange={(value) => update({ priority: value as Issue["priority"] })} disabled={!canEdit}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>{["P0", "P1", "P2", "P3"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
               </Select>
@@ -837,7 +867,7 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
               <Select value={issue.ownerId || "none"} onValueChange={(value) => {
                 const owner = ownerOptions.find((user) => user.id === value);
                 update({ ownerId: owner?.id || null, owner: owner?.name || "未分配" });
-              }}>
+              }} disabled={!canEdit}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">未分配</SelectItem>
@@ -845,7 +875,7 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="截止日期"><Input type="date" value={issue.dueDate || ""} onChange={(event) => update({ dueDate: event.target.value })} /></Field>
+            <Field label="截止日期"><Input type="date" value={issue.dueDate || ""} disabled={!canEdit} onChange={(event) => update({ dueDate: event.target.value })} /></Field>
           </div>
           <section>
             <h3 className="text-sm font-semibold">描述</h3>
@@ -859,10 +889,12 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
           </section>
           <section>
             <h3 className="text-sm font-semibold">评论</h3>
-            <div className="mt-2 space-y-2">
-              <Textarea rows={3} placeholder="添加评论或同步风险处理进展" value={comment} onChange={(event) => setComment(event.target.value)} />
-              <Button size="sm" onClick={submitComment} disabled={!comment.trim()}>添加评论</Button>
-            </div>
+            {canComment ? (
+              <div className="mt-2 space-y-2">
+                <Textarea rows={3} placeholder="添加评论或同步风险处理进展" value={comment} onChange={(event) => setComment(event.target.value)} />
+                <Button size="sm" onClick={submitComment} disabled={!comment.trim()}>添加评论</Button>
+              </div>
+            ) : null}
             <div className="mt-3 space-y-2">
               {(issue.comments || []).map((item) => (
                 <div key={item.id} className="rounded-md border bg-card p-3 text-sm">
@@ -873,7 +905,7 @@ function IssueDetailSheet({ issue, open, onOpenChange }: { issue?: Issue; open: 
             </div>
           </section>
           <Separator />
-          <Button variant="destructive" onClick={deleteIssue}><Trash2 className="h-4 w-4" />删除事项</Button>
+          {canRemove ? <Button variant="destructive" onClick={deleteIssue}><Trash2 className="h-4 w-4" />删除事项</Button> : null}
         </div>
       </SheetContent>
     </Sheet>

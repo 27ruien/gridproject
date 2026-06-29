@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { AppState, CostRecord, Issue, PlatformSettings, Preferences, Project, ProjectMember, TimeEntry, TrashItem, User } from "@/types/domain";
+import type { AppState, CostRecord, Issue, PlatformSettings, Preferences, Project, ProjectMember, ProjectMemberRole, TimeEntry, TrashItem, User } from "@/types/domain";
 import { authApi } from "@/lib/api/auth";
 import { costsApi } from "@/lib/api/costs";
 import { downloadResponse, onUnauthorized } from "@/lib/api/client";
@@ -13,7 +13,7 @@ import { timesheetsApi } from "@/lib/api/timesheets";
 import { trashApi } from "@/lib/api/trash";
 import { apiErrorMessage } from "@/lib/api/errors";
 import { isApiDataSource, storageKey } from "@/lib/env";
-import { buildAccessContext, canCreateOwnTimeEntry, permissionsForProject } from "@/lib/permissions/policies";
+import { buildAccessContext, canApproveTimeEntry, canCommentOnIssue, canCreateIssue, canCreateOwnTimeEntry, canDeleteIssue, canDeleteTimeEntry, canEditTimeEntry, canManageSchedule, canSubmitTimeEntry, canUpdateIssue, permissionsForProject } from "@/lib/permissions/policies";
 import { queryKeys } from "@/lib/query/keys";
 import { DEFAULT_PREFERENCES, DEMO_USERS, seedState } from "./seed";
 import { getTemplateById, normalizeIssue } from "./calculations";
@@ -35,7 +35,8 @@ type AppStore = {
   createProject: (input: Partial<Project>) => Promise<Project | null>;
   updateProject: (projectId: string, patch: Partial<Project>) => Promise<Project | null>;
   deleteProject: (projectId: string) => Promise<boolean>;
-  addProjectMember: (projectId: string, userId: string) => Promise<boolean>;
+  addProjectMember: (projectId: string, userId: string, role?: ProjectMemberRole) => Promise<boolean>;
+  updateProjectMemberRole: (projectId: string, memberId: string, role: ProjectMemberRole) => Promise<boolean>;
   removeProjectMember: (projectId: string, memberId: string) => Promise<boolean>;
   createIssue: (projectId: string, input: Partial<Issue>) => Promise<Issue | null>;
   updateIssue: (issueId: string, patch: Partial<Issue>) => Promise<Issue | null>;
@@ -261,7 +262,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...previous,
         projects: [project, ...previous.projects],
         projectMembers: [
-          ...memberUserIds.map((userId) => ({ id: `pm-${project.id}-${userId}`, organizationId: project.organizationId, projectId: project.id, userId, status: "ACTIVE" as const })),
+          ...memberUserIds.map((userId) => ({ id: `pm-${project.id}-${userId}`, organizationId: project.organizationId, projectId: project.id, userId, status: "ACTIVE" as const, role: localProjectMemberRole(userId, project.ownerId, project.projectManagerId) })),
           ...previous.projectMembers,
         ],
       }));
@@ -269,6 +270,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return project;
     },
     updateProject: async (projectId, patch) => {
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!permissionsForProject(context, project, state.projectMembers).canUpdate) {
+        toast.error("没有权限编辑该项目");
+        return null;
+      }
       if (apiMode) {
         const payload = await run("保存项目", () => projectsApi.update(projectId, projectPayload(patch)), "项目已更新");
         if (!payload?.project) return null;
@@ -286,7 +292,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }),
         projectMembers: roleUserIds.length
           ? [
-              ...roleUserIds.map((userId) => ({ id: `pm-${projectId}-${userId}`, organizationId: context.organizationId, projectId, userId, status: "ACTIVE" as const })),
+              ...roleUserIds.map((userId) => ({ id: `pm-${projectId}-${userId}`, organizationId: context.organizationId, projectId, userId, status: "ACTIVE" as const, role: localProjectMemberRole(userId, updated?.ownerId || project?.ownerId, patch.projectManagerId) })),
               ...previous.projectMembers.filter((member) => !(member.projectId === projectId && roleUserIds.includes(member.userId))),
             ]
           : previous.projectMembers,
@@ -295,6 +301,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return updated;
     },
     deleteProject: async (projectId) => {
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!permissionsForProject(context, project, state.projectMembers).canDelete) {
+        toast.error("没有权限删除该项目");
+        return false;
+      }
       if (state.issues.some((issue) => issue.projectId === projectId && !issue.deletedAt)) {
         toast.error("项目下还有任务，请先删除或迁移任务。");
         return false;
@@ -313,16 +324,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       return true;
     },
-    addProjectMember: async (projectId, userId) => {
+    addProjectMember: async (projectId, userId, role = "MEMBER") => {
       if (apiMode) {
-        const payload = await run("添加成员", () => projectsApi.members.create(projectId, { userId }), "成员已加入项目");
+        const payload = await run("添加成员", () => projectsApi.members.create(projectId, { userId, role }), "成员已加入项目");
         if (!payload?.member) return false;
         setState((previous) => ({ ...previous, projectMembers: [payload.member, ...previous.projectMembers.filter((item) => item.id !== payload.member.id)] }));
         return true;
       }
-      const member: ProjectMember = { id: `pm-${projectId}-${userId}`, organizationId: context.organizationId, projectId, userId, status: "ACTIVE", createdAt: new Date().toISOString() };
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!permissionsForProject(context, project, state.projectMembers).canManageMembers) {
+        toast.error("没有权限管理该项目成员");
+        return false;
+      }
+      if (userId === project?.ownerId && role !== "MEMBER") {
+        toast.error("项目所有人不需要设置成员角色");
+        return false;
+      }
+      const member: ProjectMember = { id: `pm-${projectId}-${userId}`, organizationId: context.organizationId, projectId, userId, status: "ACTIVE", role, createdAt: new Date().toISOString() };
       setState((previous) => ({ ...previous, projectMembers: [member, ...previous.projectMembers.filter((item) => !(item.projectId === projectId && item.userId === userId))] }));
       toast.success("成员已加入项目");
+      return true;
+    },
+    updateProjectMemberRole: async (projectId, memberId, role) => {
+      if (apiMode) {
+        const payload = await run("修改成员角色", () => projectsApi.members.update(projectId, memberId, { role }), "成员角色已更新");
+        if (!payload?.member) return false;
+        setState((previous) => replaceProjectMember(previous, payload.member));
+        return true;
+      }
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!permissionsForProject(context, project, state.projectMembers).canManageMemberRoles) {
+        toast.error("没有权限修改成员角色");
+        return false;
+      }
+      const member = state.projectMembers.find((item) => item.id === memberId);
+      if (member?.userId === project?.ownerId && role !== "MEMBER") {
+        toast.error("项目所有人不需要设置成员角色");
+        return false;
+      }
+      setState((previous) => ({ ...previous, projectMembers: previous.projectMembers.map((member) => member.id === memberId ? { ...member, role } : member) }));
+      toast.success("成员角色已更新");
       return true;
     },
     removeProjectMember: async (projectId, memberId) => {
@@ -330,10 +371,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const payload = await run("移除成员", () => projectsApi.members.delete(projectId, memberId), "成员已移出项目");
         if (!payload?.member) return false;
       }
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!permissionsForProject(context, project, state.projectMembers).canManageMembers) {
+        toast.error("没有权限管理该项目成员");
+        return false;
+      }
       setState((previous) => ({ ...previous, projectMembers: previous.projectMembers.map((member) => member.id === memberId ? { ...member, status: "INACTIVE" } : member) }));
       return true;
     },
     createIssue: async (projectId, input) => {
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!canCreateIssue(context, project, state.projectMembers)) {
+        toast.error("没有权限创建该项目事项");
+        return null;
+      }
       if (apiMode) {
         const payload = await run("创建事项", () => projectsApi.issues.create(projectId, issuePayload(input)), "事项已创建");
         if (!payload?.issue) return null;
@@ -354,6 +405,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return issue;
     },
     updateIssue: async (issueId, patch) => {
+      const currentIssue = state.issues.find((item) => item.id === issueId);
+      const project = state.projects.find((item) => item.id === currentIssue?.projectId);
+      if (!canUpdateIssue(context, currentIssue, project, state.projectMembers)) {
+        toast.error("没有权限编辑该事项");
+        return null;
+      }
       if (apiMode) {
         const payload = await run("保存事项", () => tasksApi.update(issueId, issuePayload(patch)), "事项已保存");
         if (!payload?.issue) return null;
@@ -370,6 +427,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return updated;
     },
     deleteIssue: async (issueId) => {
+      const currentIssue = state.issues.find((item) => item.id === issueId);
+      const project = state.projects.find((item) => item.id === currentIssue?.projectId);
+      if (!canDeleteIssue(context, currentIssue, project, state.projectMembers)) {
+        toast.error("没有权限删除该事项");
+        return false;
+      }
       if (apiMode) {
         const payload = await run("删除事项", () => tasksApi.delete(issueId), "事项已移入回收站");
         if (!payload) return false;
@@ -386,6 +449,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     addIssueComment: async (issueId, text) => {
       if (!text.trim()) return false;
+      const currentIssue = state.issues.find((item) => item.id === issueId);
+      const project = state.projects.find((item) => item.id === currentIssue?.projectId);
+      if (!canCommentOnIssue(context, currentIssue, project, state.projectMembers)) {
+        toast.error("没有权限添加该事项评论");
+        return false;
+      }
       if (apiMode) {
         const payload = await run("添加评论", () => tasksApi.comments.create(issueId, { text }), "评论已添加");
         if (!payload?.comment) return false;
@@ -394,6 +463,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
     importSchedule: async (projectId, text) => {
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!canManageSchedule(context, project, state.projectMembers)) {
+        toast.error("没有权限导入该项目排期");
+        return 0;
+      }
       const rows = parseScheduleText(text, projectId, context.user);
       if (!rows.length) {
         toast.error("没有可导入的排期事项");
@@ -410,7 +484,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toast.success(`已导入 ${imported.length} 个排期事项`);
         return imported.length;
       }
-      const project = state.projects.find((item) => item.id === projectId);
       const prefix = getTemplateById(project?.templateId).id === "agile" ? "AGL" : "WAT";
       const imported = rows.map((row, index) => normalizeIssue({
         ...row,
@@ -466,6 +539,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return entry;
     },
     updateTimeEntry: async (entryId, patch) => {
+      const entry = state.timeEntries.find((item) => item.id === entryId);
+      if (!canEditTimeEntry(context, entry)) {
+        toast.error("没有权限编辑该工时");
+        return null;
+      }
       if (apiMode) {
         const payload = await run("更新工时", () => timesheetsApi.update(entryId, patch), "工时已更新");
         if (!payload?.entry) return null;
@@ -482,6 +560,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return updated;
     },
     submitTimeEntry: async (entryId) => {
+      const entry = state.timeEntries.find((item) => item.id === entryId);
+      if (!canSubmitTimeEntry(context, entry)) {
+        toast.error("只有自己的草稿工时可以提交");
+        return false;
+      }
       if (apiMode) {
         const payload = await run("提交工时", () => timesheetsApi.submit(entryId), "工时已提交");
         if (!payload?.entry) return false;
@@ -493,6 +576,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
     approveTimeEntry: async (entryId, comment = "") => {
+      const entry = state.timeEntries.find((item) => item.id === entryId);
+      const project = state.projects.find((item) => item.id === entry?.projectId);
+      if (!canApproveTimeEntry(context, entry, project, state.projectMembers)) {
+        toast.error("没有权限审批该工时");
+        return false;
+      }
       if (apiMode) {
         const payload = await run("审批工时", () => timesheetsApi.approve(entryId, comment), "工时已审批");
         if (!payload?.entry) return false;
@@ -503,6 +592,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
     rejectTimeEntry: async (entryId, reason = "") => {
+      const entry = state.timeEntries.find((item) => item.id === entryId);
+      const project = state.projects.find((item) => item.id === entry?.projectId);
+      if (!canApproveTimeEntry(context, entry, project, state.projectMembers)) {
+        toast.error("没有权限驳回该工时");
+        return false;
+      }
       if (apiMode) {
         const payload = await run("驳回工时", () => timesheetsApi.reject(entryId, reason), "工时已驳回");
         if (!payload?.entry) return false;
@@ -513,6 +608,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
     deleteTimeEntry: async (entryId) => {
+      const entry = state.timeEntries.find((item) => item.id === entryId);
+      if (!canDeleteTimeEntry(context, entry)) {
+        toast.error("没有权限删除该工时");
+        return false;
+      }
       if (apiMode) {
         const payload = await run("删除工时", () => timesheetsApi.delete(entryId, "前端请求删除工时"), "工时已删除");
         if (!payload) return false;
@@ -672,7 +772,7 @@ function normalizeState(input: Partial<AppState>): AppState {
     settings: { ...seedState.settings, ...(input.settings || {}) },
     users: input.users || seedState.users,
     projects: input.projects || seedState.projects,
-    projectMembers: input.projectMembers || seedState.projectMembers,
+    projectMembers: normalizeProjectMembers(input.projectMembers || seedState.projectMembers),
     issues: (input.issues || seedState.issues).map((issue) => normalizeIssue(issue)),
     timeEntries: input.timeEntries || seedState.timeEntries,
     costRecords: input.costRecords || seedState.costRecords,
@@ -685,6 +785,25 @@ function replaceById<Key extends "projects" | "issues" | "timeEntries" | "costRe
     ...state,
     [key]: state[key].map((entry: { id: string }) => entry.id === item.id ? item : entry),
   } as AppState;
+}
+
+function replaceProjectMember(state: AppState, member: ProjectMember): AppState {
+  return {
+    ...state,
+    projectMembers: state.projectMembers.map((item) => item.id === member.id ? member : item),
+  };
+}
+
+function normalizeProjectMembers(members: ProjectMember[]): ProjectMember[] {
+  return members.map((member) => ({
+    ...member,
+    role: ["MANAGER", "MEMBER", "VIEWER"].includes(String(member.role)) ? member.role : "MEMBER",
+  } as ProjectMember));
+}
+
+function localProjectMemberRole(userId: string, ownerId?: string | null, managerId?: string | null): ProjectMemberRole {
+  if (userId === ownerId) return "MEMBER";
+  return userId === managerId ? "MANAGER" : "MEMBER";
 }
 
 function upsertUser(state: AppState, user: User): AppState {

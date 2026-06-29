@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { canViewProjectWorkspace, isProjectOwner } from "../../policies/access.js";
+import { canCreateIssueComment, canDeleteIssueComment, canEditIssueComment, canViewProjectWorkspace } from "../../policies/access.js";
 import { appendIssueActivity, audit } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueCommentDto } from "../../utils/dto.js";
@@ -25,6 +25,7 @@ export async function issueCommentRoutes(app: FastifyInstance) {
   app.post("/issues/:issueId/comments", async (request, reply) => {
     const context = requireAuth(request);
     const issue = await requireVisibleIssue(app, context, (request.params as { issueId: string }).issueId);
+    if (!canCreateIssueComment(context, issue, issue.project)) throw forbidden("没有权限添加该事项评论。");
     const parsed = commentSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("评论参数不正确。", parsed.error.flatten());
     const comment = await app.prisma.issueComment.create({
@@ -39,7 +40,7 @@ export async function issueCommentRoutes(app: FastifyInstance) {
   app.patch("/comments/:commentId", async (request) => {
     const context = requireAuth(request);
     const comment = await requireComment(app, context, (request.params as { commentId: string }).commentId);
-    if (comment.authorId !== context.userId && !context.isAdmin) throw forbidden("只能编辑自己的评论。");
+    if (!canEditIssueComment(context, comment, comment.issue.project)) throw forbidden("只能编辑自己的评论。");
     const parsed = commentSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest("评论参数不正确。", parsed.error.flatten());
     const updated = await app.prisma.issueComment.update({ where: { id: comment.id }, data: { text: parsed.data.text.trim() } });
@@ -50,9 +51,7 @@ export async function issueCommentRoutes(app: FastifyInstance) {
   app.delete("/comments/:commentId", async (request) => {
     const context = requireAuth(request);
     const comment = await requireComment(app, context, (request.params as { commentId: string }).commentId);
-    if (comment.authorId !== context.userId && !context.isAdmin && !isProjectOwner(context, comment.issue.project)) {
-      throw forbidden("没有权限删除该评论。");
-    }
+    if (!canDeleteIssueComment(context, comment, comment.issue.project)) throw forbidden("没有权限删除该评论。");
     const updated = await app.prisma.issueComment.update({ where: { id: comment.id }, data: { deletedAt: new Date(), deletedById: context.userId } });
     await appendIssueActivity(app, context, comment.issueId, "comment_deleted", "删除评论", { commentId: comment.id });
     await audit(app, context, "issue_comment.delete", "IssueComment", comment.id, {}, request.id);
