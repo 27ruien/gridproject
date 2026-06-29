@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../middleware/auth.js";
-import { canDeleteIssue, canManageMilestones, canViewCost } from "../../policies/access.js";
+import { canManageMilestones, canRestoreIssue, canViewCost } from "../../policies/access.js";
 import { appendIssueActivity, assertIssueCodeAvailable, audit, canRestoreProjectScoped } from "../shared.js";
 import { forbidden, notFound } from "../../utils/errors.js";
 import { costRecordDto, issueDto, milestoneDto, projectDto, sanitizeUserDto, toIsoDateTime } from "../../utils/dto.js";
@@ -80,7 +80,7 @@ export async function trashRoutes(app: FastifyInstance) {
         include: { project: { include: { members: true } } },
       });
       if (!issue || issue.project.deletedAt) throw notFound("事项不存在。");
-      if (!canDeleteIssue(context, issue, issue.project)) throw forbidden("没有权限恢复该事项。");
+      if (!canRestoreIssue(context, issue, issue.project)) throw forbidden("没有权限恢复该事项。");
       await assertIssueCodeAvailable(app, issue.projectId, issue.code, issue.id);
       const row = await app.prisma.issue.update({ where: { id }, data: { deletedAt: null, deletedById: null } });
       await appendIssueActivity(app, context, id, "restored", "恢复事项");

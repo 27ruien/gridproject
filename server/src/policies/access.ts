@@ -152,6 +152,13 @@ export function canDeleteIssue(context: AuthContext, issue: IssueLike | null | u
   return context.isAdmin || isProjectOwner(context, project) || isProjectManager(context, project, members);
 }
 
+export function canRestoreIssue(context: AuthContext, issue: IssueLike | null | undefined, project: (ProjectLike & { members?: MemberLike[] }) | null | undefined = issue?.project) {
+  if (!context.isActiveUser || !issue || issue.organizationId !== context.organizationId || !issue.deletedAt || !project || project.deletedAt) return false;
+  const members = project.members || [];
+  if (!canViewProjectWorkspace(context, project, members)) return false;
+  return context.isAdmin || isProjectOwner(context, project) || isProjectManager(context, project, members);
+}
+
 export function canManageMilestones(context: AuthContext, project: ProjectLike | null | undefined, members: MemberLike[] = []) {
   if (!canViewProjectWorkspace(context, project, members)) return false;
   return context.isAdmin || isProjectOwner(context, project) || isProjectManager(context, project, members);

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.js";
-import { canCreateIssue, canDeleteIssue, canEditIssue, canViewProjectWorkspace } from "../../policies/access.js";
+import { canCreateIssue, canDeleteIssue, canEditIssue, canRestoreIssue, canViewProjectWorkspace } from "../../policies/access.js";
 import { assertActiveProjectMember, assertIssueCodeAvailable, requireVisibleProject } from "../shared.js";
 import { badRequest, forbidden, notFound } from "../../utils/errors.js";
 import { issueDto, pageEnvelope, pagination, parseDateOnly, toJsonObject } from "../../utils/dto.js";
@@ -171,7 +171,8 @@ export async function issueRoutes(app: FastifyInstance) {
   app.post("/issues/:issueId/restore", async (request) => {
     const context = requireAuth(request);
     const issue = await loadIssueDetail(app, context.organizationId, (request.params as { issueId: string }).issueId, true);
-    if (!issue || !issue.deletedAt || issue.project.deletedAt || !canDeleteIssue(context, issue, issue.project)) throw notFound("事项不存在。");
+    if (!issue || !issue.deletedAt || issue.project.deletedAt || !canViewProjectWorkspace(context, issue.project, issue.project.members || [])) throw notFound("事项不存在。");
+    if (!canRestoreIssue(context, issue, issue.project)) throw forbidden("没有权限恢复该事项。");
     await assertIssueCodeAvailable(app, issue.projectId, issue.code, issue.id);
     const updated = await app.prisma.$transaction(async (tx) => {
       const row = await tx.issue.update({ where: { id: issue.id }, data: { deletedAt: null, deletedById: null } });

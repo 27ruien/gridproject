@@ -87,7 +87,7 @@ test("Dev release smoke flow", { skip: skipReason }, async () => {
     const projectCreate = await request(baseUrl, "POST", "/api/projects", {
       name: `${prefix} Project`,
       code: `SMK${suffix.slice(-6)}`,
-      status: "进行中",
+      status: "开发阶段",
     }, ownerCookie);
     assert.equal(projectCreate.status, 201, JSON.stringify(projectCreate.body));
     const project = projectCreate.body.project;
