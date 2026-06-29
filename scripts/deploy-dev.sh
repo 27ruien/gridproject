@@ -10,8 +10,10 @@ normalize_public_path() {
 
 readonly PROJECT_DIR="${GRIDPROJECT_PROJECT_DIR:-/opt/gridproject}"
 readonly ENV_FILE="$PROJECT_DIR/server/.env"
-readonly FRONTEND_BASE_PATH="$(normalize_public_path "${FRONTEND_BASE_PATH:-/tool/dev/project/}")"
-readonly FRONTEND_API_BASE_PATH="$(normalize_public_path "${FRONTEND_API_BASE_PATH:-/tool/dev/project/api/}")"
+FRONTEND_BASE_PATH="$(normalize_public_path "${FRONTEND_BASE_PATH:-/tool/dev/project/}")"
+readonly FRONTEND_BASE_PATH
+FRONTEND_API_BASE_PATH="$(normalize_public_path "${FRONTEND_API_BASE_PATH:-/tool/dev/project/api/}")"
+readonly FRONTEND_API_BASE_PATH
 readonly FRONTEND_CURRENT="${FRONTEND_DEPLOY_DIR:-${GRIDPROJECT_FRONTEND_DIR:-/var/www/gridworks/tool/dev/project}}"
 readonly FRONTEND_NEXT="${FRONTEND_NEXT_DIR:-${GRIDPROJECT_FRONTEND_NEXT_DIR:-${FRONTEND_CURRENT}-next}}"
 readonly FRONTEND_PREVIOUS="${FRONTEND_PREVIOUS_DIR:-${GRIDPROJECT_FRONTEND_PREVIOUS_DIR:-${FRONTEND_CURRENT}-previous}}"
